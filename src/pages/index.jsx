@@ -428,7 +428,7 @@ export default function Index() {
                         key: "key",
                         title: `Ключ ${sortAsc ? "▲" : "▼"}`,
                         render: (value) => (
-                            {value}
+                            <span>{value}</span>
                         ),
                     },
                     ...languages.map((lang) => ({

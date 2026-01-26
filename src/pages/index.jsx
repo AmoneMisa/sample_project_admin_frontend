@@ -444,7 +444,7 @@ export default function Index() {
                                     if (!canEdit) return;
                                     setEditing({ key: row.key, lang: lang.code, initial: val });
                                 }}
-                                     style={{ cursor: canEdit ? "pointer" : "default" }}>
+                                     style={{ cursor: canEdit ? "pointer" : "default", width: "280px" }}>
                                     {canEdit && isEditing ? (
                                         <div style={{position: "relative"}}>
                     <textarea

@@ -17,13 +17,13 @@ export default function TestimonialDialog({title, initial, onSave, onClose}) {
             <LabeledInput
                 label="Имя"
                 value={name}
-                onChange={(e) => setName(e.target.value)}
+                onChange={setName}
             />
 
             <LabeledInput
                 label="Роль"
                 value={role}
-                onChange={(e) => setRole(e.target.value)}
+                onChange={setRole}
             />
 
             <label className="field-holder">
@@ -41,19 +41,19 @@ export default function TestimonialDialog({title, initial, onSave, onClose}) {
                 type="number"
                 value={rating}
                 max={5}
-                onChange={(e) => setRating(Number(e.target.value))}
+                onChange={setRating}
             />
 
             <LabeledInput
                 label="Avatar URL"
                 value={avatar}
-                onChange={(e) => setAvatar(e.target.value)}
+                onChange={setAvatar}
             />
 
             <LabeledInput
                 label="Logo URL"
                 value={logo}
-                onChange={(e) => setLogo(e.target.value)}
+                onChange={setLogo}
             />
 
             <Checkbox

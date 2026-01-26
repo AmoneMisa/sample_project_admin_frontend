@@ -179,7 +179,7 @@ export default function AdminPage() {
                     {key: "code", title: "Код"},
                     {key: "name", title: "Название"},
                     {
-                        key: "enabled",
+                        key: "isEnabled",
                         title: "Enabled",
                         render: (value, row) => (
                             <Checkbox

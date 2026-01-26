@@ -15,7 +15,7 @@ export default function Testimonials() {
     const [editing, setEditing] = useState(null);
     const [creating, setCreating] = useState(false);
     const [deleteTarget, setDeleteTarget] = useState(null);
-    const {state, setState, pushSnapshot, undo, canUndo} = useAuditLogList([]);
+    const {setState, pushSnapshot, undo, canUndo} = useAuditLogList([]);
     const {showToast} = useToast();
     const {accessToken, user} = useAuth();
     const canEdit = user && (user.role === "moderator" || user.role === "admin");
@@ -32,7 +32,7 @@ export default function Testimonials() {
         }
 
         load();
-    }, [accessToken]);
+    }, [accessToken, API_URL, setState]);
 
     async function createItem(payload) {
         const res = await fetch(`${API_URL}/testimonials`, {

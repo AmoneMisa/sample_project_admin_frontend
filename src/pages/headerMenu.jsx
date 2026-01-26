@@ -43,7 +43,7 @@ export default function HeaderMenu() {
             }
         }
         load();
-    }, [accessToken]);
+    }, [accessToken, API_URL]);
 
     async function saveMenu(next) {
         await fetch(`${API_URL}/header-menu`, {

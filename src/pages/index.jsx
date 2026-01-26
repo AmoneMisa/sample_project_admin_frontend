@@ -90,7 +90,7 @@ export default function Index() {
         }
 
         load();
-    }, [accessToken, setTranslations, meta]);
+    }, [accessToken, setTranslations, meta, API_URL]);
     const saveAll = useCallback(async () => {
         if (!accessToken) return;
         const items = [];
@@ -110,7 +110,7 @@ export default function Index() {
         });
         showToast("Ключи успешно сохранены");
         setDirty(false);
-    }, [translations, languages, meta, showToast, accessToken]);
+    }, [translations, languages, meta, showToast, accessToken, API_URL]);
 
     // CTRL+S
     useEffect(() => {
@@ -426,9 +426,10 @@ export default function Index() {
                 columns={[
                     {
                         key: "key",
-                        title: `Ключ ${sortAsc ? "▲" : "▼"}`,
+                        title: (<span style={{cursor: "pointer"}}
+                                      onClick={() => setSortAsc(prev => !prev)}> Ключ {sortAsc ? "▲" : "▼"} </span>),
                         render: (value) => (
-                            <span>{value}</span>
+                            <span onClick={setSortAsc}>{value}</span>
                         ),
                     },
                     ...languages.map((lang) => ({
@@ -442,9 +443,9 @@ export default function Index() {
                             return (
                                 <div onClick={() => {
                                     if (!canEdit) return;
-                                    setEditing({ key: row.key, lang: lang.code, initial: val });
+                                    setEditing({key: row.key, lang: lang.code, initial: val});
                                 }}
-                                     style={{ cursor: canEdit ? "pointer" : "default", width: "280px" }}>
+                                     style={{cursor: canEdit ? "pointer" : "default", width: "280px"}}>
                                     {canEdit && isEditing ? (
                                         <div style={{position: "relative"}}>
                     <textarea

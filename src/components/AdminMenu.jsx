@@ -1,9 +1,9 @@
 import {NavLink} from "react-router-dom";
-import {FiHome, FiMenu, FiMessageSquare, FiUsers} from "react-icons/fi";
+import {FiHome, FiLogOut, FiMenu, FiMessageSquare, FiUsers} from "react-icons/fi";
 import {useAuth} from "../hooks/authContext";
 
 export default function AdminMenu() {
-    const {user} = useAuth();
+    const {user, logout} = useAuth();
 
     const isAdmin = user?.role === "admin";
     const isModerator = user?.role === "moderator";
@@ -63,6 +63,11 @@ export default function AdminMenu() {
                     <span>Админка</span>
                 </NavLink>
             )}
+
+            <button className="admin-menu__item admin-menu__logout" onClick={logout} >
+                <FiLogOut size={18} />
+                <span>Выйти</span>
+            </button>
         </nav>
     );
 }

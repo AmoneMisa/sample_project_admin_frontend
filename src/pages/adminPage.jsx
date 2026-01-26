@@ -1,4 +1,4 @@
-import {useState, useEffect} from "react";
+import {useState, useEffect, useCallback} from "react";
 import {useAuth} from "../hooks/authContext";
 import {useToast} from "../components/ToastContext";
 import CustomTable from "../components/CustomTable";
@@ -46,18 +46,19 @@ export default function AdminPage() {
     const [newName, setNewName] = useState("");
     const [suggestions, setSuggestions] = useState([]);
 
-    async function loadLanguages() {
+    const loadLanguages = useCallback(async () => {
         const res = await fetch(`${API_URL}/languages`, {
-            headers: {Authorization: `Bearer ${accessToken}`},
+            headers: { Authorization: `Bearer ${accessToken}` },
         });
         if (res.ok) {
             setLanguages(await res.json());
         }
-    }
+    }, [API_URL, accessToken]);
+
 
     useEffect(() => {
         if (accessToken) loadLanguages();
-    }, [accessToken]);
+    }, [accessToken, loadLanguages]);
 
     useEffect(() => {
         const code = newCode.trim().toLowerCase();

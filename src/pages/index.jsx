@@ -440,7 +440,11 @@ export default function Index() {
                             const isEditing = editing.key === row.key && editing.lang === lang.code;
 
                             return (
-                                <div>
+                                <div onClick={() => {
+                                    if (!canEdit) return;
+                                    setEditing({ key: row.key, lang: lang.code, initial: val });
+                                }}
+                                     style={{ cursor: canEdit ? "pointer" : "default" }}>
                                     {canEdit && isEditing ? (
                                         <div style={{position: "relative"}}>
                     <textarea

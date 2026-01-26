@@ -63,8 +63,7 @@ export function AuthProvider({children}) {
         await fetchUser(data.access_token);
 
         return data.access_token;
-        // eslint-disable-next-line no-use-before-define
-    }, [API_URL, refreshToken, logout, fetchUser]);
+    }, [API_URL, refreshToken, logout]);
 
     // -----------------------------
     //  Получение профиля

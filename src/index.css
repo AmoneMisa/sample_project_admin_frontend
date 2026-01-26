@@ -7,6 +7,7 @@
 @import "css/toast.css";
 @import "css/customElems.css";
 @import "css/controls.css";
+@import "css/editor.css";
 
 :root {
     --color-primary: #805AF5;
@@ -99,19 +100,6 @@ a {
 }
 
 .page__header-row {
-    display: flex;
-    justify-content: space-between;
-}
-
-.editor {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    font-size: 16px;
-    width: -webkit-fill-available;
-}
-
-.editor__buttons {
     display: flex;
     justify-content: space-between;
 }

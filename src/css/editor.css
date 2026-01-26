@@ -1,0 +1,100 @@
+.editor {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    font-size: 14px;
+    width: -webkit-fill-available;
+    padding: 12px;
+    border: 1px solid var(--ui-border);
+    border-radius: 14px;
+    background: var(--secondary-bg-gradient);
+    box-shadow: var(--shadow-light);
+}
+
+.editor > div {
+    margin-top: 6px;
+    padding: 8px 10px;
+    border: 1px solid var(--ui-border);
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.02);
+    font-weight: 600;
+}
+
+.editor__column {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 12px;
+    border: 1px solid var(--ui-border);
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.02);
+    box-shadow: var(--shadow-light);
+}
+
+.editor__row {
+    display: grid;
+    grid-template-columns: minmax(220px, 2fr) minmax(220px, 2fr) minmax(220px, 2fr) auto;
+    gap: 10px;
+    align-items: end;
+    padding: 10px;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.04);
+    background: rgba(0, 0, 0, 0.18);
+}
+
+@media (max-width: 1100px) {
+    .editor__row {
+        grid-template-columns: 1fr;
+        align-items: stretch;
+    }
+
+    .editor__row .button {
+        justify-self: start;
+    }
+}
+
+.editor__buttons {
+    display: flex;
+    gap: 10px;
+    justify-content: space-between;
+    align-items: center;
+    padding-top: 6px;
+    border-top: 1px dashed rgba(255, 255, 255, 0.06);
+}
+
+.editor > .button.button_border.button_icon {
+    margin-top: 6px;
+    align-self: flex-start;
+}
+
+.field-error {
+    margin-top: -6px;
+    padding: 8px 10px;
+    border-radius: 12px;
+    border: 1px solid rgba(192, 60, 60, 0.35);
+    background: rgba(192, 60, 60, 0.12);
+    color: #ffb3b3;
+    font-size: 13px;
+    line-height: 1.3;
+}
+
+.editor__row .field-error {
+    margin-top: 2px;
+}
+
+.editor input,
+.editor select,
+.editor textarea {
+    outline: none;
+}
+
+.editor input:focus,
+.editor select:focus,
+.editor textarea:focus {
+    box-shadow: 0 0 0 2px rgba(128, 90, 245, 0.35);
+    border-color: rgba(128, 90, 245, 0.6);
+}
+
+.editor > div:last-of-type {
+    margin-top: 14px;
+}

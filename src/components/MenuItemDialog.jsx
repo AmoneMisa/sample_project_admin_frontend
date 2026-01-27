@@ -523,7 +523,7 @@ export default function MenuItemDialog({
                     <LabeledSelect
                         label="Позиция изображения"
                         value={item.image?.position ?? "right"}
-                        onChange={(v: "left" | "right") => updateImage("position", v)}
+                        onChange={(v) => updateImage("position", v)}
                         options={[
                             {value: "right", label: "Справа"},
                             {value: "left", label: "Слева"},

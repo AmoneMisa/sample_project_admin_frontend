@@ -145,7 +145,7 @@ export default function MenuItemDialog({
                                            onClose,
                                        }: MenuItemDialogProps) {
     const API_URL = process.env.REACT_APP_API_URL || "/api";
-    const [fieldErrors, setFieldErrors] = useState<Record<string, Record<string, string>>>({});
+    const [fieldErrors, setFieldErrors] = useState({});
     const [item, setItem] = useState<MenuItem>({
         visible: initialItem.visible ?? true,
         ...initialItem,

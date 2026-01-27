@@ -4,68 +4,8 @@ import LabeledInput from "./LabeledInput";
 import LabeledSelect from "./LabeledSelect";
 import Checkbox from "./Checkbox";
 
-type Language = { code: string; name: string };
-type Translations = Record<string, Record<string, string>>;
-
-type SimpleItem = {
-    type: "simple";
-    label: string;
-    href: string;
-    badgeKey?: string | null;
-    showBadge?: boolean;
-    visible?: boolean;
-};
-
-type DropdownSimpleItem = {
-    type: "dropdown-simple";
-    label: string;
-    items: {
-        label: string;
-        href: string;
-        badgeKey?: string | null;
-        showBadge?: boolean;
-        visible?: boolean;
-    }[];
-    visible?: boolean;
-};
-
-type MegaItem = {
-    type: "dropdown-mega";
-    label: string;
-    columns: {
-        title: string;
-        items: {
-            label: string;
-            href: string;
-            badgeKey?: string | null;
-            showBadge?: boolean;
-            visible?: boolean;
-        }[];
-    }[];
-    image?: { src: string; position: "left" | "right" };
-    visible?: boolean;
-};
-
-type MenuItem = SimpleItem | DropdownSimpleItem | MegaItem;
-
-type MenuItemDialogProps = {
-    title: string;
-    languages: Language[];
-    translations: Translations;
-
-    initialItem?: MenuItem;
-    initialTranslations?: Translations;
-
-    onSave: (item: MenuItem) => void;
-    onClose: () => void;
-};
-
-
-// -----------------------------
-// helpers
-// -----------------------------
-function collectAllKeys(item: MenuItem): string[] {
-    const keys: string[] = [];
+function collectAllKeys(item) {
+    const keys = [];
 
     keys.push(item.label);
 
@@ -93,8 +33,8 @@ function collectAllKeys(item: MenuItem): string[] {
     return Array.from(new Set(keys));
 }
 
-function collectVisibleKeys(item: MenuItem): string[] {
-    const keys: string[] = [];
+function collectVisibleKeys(item) {
+    const keys = [];
 
     if (item.visible !== false) {
         keys.push(item.label);
@@ -119,7 +59,6 @@ function collectVisibleKeys(item: MenuItem): string[] {
 
     if (item.type === "dropdown-mega") {
         for (const col of item.columns) {
-            // заголовок списка всегда должен иметь перевод
             keys.push(col.title);
 
             for (const sub of col.items) {
@@ -143,23 +82,23 @@ export default function MenuItemDialog({
                                            initialTranslations,
                                            onSave,
                                            onClose,
-                                       }: MenuItemDialogProps) {
+                                       }) {
     const API_URL = process.env.REACT_APP_API_URL || "/api";
+
     const [fieldErrors, setFieldErrors] = useState({});
-    const [item, setItem] = useState<MenuItem>({
+    const [item, setItem] = useState({
         visible: initialItem.visible ?? true,
         ...initialItem,
     });
-    const [translations, setTranslations] = useState<Translations>({
+    const [translations, setTranslations] = useState({
         ...initialTranslations,
     });
-
-    const [error, setError] = useState<string>("");
+    const [error, setError] = useState("");
 
     // -----------------------------
     // update translation
     // -----------------------------
-    function updateTranslation(key: string, lang: string, value: string) {
+    function updateTranslation(key, lang, value) {
         setTranslations((prev) => ({
             ...prev,
             [key]: {
@@ -172,7 +111,7 @@ export default function MenuItemDialog({
     // -----------------------------
     // toggle visible
     // -----------------------------
-    function toggleVisible(path: (string | number)[]) {
+    function toggleVisible(path) {
         setItem((prev) => {
             const next: any = structuredClone(prev);
             let target: any = next;
@@ -213,7 +152,7 @@ export default function MenuItemDialog({
     // -----------------------------
     // update image
     // -----------------------------
-    function updateImage(field: "src" | "position", value: string) {
+    function updateImage(field, value) {
         setItem((prev) => {
             if (prev.type !== "dropdown-mega") return prev;
             return {
@@ -305,10 +244,7 @@ export default function MenuItemDialog({
     // -----------------------------
     // backend sync
     // -----------------------------
-    async function saveTranslationsToBackend(
-        allKeysBefore: string[],
-        visibleKeysNow: string[]
-    ) {
+    async function saveTranslationsToBackend(allKeysBefore, visibleKeysNow) {
         const items: { key: string; lang: string; value: string | null }[] = [];
 
         for (const key of visibleKeysNow) {
@@ -356,7 +292,7 @@ export default function MenuItemDialog({
     // -----------------------------
     // render helpers
     // -----------------------------
-    function renderTranslationInputs(key: string, label?: string) {
+    function renderTranslationInputs(key, label) {
         return (
             <div className="translation-block">
                 {label && <div className="translation-label">{label}</div>}

@@ -4,6 +4,9 @@ import LabeledInput from "./LabeledInput";
 import LabeledSelect from "./LabeledSelect";
 import Checkbox from "./Checkbox";
 
+// -----------------------------------------------------
+//  Utility: collect all translation keys
+// -----------------------------------------------------
 function collectAllKeys(item) {
     const keys = [];
 
@@ -33,6 +36,9 @@ function collectAllKeys(item) {
     return Array.from(new Set(keys));
 }
 
+// -----------------------------------------------------
+//  Utility: collect only visible translation keys
+// -----------------------------------------------------
 function collectVisibleKeys(item) {
     const keys = [];
 
@@ -75,16 +81,41 @@ function collectVisibleKeys(item) {
     return Array.from(new Set(keys));
 }
 
+// -----------------------------------------------------
+//  Badge key generator
+// -----------------------------------------------------
+function generateBadgeKey({ menuIndex, type, itemIndex = null, colIndex = null }) {
+    const base = "headerMenu";
+
+    if (type === "simple") {
+        return `${base}.simple${menuIndex}.badge`;
+    }
+
+    if (type === "dropdown-simple") {
+        return `${base}.dropdownSimple${menuIndex}.item${itemIndex}.badge`;
+    }
+
+    if (type === "dropdown-mega") {
+        return `${base}.dropdownMega${menuIndex}.column${colIndex}.item${itemIndex}.badge`;
+    }
+
+    return null;
+}
+
 export default function MenuItemDialog({
                                            title,
                                            languages,
                                            initialItem,
                                            initialTranslations,
+                                           menuIndex,        // индекс меню
                                            onSave,
                                            onClose,
                                        }) {
     const API_URL = process.env.REACT_APP_API_URL || "/api";
 
+    // -----------------------------------------------------
+    // Normalize initial item
+    // -----------------------------------------------------
     function normalizeInitialItem(src) {
         const base = src || { type: "simple", label: "", href: "", visible: true };
 
@@ -104,9 +135,7 @@ export default function MenuItemDialog({
                 type: "dropdown-simple",
                 label: base.label || "",
                 visible: base.visible !== false,
-                items: (base.items && base.items.length
-                    ? base.items
-                    : [{ label: "", href: "", visible: true }]).map((it) => ({
+                items: (base.items || []).map((it) => ({
                     label: it.label || "",
                     href: it.href || "",
                     visible: it.visible !== false,
@@ -121,14 +150,7 @@ export default function MenuItemDialog({
                 type: "dropdown-mega",
                 label: base.label || "",
                 visible: base.visible !== false,
-                columns: (base.columns && base.columns.length
-                    ? base.columns
-                    : [
-                        {
-                            title: "",
-                            items: [{ label: "", href: "", visible: true }],
-                        },
-                    ]).map((col) => ({
+                columns: (base.columns || []).map((col) => ({
                     title: col.title || "",
                     items: (col.items || []).map((it) => ({
                         label: it.label || "",
@@ -145,19 +167,17 @@ export default function MenuItemDialog({
             };
         }
 
-        return {
-            type: "simple",
-            label: base.label || "",
-            href: base.href || "",
-            visible: base.visible !== false,
-        };
+        return base;
     }
 
-    const [fieldErrors, setFieldErrors] = useState({});
     const [item, setItem] = useState(() => normalizeInitialItem(initialItem));
     const [translations, setTranslations] = useState({ ...(initialTranslations || {}) });
+    const [fieldErrors, setFieldErrors] = useState({});
     const [error, setError] = useState("");
 
+    // -----------------------------------------------------
+    // Translation update
+    // -----------------------------------------------------
     function updateTranslation(key, lang, value) {
         setTranslations((prev) => ({
             ...prev,
@@ -168,6 +188,9 @@ export default function MenuItemDialog({
         }));
     }
 
+    // -----------------------------------------------------
+    // Toggle visible
+    // -----------------------------------------------------
     function toggleVisible(path) {
         setItem((prev) => {
             const next = structuredClone(prev);
@@ -178,17 +201,42 @@ export default function MenuItemDialog({
         });
     }
 
-    function toggleBadge(path, badgeKey) {
-        if (!badgeKey) return;
+    // -----------------------------------------------------
+    // Toggle badge (always visible checkbox)
+    // -----------------------------------------------------
+    function toggleBadge(path, type, itemIndex = null, colIndex = null) {
         setItem((prev) => {
             const next = structuredClone(prev);
             let target = next;
             for (const p of path) target = target[p];
+
+            // If no badgeKey → create
+            if (!target.badgeKey) {
+                target.badgeKey = generateBadgeKey({
+                    menuIndex,
+                    type,
+                    itemIndex,
+                    colIndex,
+                });
+                target.showBadge = true;
+                return next;
+            }
+
+            // Toggle
             target.showBadge = !target.showBadge;
+
+            // If turned off → remove key
+            if (!target.showBadge) {
+                target.badgeKey = null;
+            }
+
             return next;
         });
     }
 
+    // -----------------------------------------------------
+    // Update href
+    // -----------------------------------------------------
     function updateHref(path, value) {
         setItem((prev) => {
             const next = structuredClone(prev);
@@ -199,20 +247,25 @@ export default function MenuItemDialog({
         });
     }
 
+    // -----------------------------------------------------
+    // Update image
+    // -----------------------------------------------------
     function updateImage(field, value) {
         setItem((prev) => {
             if (prev.type !== "dropdown-mega") return prev;
             return {
                 ...prev,
                 image: {
-                    src: prev.image?.src || "",
-                    position: prev.image?.position || "right",
+                    ...prev.image,
                     [field]: value,
                 },
             };
         });
     }
 
+    // -----------------------------------------------------
+    // Change menu type
+    // -----------------------------------------------------
     function updateType(newType) {
         setItem((prev) => {
             const current = normalizeInitialItem(prev);
@@ -233,10 +286,9 @@ export default function MenuItemDialog({
                     type: "dropdown-simple",
                     label: current.label || "",
                     visible: current.visible !== false,
-                    items:
-                        current.items && current.items.length
-                            ? current.items
-                            : [{ label: "", href: "", visible: true }],
+                    items: current.items?.length
+                        ? current.items
+                        : [{ label: "", href: "", visible: true }],
                 };
             }
 
@@ -245,15 +297,14 @@ export default function MenuItemDialog({
                     type: "dropdown-mega",
                     label: current.label || "",
                     visible: current.visible !== false,
-                    columns:
-                        current.columns && current.columns.length
-                            ? current.columns
-                            : [
-                                {
-                                    title: "",
-                                    items: [{ label: "", href: "", visible: true }],
-                                },
-                            ],
+                    columns: current.columns?.length
+                        ? current.columns
+                        : [
+                            {
+                                title: "",
+                                items: [{ label: "", href: "", visible: true }],
+                            },
+                        ],
                     image: {
                         src: current.image?.src || "",
                         position: current.image?.position || "right",
@@ -265,19 +316,22 @@ export default function MenuItemDialog({
         });
     }
 
+    // -----------------------------------------------------
+    // Add/remove items & columns
+    // -----------------------------------------------------
     function addSimpleItem() {
         if (item.type !== "dropdown-simple") return;
         setItem((prev) => ({
             ...prev,
-            items: [...(prev.items || []), { label: "", href: "", visible: true }],
+            items: [...prev.items, { label: "", href: "", visible: true }],
         }));
     }
 
-    function removeSimpleItem(index) {
+    function removeSimpleItem(i) {
         if (item.type !== "dropdown-simple") return;
         setItem((prev) => {
-            const items = [...(prev.items || [])];
-            items.splice(index, 1);
+            const items = [...prev.items];
+            items.splice(i, 1);
             return { ...prev, items };
         });
     }
@@ -287,45 +341,42 @@ export default function MenuItemDialog({
         setItem((prev) => ({
             ...prev,
             columns: [
-                ...(prev.columns || []),
+                ...prev.columns,
                 { title: "", items: [{ label: "", href: "", visible: true }] },
             ],
         }));
     }
 
-    function removeColumn(index) {
+    function removeColumn(c) {
         if (item.type !== "dropdown-mega") return;
         setItem((prev) => {
-            const cols = [...(prev.columns || [])];
-            cols.splice(index, 1);
+            const cols = [...prev.columns];
+            cols.splice(c, 1);
             return { ...prev, columns: cols };
         });
     }
 
-    function addMegaItem(colIndex) {
+    function addMegaItem(c) {
         if (item.type !== "dropdown-mega") return;
         setItem((prev) => {
-            const cols = [...(prev.columns || [])];
-            const col = { ...cols[colIndex] };
-            col.items = [...(col.items || []), { label: "", href: "", visible: true }];
-            cols[colIndex] = col;
+            const cols = [...prev.columns];
+            cols[c].items.push({ label: "", href: "", visible: true });
             return { ...prev, columns: cols };
         });
     }
 
-    function removeMegaItem(colIndex, itemIndex) {
+    function removeMegaItem(c, s) {
         if (item.type !== "dropdown-mega") return;
         setItem((prev) => {
-            const cols = [...(prev.columns || [])];
-            const col = { ...cols[colIndex] };
-            const items = [...(col.items || [])];
-            items.splice(itemIndex, 1);
-            col.items = items;
-            cols[colIndex] = col;
+            const cols = [...prev.columns];
+            cols[c].items.splice(s, 1);
             return { ...prev, columns: cols };
         });
     }
 
+    // -----------------------------------------------------
+    // Validation
+    // -----------------------------------------------------
     function isValidUrl(url) {
         try {
             new URL(url);
@@ -340,6 +391,7 @@ export default function MenuItemDialog({
         const newErrors = {};
         let hasError = false;
 
+        // translations
         for (const key of visibleKeys) {
             const langs = translations[key] || {};
             for (const lang of languages) {
@@ -352,6 +404,7 @@ export default function MenuItemDialog({
             }
         }
 
+        // href validation
         function validateHref(path, href) {
             const key = path.join(".");
             if (!href || href.trim() === "") {
@@ -368,14 +421,14 @@ export default function MenuItemDialog({
         }
 
         if (item.type === "dropdown-simple") {
-            (item.items || []).forEach((sub, i) => {
+            item.items.forEach((sub, i) => {
                 validateHref(["items", i, "href"], sub.href);
             });
         }
 
         if (item.type === "dropdown-mega") {
-            (item.columns || []).forEach((col, c) => {
-                (col.items || []).forEach((sub, s) => {
+            item.columns.forEach((col, c) => {
+                col.items.forEach((sub, s) => {
                     validateHref(["columns", c, "items", s, "href"], sub.href);
                 });
             });
@@ -396,6 +449,9 @@ export default function MenuItemDialog({
         return true;
     }
 
+    // -----------------------------------------------------
+    // Backend sync
+    // -----------------------------------------------------
     async function saveTranslationsToBackend(allKeysBefore, visibleKeysNow) {
         const items = [];
 
@@ -439,6 +495,9 @@ export default function MenuItemDialog({
         onClose();
     }
 
+    // -----------------------------------------------------
+    // Render translation inputs
+    // -----------------------------------------------------
     function renderTranslationInputs(key, label) {
         return (
             <div className="translation-block">
@@ -455,7 +514,9 @@ export default function MenuItemDialog({
             </div>
         );
     }
-
+    // -----------------------------------------------------
+    // Render
+    // -----------------------------------------------------
     return (
         <Modal open={true} title={title} onClose={onClose} width={800}>
             {error && <div className="field-error">{error}</div>}
@@ -489,16 +550,17 @@ export default function MenuItemDialog({
                         error={fieldErrors["href"] ?? ""}
                     />
 
-                    {item.badgeKey && (
-                        <>
-                            <Checkbox
-                                label="Показывать бейдж"
-                                checked={item.showBadge === true}
-                                onChange={() => toggleBadge([], item.badgeKey)}
-                            />
-                            {item.showBadge && renderTranslationInputs(item.badgeKey, "Бейдж")}
-                        </>
-                    )}
+                    {/* Badge always visible */}
+                    <Checkbox
+                        label="Показывать бейдж"
+                        checked={item.showBadge === true}
+                        onChange={() =>
+                            toggleBadge([], "simple", null, null)
+                        }
+                    />
+
+                    {item.showBadge && item.badgeKey &&
+                        renderTranslationInputs(item.badgeKey, "Бейдж")}
                 </>
             )}
 
@@ -513,7 +575,7 @@ export default function MenuItemDialog({
 
                     {renderTranslationInputs(item.label, "Заголовок меню")}
 
-                    {(item.items || []).map((sub, i) => (
+                    {item.items.map((sub, i) => (
                         <div key={i} className="sub-item">
                             <div className="sub-item-header">
                                 <Checkbox
@@ -539,17 +601,17 @@ export default function MenuItemDialog({
                                 error={fieldErrors[`items.${i}.href`] ?? ""}
                             />
 
-                            {sub.badgeKey && (
-                                <>
-                                    <Checkbox
-                                        label="Показывать бейдж"
-                                        checked={sub.showBadge === true}
-                                        onChange={() => toggleBadge(["items", i], sub.badgeKey)}
-                                    />
-                                    {sub.showBadge &&
-                                        renderTranslationInputs(sub.badgeKey, "Бейдж")}
-                                </>
-                            )}
+                            {/* Badge always visible */}
+                            <Checkbox
+                                label="Показывать бейдж"
+                                checked={sub.showBadge === true}
+                                onChange={() =>
+                                    toggleBadge(["items", i], "dropdown-simple", i, null)
+                                }
+                            />
+
+                            {sub.showBadge && sub.badgeKey &&
+                                renderTranslationInputs(sub.badgeKey, "Бейдж")}
                         </div>
                     ))}
 
@@ -574,7 +636,7 @@ export default function MenuItemDialog({
 
                     {renderTranslationInputs(item.label, "Заголовок меню")}
 
-                    {(item.columns || []).map((col, c) => (
+                    {item.columns.map((col, c) => (
                         <div key={c} className="mega-column">
                             <div className="mega-column-header">
                                 {renderTranslationInputs(col.title, `Список ${c + 1}`)}
@@ -587,7 +649,7 @@ export default function MenuItemDialog({
                                 </button>
                             </div>
 
-                            {(col.items || []).map((sub, s) => (
+                            {col.items.map((sub, s) => (
                                 <div key={s} className="mega-item">
                                     <div className="mega-item-header">
                                         <Checkbox
@@ -622,22 +684,22 @@ export default function MenuItemDialog({
                                         }
                                     />
 
-                                    {sub.badgeKey && (
-                                        <>
-                                            <Checkbox
-                                                label="Показывать бейдж"
-                                                checked={sub.showBadge === true}
-                                                onChange={() =>
-                                                    toggleBadge(
-                                                        ["columns", c, "items", s],
-                                                        sub.badgeKey
-                                                    )
-                                                }
-                                            />
-                                            {sub.showBadge &&
-                                                renderTranslationInputs(sub.badgeKey, "Бейдж")}
-                                        </>
-                                    )}
+                                    {/* Badge always visible */}
+                                    <Checkbox
+                                        label="Показывать бейдж"
+                                        checked={sub.showBadge === true}
+                                        onChange={() =>
+                                            toggleBadge(
+                                                ["columns", c, "items", s],
+                                                "dropdown-mega",
+                                                s,
+                                                c
+                                            )
+                                        }
+                                    />
+
+                                    {sub.showBadge && sub.badgeKey &&
+                                        renderTranslationInputs(sub.badgeKey, "Бейдж")}
                                 </div>
                             ))}
 

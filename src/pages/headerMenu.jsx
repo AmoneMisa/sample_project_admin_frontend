@@ -197,21 +197,22 @@ export default function HeaderMenu() {
                             />
                         )
                     },
-
                     {
                         key: "label",
                         title: "Ключ",
-                        render: (value) => (
-                            <a
-                                href={`/?key=${value}`}
-                                className="table__cell-text"
-                                style={{color: "var(--color-link)"}}
-                            >
-                                {value}
-                            </a>
-                        ),
+                        render: (value) => {
+                            const ru = translations[value]?.ru || "(нет перевода)";
+                            return (
+                                <a
+                                    href={`/?key=${value}`}
+                                    className="table__cell-text"
+                                    style={{color: "var(--color-link)"}}
+                                >
+                                    {ru}
+                                </a>
+                            );
+                        },
                     },
-
                     {
                         key: "order",
                         title: "Порядок",

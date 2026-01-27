@@ -11,10 +11,12 @@ import {FiClock, FiRotateCcw, FiSave, FiSmile, FiTrash} from "react-icons/fi";
 import Checkbox from "../components/Checkbox";
 import {useAuth} from "../hooks/authContext";
 import CustomTable from "../components/CustomTable";
+import LabeledInput from "../components/LabeledInput";
+import Modal from "../components/Modal";
 
 export default function Index() {
     const API_URL = process.env.REACT_APP_API_URL || "/api";
-
+    const [editingCell, setEditingCell] = useState(null);
     const [languages, setLanguages] = useState([]);
     const [search, setSearch] = useState("");
     const [sortAsc, setSortAsc] = useState(true);
@@ -447,7 +449,6 @@ export default function Index() {
                         render: (_, row) => {
                             const raw = row.values[lang.code];
                             const val = Array.isArray(raw) ? raw.join("; ") : String(raw ?? "");
-                            const isEditing = editing.key === row.key && editing.lang === lang.code;
 
                             return (
                                 <div onClick={() => {
@@ -455,102 +456,18 @@ export default function Index() {
                                     setEditing({key: row.key, lang: lang.code, initial: val});
                                 }}
                                      style={{cursor: canEdit ? "pointer" : "default", width: "280px"}}>
-                                    {canEdit && isEditing ? (
-                                        <div style={{position: "relative"}}>
-                    <textarea
-                        ref={editingInputRef}
-                        autoFocus
-                        defaultValue={val}
-                        onBlur={(e) => {
-                            if (ignoreBlur) {
-                                setIgnoreBlur(false);
-                                return;
-                            }
-                            const newValue = e.target.value;
-                            if (newValue !== editing.initial) {
-                                saveValue(row.key, lang.code, newValue);
-                            }
-                            setEditing({key: null, lang: null, initial: ""});
-                        }}
-                        onKeyDown={(e) => {
-                            if (e.key === "Enter" && !e.shiftKey) {
-                                e.preventDefault();
-                                const newValue = e.target.value;
-                                if (newValue !== editing.initial) {
-                                    saveValue(row.key, lang.code, newValue);
-                                }
-                                setEditing({key: null, lang: null, initial: ""});
-                            }
-                        }}
-                        className="input input_icons textarea"
-                    />
-                                            <div
-                                                style={{
-                                                    position: "absolute",
-                                                    right: "-30px",
-                                                    bottom: "3px",
-                                                    display: "flex",
-                                                    flexDirection: "column",
-                                                    gap: 2
-                                                }}
-                                            >
-                                                <button
-                                                    className="input-control"
-                                                    onMouseDown={(e) => {
-                                                        e.preventDefault();
-                                                        setIgnoreBlur(true);
-                                                    }}
-                                                    onClick={() => {
-                                                        const v = editingInputRef.current.value;
-                                                        if (v !== editing.initial) {
-                                                            saveValue(row.key, lang.code, v);
-                                                        }
-                                                        setEditing({key: null, lang: null, initial: ""});
-                                                    }}
-                                                >
-                                                    <FiSave size={16}/>
-                                                </button>
-
-                                                <button
-                                                    className="input-control"
-                                                    onMouseDown={(e) => {
-                                                        e.preventDefault();
-                                                        setIgnoreBlur(true);
-                                                    }}
-                                                    onClick={() =>
-                                                        setEmojiPickerFor({key: row.key, lang: lang.code})
-                                                    }
-                                                >
-                                                    <FiSmile size={16}/>
-                                                </button>
-                                            </div>
-
-                                            {emojiPickerFor &&
-                                                emojiPickerFor.key === row.key &&
-                                                emojiPickerFor.lang === lang.code && (
-                                                    <EmojiPickerPopup
-                                                        onSelect={(emoji) => {
-                                                            const input = editingInputRef.current;
-                                                            if (input) {
-                                                                const start = input.selectionStart || 0;
-                                                                const end = input.selectionEnd || 0;
-                                                                const v = input.value || "";
-                                                                input.value =
-                                                                    v.slice(0, start) +
-                                                                    emoji +
-                                                                    v.slice(end);
-                                                                input.dispatchEvent(
-                                                                    new Event("input", {bubbles: true})
-                                                                );
-                                                            }
-                                                            setEmojiPickerFor(null);
-                                                        }}
-                                                    />
-                                                )}
-                                        </div>
-                                    ) : (
-                                        val
-                                    )}
+                                    <div
+                                        onClick={() => {
+                                            if (!canEdit) return;
+                                            setEditingCell({
+                                                key: row.key,
+                                                values: {...row.values}
+                                            });
+                                        }}
+                                        style={{cursor: canEdit ? "pointer" : "default", width: "280px"}}
+                                    >
+                                        {val}
+                                    </div>
                                 </div>
                             );
                         },
@@ -565,12 +482,14 @@ export default function Index() {
                                     {isKeyFullyEmpty(row.values, languages) && (
                                         <Checkbox
                                             label="Пустой перевод"
+                                            title="Разрешить пустое значение для этого ключа"
                                             checked={metaForKey.allowEmpty || false}
                                             onChange={() => toggleMetaFlag(row.key, "allowEmpty")}
                                         />
                                     )}
                                     <Checkbox
                                         label="Список"
+                                        title="Интерпретировать значение как список"
                                         checked={metaForKey.isList || false}
                                         onChange={() => toggleMetaFlag(row.key, "isList")}
                                     />
@@ -584,6 +503,7 @@ export default function Index() {
                         render: (_, row) =>
                             canEdit && (
                                 <button
+                                    title="Удалить ключ"
                                     className="button button_icon button_reject"
                                     onClick={() => requestDeleteKey(row.key)}
                                 >
@@ -603,6 +523,58 @@ export default function Index() {
                     onConfirm={confirmDeleteKey}
                     onCancel={cancelDeleteKey}
                 />
+            )}
+
+            {editingCell && (
+                <Modal
+                    open={true}
+                    title={`Редактирование ключа: ${editingCell.key}`}
+                    onClose={() => setEditingCell(null)}
+                    width={600}
+                >
+                    {languages.map((lang) => (
+                        <LabeledInput
+                            key={lang.code}
+                            label={lang.code.toUpperCase()}
+                            value={editingCell.values[lang.code] ?? ""}
+                            onChange={(v) =>
+                                setEditingCell((prev) => ({
+                                    ...prev,
+                                    values: {
+                                        ...prev.values,
+                                        [lang.code]: v
+                                    }
+                                }))
+                            }
+                        />
+                    ))}
+
+                    <div style={{display: "flex", justifyContent: "flex-end", marginTop: 20}}>
+                        <button
+                            className="button button_border"
+                            onClick={() => setEditingCell(null)}
+                        >
+                            Отмена
+                        </button>
+
+                        <button
+                            className="button button_accept"
+                            style={{marginLeft: 12}}
+                            onClick={() => {
+                                for (const lang of languages) {
+                                    saveValue(
+                                        editingCell.key,
+                                        lang.code,
+                                        editingCell.values[lang.code] ?? ""
+                                    );
+                                }
+                                setEditingCell(null);
+                            }}
+                        >
+                            Сохранить
+                        </button>
+                    </div>
+                </Modal>
             )}
         </div>
     );

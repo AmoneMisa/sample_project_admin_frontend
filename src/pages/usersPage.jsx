@@ -1,4 +1,4 @@
-import {useState} from "react";
+import {useEffect, useState} from "react";
 import LabeledInput from "../components/LabeledInput";
 import LabeledSelect from "../components/LabeledSelect";
 import {useAuth} from "../hooks/authContext";
@@ -10,9 +10,8 @@ export default function UsersPage() {
     const {accessToken} = useAuth();
 
     const [users, setUsers] = useState([]);
-    const [roleFilter, setRoleFilter] = useState("");
+    const [roleFilter, setRoleFilter] = useState("all");
     const [search, setSearch] = useState("");
-
 
     async function loadUsers() {
         const url = roleFilter && roleFilter !== "all"
@@ -26,6 +25,10 @@ export default function UsersPage() {
         const data = await res.json();
         setUsers(data);
     }
+
+    useEffect(() => {
+        if (accessToken) loadUsers();
+    }, [accessToken, roleFilter]);
 
     async function changeRole(id, role) {
         await fetch(`${API_URL}/users/${id}/role`, {
@@ -56,7 +59,8 @@ export default function UsersPage() {
     }
 
     const filtered = users.filter((u) =>
-        u.email.toLowerCase().includes(search.toLowerCase())
+        u.email.toLowerCase().includes(search.toLowerCase()) ||
+        u.full_name?.toLowerCase().includes(search.toLowerCase())
     );
 
     const columns = [
@@ -125,7 +129,8 @@ export default function UsersPage() {
 
                     <LabeledSelect
                         value={roleFilter}
-                        onChange={(e) => setRoleFilter(e.target.value)}
+                        placeholder={"Роль пользователя"}
+                        onChange={setRoleFilter}
                         options={[
                             {value: "all", label: "Все"},
                             {value: "observer", label: "Наблюдатели"},

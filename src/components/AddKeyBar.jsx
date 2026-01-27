@@ -7,18 +7,24 @@ export default function AddKeyBar({onAdd, existingKeys}) {
 
     function handleAdd() {
         const key = newKey.trim();
-        if (!key) return;
+
+        if (!key) {
+            setError("Введите ключ");
+            return;
+        }
+
         if (existingKeys.includes(key)) {
             setError("Такой ключ уже существует");
             return;
         }
+
         onAdd(key);
         setNewKey("");
         setError("");
     }
 
     return (
-        <div className={'field'}>
+        <div className="field" style={{display: "flex", gap: 12, alignItems: "flex-start"}}>
             <LabeledInput
                 label="Новый ключ"
                 placeholder="Новый ключ"
@@ -27,12 +33,12 @@ export default function AddKeyBar({onAdd, existingKeys}) {
                     setNewKey(val);
                     setError("");
                 }}
+                error={error}
             />
 
-            <button className="button" onClick={handleAdd}>Добавить</button>
-            {error && (<span style={{color: "var(--color-error)", marginLeft: 8}}>
-          {error}
-        </span>)}
+            <button className="button" onClick={handleAdd}>
+                Добавить
+            </button>
         </div>
     );
 }

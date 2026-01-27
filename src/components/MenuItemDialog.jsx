@@ -145,6 +145,7 @@ export default function MenuItemDialog({
                                            onClose,
                                        }: MenuItemDialogProps) {
     const API_URL = process.env.REACT_APP_API_URL || "/api";
+    const [fieldErrors, setFieldErrors] = useState<Record<string, Record<string, string>>>({});
     const [item, setItem] = useState<MenuItem>({
         visible: initialItem.visible ?? true,
         ...initialItem,
@@ -229,18 +230,76 @@ export default function MenuItemDialog({
     // -----------------------------
     // validation
     // -----------------------------
+    function isValidUrl(url: string) {
+        try {
+            new URL(url);
+            return true;
+        } catch {
+            return false;
+        }
+    }
+
     function validate(): boolean {
         const visibleKeys = collectVisibleKeys(item);
+        const newErrors: Record<string, any> = {};
+        let hasError = false;
 
+        // --- Проверка переводов ---
         for (const key of visibleKeys) {
             const langs = translations[key] || {};
             for (const lang of languages) {
                 const v = langs[lang.code];
                 if (!v || v.trim() === "") {
-                    setError("Все видимые элементы и бейджи должны иметь переводы на всех языках");
-                    return false;
+                    hasError = true;
+                    if (!newErrors[key]) newErrors[key] = {};
+                    newErrors[key][lang.code] = "Поле обязательно";
                 }
             }
+        }
+
+        // --- Проверка href ---
+        function validateHref(path: (string | number)[], href: string) {
+            const key = path.join(".");
+            if (!href || href.trim() === "") {
+                newErrors[key] = "Поле обязательно";
+                hasError = true;
+            } else if (!isValidUrl(href)) {
+                newErrors[key] = "Некорректная ссылка";
+                hasError = true;
+            }
+        }
+
+        // simple
+        if (item.type === "simple") {
+            validateHref([], item.href);
+        }
+
+        // dropdown-simple
+        if (item.type === "dropdown-simple") {
+            item.items.forEach((sub, i) => {
+                validateHref(["items", i], sub.href);
+            });
+        }
+
+        // dropdown-mega
+        if (item.type === "dropdown-mega") {
+            item.columns.forEach((col, c) => {
+                col.items.forEach((sub, s) => {
+                    validateHref(["columns", c, "items", s], sub.href);
+                });
+            });
+
+            // image.src
+            if (item.image?.src) {
+                validateHref(["image", "src"], item.image.src);
+            }
+        }
+
+        setFieldErrors(newErrors);
+
+        if (hasError) {
+            setError("Исправьте ошибки в форме");
+            return false;
         }
 
         setError("");
@@ -311,6 +370,7 @@ export default function MenuItemDialog({
                         label={lang.code.toUpperCase()}
                         value={translations[key]?.[lang.code] ?? ""}
                         onChange={(v) => updateTranslation(key, lang.code, v)}
+                        error={fieldErrors[key]?.[lang.code] ?? ""}
                     />
                 ))}
             </div>
@@ -339,6 +399,7 @@ export default function MenuItemDialog({
                         label="Ссылка"
                         value={item.href}
                         onChange={(v) => updateHref([], v)}
+                        error={fieldErrors[`href`] ?? ""}
                     />
 
                     {item.badgeKey && (
@@ -378,8 +439,10 @@ export default function MenuItemDialog({
                             <LabeledInput
                                 label="Ссылка"
                                 value={sub.href}
-                                onChange={(v) => updateHref(["items", i], v)}
+                                onChange={(v) => updateHref(["items", s], v)}
+                                error={fieldErrors[`items.${s}.href`] ?? ""}
                             />
+
 
                             {sub.badgeKey && (
                                 <>
@@ -432,9 +495,8 @@ export default function MenuItemDialog({
                                     <LabeledInput
                                         label="Ссылка"
                                         value={sub.href}
-                                        onChange={(v) =>
-                                            updateHref(["columns", c, "items", s], v)
-                                        }
+                                        onChange={(v) => updateHref(["columns", c, "items", s], v)}
+                                        error={fieldErrors[`columns.${c}.items.${s}.href`] ?? ""}
                                     />
 
                                     {sub.badgeKey && (
@@ -462,6 +524,7 @@ export default function MenuItemDialog({
                         label="Изображение (src)"
                         value={item.image?.src ?? ""}
                         onChange={(v) => updateImage("src", v)}
+                        error={fieldErrors["image.src"] ?? ""}
                     />
 
                     <LabeledSelect

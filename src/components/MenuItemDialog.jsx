@@ -230,7 +230,7 @@ export default function MenuItemDialog({
     // -----------------------------
     // validation
     // -----------------------------
-    function isValidUrl(url: string) {
+    function isValidUrl(url) {
         try {
             new URL(url);
             return true;
@@ -239,12 +239,12 @@ export default function MenuItemDialog({
         }
     }
 
-    function validate(): boolean {
+    function validate() {
         const visibleKeys = collectVisibleKeys(item);
-        const newErrors: Record<string, any> = {};
+        const newErrors = {};
         let hasError = false;
 
-        // --- Проверка переводов ---
+        // Проверка переводов
         for (const key of visibleKeys) {
             const langs = translations[key] || {};
             for (const lang of languages) {
@@ -257,8 +257,8 @@ export default function MenuItemDialog({
             }
         }
 
-        // --- Проверка href ---
-        function validateHref(path: (string | number)[], href: string) {
+        // Проверка href
+        function validateHref(path, href) {
             const key = path.join(".");
             if (!href || href.trim() === "") {
                 newErrors[key] = "Поле обязательно";
@@ -269,19 +269,16 @@ export default function MenuItemDialog({
             }
         }
 
-        // simple
         if (item.type === "simple") {
             validateHref([], item.href);
         }
 
-        // dropdown-simple
         if (item.type === "dropdown-simple") {
             item.items.forEach((sub, i) => {
                 validateHref(["items", i], sub.href);
             });
         }
 
-        // dropdown-mega
         if (item.type === "dropdown-mega") {
             item.columns.forEach((col, c) => {
                 col.items.forEach((sub, s) => {
@@ -289,7 +286,6 @@ export default function MenuItemDialog({
                 });
             });
 
-            // image.src
             if (item.image?.src) {
                 validateHref(["image", "src"], item.image.src);
             }
@@ -439,19 +435,16 @@ export default function MenuItemDialog({
                             <LabeledInput
                                 label="Ссылка"
                                 value={sub.href}
-                                onChange={(v) => updateHref(["items", s], v)}
-                                error={fieldErrors[`items.${s}.href`] ?? ""}
+                                onChange={(v) => updateHref(["items", i], v)}
+                                error={fieldErrors[`items.${i}.href`] ?? ""}
                             />
-
 
                             {sub.badgeKey && (
                                 <>
                                     <Checkbox
                                         label="Показывать бейдж"
                                         checked={sub.showBadge === true}
-                                        onChange={() =>
-                                            toggleBadge(["items", i], sub.badgeKey)
-                                        }
+                                        onChange={() => toggleBadge(["items", i], sub.badgeKey)}
                                     />
                                     {sub.showBadge &&
                                         renderTranslationInputs(sub.badgeKey, "Бейдж")}

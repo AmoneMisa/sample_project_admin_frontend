@@ -76,7 +76,7 @@ export default function UsersPage() {
                     {u.role !== "admin" && (
                         <>
                             <button
-                                className="button_border"
+                                className="button button_border"
                                 onClick={() =>
                                     changeRole(
                                         u.id,

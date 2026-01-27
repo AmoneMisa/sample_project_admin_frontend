@@ -86,10 +86,14 @@ export default function MenuItemDialog({
     const API_URL = process.env.REACT_APP_API_URL || "/api";
 
     const [fieldErrors, setFieldErrors] = useState({});
-    const [item, setItem] = useState({
-        visible: initialItem.visible ?? true,
-        ...initialItem,
-    });
+    const defaultItem = initialItem || {
+        type: "simple",
+        label: "",
+        href: "",
+        visible: true,
+    };
+
+    const [item, setItem] = useState(defaultItem);
     const [translations, setTranslations] = useState({
         ...initialTranslations,
     });

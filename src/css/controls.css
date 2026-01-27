@@ -227,3 +227,19 @@ input[type="number"]:focus {
     border-color: var(--color-primary);
     box-shadow: 0 0 0 1px rgba(128, 90, 245, 0.25);
 }
+
+.field-holder__error {
+    color: var(--color-error);
+    font-size: 12px;
+    margin-top: 4px;
+}
+
+.field-holder__hint {
+    color: var(--color-primary-alt);
+    font-size: 12px;
+    margin-top: 4px;
+}
+
+.field-holder__input_error {
+    border-color: var(--color-error);
+}

@@ -25,26 +25,74 @@ export default function HeaderMenu() {
     const [editing, setEditing] = useState(null);
     const [creating, setCreating] = useState(false);
 
+    const [availableLanguages, setAvailableLanguages] = useState([]);
+    const [translations, setTranslations] = useState({});
+
     const {pushSnapshot, undo, canUndo} = useAuditLog([]);
     const {showToast} = useToast();
     const {accessToken, user} = useAuth();
 
     const canEdit = user && (user.role === "moderator" || user.role === "admin");
 
+    // -----------------------------
+    // Загрузка языков и переводов
+    // -----------------------------
     useEffect(() => {
-        async function load() {
-            if (!accessToken) return;
+        if (!accessToken) return;
+
+        async function loadMeta() {
+            try {
+                const resLang = await fetch(`${API_URL}/languages`, {
+                    headers: {Authorization: `Bearer ${accessToken}`},
+                });
+                const langs = await resLang.json();
+                setAvailableLanguages(langs);
+
+                const result = {};
+                for (const lang of langs) {
+                    const res = await fetch(`${API_URL}/translations/structured?lang=${lang.code}`, {
+                        headers: {Authorization: `Bearer ${accessToken}`},
+                    });
+                    const data = await res.json();
+
+                    for (const [key, value] of Object.entries(data)) {
+                        if (!result[key]) result[key] = {};
+                        result[key][lang.code] = value;
+                    }
+                }
+
+                setTranslations(result);
+
+            } catch (e) {
+                console.error("Ошибка загрузки языков/переводов", e);
+            }
+        }
+
+        loadMeta();
+    }, [accessToken, API_URL]);
+
+    // -----------------------------
+    // Загрузка меню
+    // -----------------------------
+    useEffect(() => {
+        if (!accessToken) return;
+
+        async function loadMenu() {
             const res = await fetch(`${API_URL}/header-menu`, {
-                headers: { Authorization: `Bearer ${accessToken}` },
+                headers: {Authorization: `Bearer ${accessToken}`},
             });
             if (res.ok) {
                 const data = await res.json();
                 setMenu(data);
             }
         }
-        load();
+
+        loadMenu();
     }, [accessToken, API_URL]);
 
+    // -----------------------------
+    // Сохранение меню
+    // -----------------------------
     async function saveMenu(next) {
         await fetch(`${API_URL}/header-menu`, {
             method: "PATCH",
@@ -59,35 +107,12 @@ export default function HeaderMenu() {
         showToast("Меню сохранено");
     }
 
-    async function ensureTranslationKey(key) {
-        if (!isValidKey(key)) {
-            showToast("Некорректный ключ перевода");
-            return;
-        }
-        try {
-            await fetch(`${API_URL}/translations/bulk-update`, {
-                method: "PATCH",
-                headers: {
-                    "Content-Type": "application/json",
-                    Authorization: `Bearer ${accessToken}`,
-                },
-                body: JSON.stringify({
-                    items: [
-                        {key, lang: "ru", value: ""},
-                        {key, lang: "en", value: ""},
-                    ],
-                }),
-            });
-        } catch {
-            // игнорируем ошибки
-        }
-    }
-
+    // -----------------------------
+    // Нормализация href
+    // -----------------------------
     function normalizeItem(item, parentHref = "") {
         if (!isValidKey(item.label)) {
             showToast(`Некорректный ключ: ${item.label}`);
-        } else {
-            ensureTranslationKey(item.label);
         }
 
         if (!item.href) {
@@ -113,22 +138,53 @@ export default function HeaderMenu() {
         return item;
     }
 
+    // -----------------------------
+    // Обновление пункта меню
+    // -----------------------------
     function updateItem(index, updated) {
         const next = [...menu];
         next[index] = normalizeItem(updated);
         saveMenu(next);
     }
 
+    // -----------------------------
+    // Удаление пункта меню
+    // -----------------------------
     function deleteItem(index) {
         const next = menu.filter((_, i) => i !== index);
         saveMenu(next);
     }
 
+    // -----------------------------
+    // Добавление пункта меню
+    // -----------------------------
     function addItem(item) {
         const next = [...menu, normalizeItem(item)];
         saveMenu(next);
     }
 
+    // -----------------------------
+    // Переключение видимости
+    // -----------------------------
+    function toggleVisible(index) {
+        const next = [...menu];
+        next[index].visible = next[index].visible === false ? true : !next[index].visible;
+        saveMenu(next);
+    }
+
+    // -----------------------------
+    // Перемещение вверх/вниз
+    // -----------------------------
+    function moveItem(from, to) {
+        const next = [...menu];
+        const item = next.splice(from, 1)[0];
+        next.splice(to, 0, item);
+        saveMenu(next);
+    }
+
+    // -----------------------------
+    // Рендер
+    // -----------------------------
     return (
         <div className="page" style={{padding: 24}}>
             <div className="page__header">
@@ -141,6 +197,7 @@ export default function HeaderMenu() {
                             style={{color: "var(--color-error)"}}
                             disabled={!canUndo}
                             onClick={undo}
+                            title="Отменить последнее изменение"
                         >
                             <FiRotateCcw size={16}/>
                         </button>
@@ -158,6 +215,19 @@ export default function HeaderMenu() {
             <CustomTable
                 columns={[
                     {key: "type", title: "Тип"},
+
+                    {
+                        key: "visible",
+                        title: "Отображать",
+                        render: (_, item, index) => (
+                            <input
+                                type="checkbox"
+                                checked={item.visible !== false}
+                                onChange={() => toggleVisible(index)}
+                            />
+                        )
+                    },
+
                     {
                         key: "label",
                         title: "Ключ",
@@ -171,25 +241,54 @@ export default function HeaderMenu() {
                             </a>
                         ),
                     },
+
+                    {
+                        key: "order",
+                        title: "Порядок",
+                        render: (_, item, index) => (
+                            <div style={{display: "flex", gap: 6}}>
+                                <button
+                                    className="button button_icon"
+                                    disabled={index === 0}
+                                    onClick={() => moveItem(index, index - 1)}
+                                    title="Переместить вверх"
+                                >
+                                    ↑
+                                </button>
+
+                                <button
+                                    className="button button_icon"
+                                    disabled={index === menu.length - 1}
+                                    onClick={() => moveItem(index, index + 1)}
+                                    title="Переместить вниз"
+                                >
+                                    ↓
+                                </button>
+                            </div>
+                        )
+                    },
+
                     {
                         key: "actions",
                         title: "Действия",
                         render: (_, item, index) =>
                             canEdit && (
                                 <span style={{display: "flex", gap: 8}}>
-                        <button
-                            className="button button_icon button_reject"
-                            onClick={() => setEditing({index, item})}
-                        >
-                          <FiEdit size={16}/>
-                        </button>
-                        <button
-                            className="button button_icon button_reject"
-                            onClick={() => deleteItem(index)}
-                        >
-                          <FiTrash size={16}/>
-                        </button>
-                      </span>
+                                    <button
+                                        className="button button_icon button_reject"
+                                        onClick={() => setEditing({index, item})}
+                                        title="Редактировать меню"
+                                    >
+                                        <FiEdit size={16}/>
+                                    </button>
+                                    <button
+                                        className="button button_icon button_reject"
+                                        onClick={() => deleteItem(index)}
+                                        title="Удалить меню"
+                                    >
+                                        <FiTrash size={16}/>
+                                    </button>
+                                </span>
                             ),
                     },
                 ]}
@@ -199,6 +298,8 @@ export default function HeaderMenu() {
             {creating && canEdit && (
                 <MenuItemDialog
                     title="Добавить пункт меню"
+                    languages={availableLanguages}
+                    translations={translations}
                     onSave={addItem}
                     onClose={() => setCreating(false)}
                 />
@@ -207,7 +308,9 @@ export default function HeaderMenu() {
             {editing && canEdit && (
                 <MenuItemDialog
                     title="Редактировать пункт"
-                    initial={editing.item}
+                    initialItem={editing.item}
+                    languages={availableLanguages}
+                    translations={translations}
                     onSave={(updated) => updateItem(editing.index, updated)}
                     onClose={() => setEditing(null)}
                 />

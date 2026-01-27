@@ -6,6 +6,8 @@ export default function LabeledFileInput({
                                              multiple = false,
                                              accept = "",
                                              className = "",
+                                             error = "",
+                                             hint = ""
                                          }) {
     const inputRef = useRef(null);
     const [files, setFiles] = useState([]);
@@ -22,12 +24,17 @@ export default function LabeledFileInput({
 
             <button
                 type="button"
-                className="file-input"
+                className={
+                    "file-input" +
+                    (error ? " file-input_error" : "")
+                }
                 onClick={() => inputRef.current?.click()}
             >
-        <span className="file-input__text">
-          {files.length ? files.map(f => f.name).join(", ") : "Выберите файл"}
-        </span>
+                <span className="file-input__text">
+                    {files.length
+                        ? files.map((f) => f.name).join(", ")
+                        : "Выберите файл"}
+                </span>
                 <span className="file-input__btn">Обзор</span>
             </button>
 
@@ -39,6 +46,18 @@ export default function LabeledFileInput({
                 onChange={handleSelect}
                 style={{ display: "none" }}
             />
+
+            {error && (
+                <div className="field-holder__error">
+                    {error}
+                </div>
+            )}
+
+            {!error && hint && (
+                <div className="field-holder__hint">
+                    {hint}
+                </div>
+            )}
         </div>
     );
 }

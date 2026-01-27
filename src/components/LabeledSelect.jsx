@@ -5,6 +5,8 @@ export default function LabeledSelect({
                                           options = [],
                                           className = "",
                                           placeholder = null,
+                                          error = "",
+                                          hint = ""
                                       }) {
     return (
         <div className={`select field-holder ${className}`}>
@@ -15,7 +17,10 @@ export default function LabeledSelect({
             )}
 
             <select
-                className="field-holder__input"
+                className={
+                    "field-holder__input" +
+                    (error ? " field-holder__input_error" : "")
+                }
                 value={value}
                 onChange={(e) => onChange(e.target.value)}
             >
@@ -31,6 +36,18 @@ export default function LabeledSelect({
                     </option>
                 ))}
             </select>
+
+            {error && (
+                <div className="field-holder__error">
+                    {error}
+                </div>
+            )}
+
+            {!error && hint && (
+                <div className="field-holder__hint">
+                    {hint}
+                </div>
+            )}
         </div>
     );
 }

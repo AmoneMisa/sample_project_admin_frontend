@@ -49,6 +49,7 @@ textarea, .textarea {
     border: none;
     transition: filter .3s ease-in-out;
     padding: 2px;
+    color: white;
 
     &:hover {
         background-image: none;

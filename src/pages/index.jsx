@@ -426,10 +426,19 @@ export default function Index() {
                 columns={[
                     {
                         key: "key",
-                        title: (<span style={{cursor: "pointer"}}
-                                      onClick={() => setSortAsc(prev => !prev)}> Ключ {sortAsc ? "▲" : "▼"} </span>),
+                        title: (
+                            <span
+                                style={{cursor: "pointer"}}
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    setSortAsc(prev => !prev);
+                                }}
+                            >
+                            Ключ {sortAsc ? "▲" : "▼"}
+                            </span>
+                        ),
                         render: (value) => (
-                            <span onClick={setSortAsc}>{value}</span>
+                            <span>{value}</span>
                         ),
                     },
                     ...languages.map((lang) => ({
@@ -475,13 +484,13 @@ export default function Index() {
                         }}
                         className="input input_icons textarea"
                     />
-
                                             <div
                                                 style={{
                                                     position: "absolute",
-                                                    right: 8,
-                                                    bottom: "-8px",
+                                                    right: "-30px",
+                                                    bottom: "3px",
                                                     display: "flex",
+                                                    flexDirection: "column",
                                                     gap: 2
                                                 }}
                                             >

@@ -20,11 +20,9 @@ function inheritHref(parentHref, childKey) {
 
 export default function HeaderMenu() {
     const API_URL = process.env.REACT_APP_API_URL || "/api";
-
     const [menu, setMenu] = useState([]);
     const [editing, setEditing] = useState(null);
     const [creating, setCreating] = useState(false);
-
     const [availableLanguages, setAvailableLanguages] = useState([]);
     const [translations, setTranslations] = useState({});
 
@@ -34,9 +32,6 @@ export default function HeaderMenu() {
 
     const canEdit = user && (user.role === "moderator" || user.role === "admin");
 
-    // -----------------------------
-    // Загрузка языков и переводов
-    // -----------------------------
     useEffect(() => {
         if (!accessToken) return;
 
@@ -60,7 +55,6 @@ export default function HeaderMenu() {
                         result[key][lang.code] = value;
                     }
                 }
-
                 setTranslations(result);
 
             } catch (e) {
@@ -71,9 +65,6 @@ export default function HeaderMenu() {
         loadMeta();
     }, [accessToken, API_URL]);
 
-    // -----------------------------
-    // Загрузка меню
-    // -----------------------------
     useEffect(() => {
         if (!accessToken) return;
 
@@ -107,9 +98,6 @@ export default function HeaderMenu() {
         showToast("Меню сохранено");
     }
 
-    // -----------------------------
-    // Нормализация href
-    // -----------------------------
     function normalizeItem(item, parentHref = "") {
         if (!isValidKey(item.label)) {
             showToast(`Некорректный ключ: ${item.label}`);
@@ -138,43 +126,28 @@ export default function HeaderMenu() {
         return item;
     }
 
-    // -----------------------------
-    // Обновление пункта меню
-    // -----------------------------
     function updateItem(index, updated) {
         const next = [...menu];
         next[index] = normalizeItem(updated);
         saveMenu(next);
     }
 
-    // -----------------------------
-    // Удаление пункта меню
-    // -----------------------------
     function deleteItem(index) {
         const next = menu.filter((_, i) => i !== index);
         saveMenu(next);
     }
 
-    // -----------------------------
-    // Добавление пункта меню
-    // -----------------------------
     function addItem(item) {
         const next = [...menu, normalizeItem(item)];
         saveMenu(next);
     }
 
-    // -----------------------------
-    // Переключение видимости
-    // -----------------------------
     function toggleVisible(index) {
         const next = [...menu];
         next[index].visible = next[index].visible === false ? true : !next[index].visible;
         saveMenu(next);
     }
 
-    // -----------------------------
-    // Перемещение вверх/вниз
-    // -----------------------------
     function moveItem(from, to) {
         const next = [...menu];
         const item = next.splice(from, 1)[0];
@@ -182,9 +155,6 @@ export default function HeaderMenu() {
         saveMenu(next);
     }
 
-    // -----------------------------
-    // Рендер
-    // -----------------------------
     return (
         <div className="page" style={{padding: 24}}>
             <div className="page__header">
@@ -301,6 +271,7 @@ export default function HeaderMenu() {
                     languages={availableLanguages}
                     translations={translations}
                     onSave={addItem}
+                    menuIndex={menu.length}
                     onClose={() => setCreating(false)}
                 />
             )}
@@ -311,6 +282,7 @@ export default function HeaderMenu() {
                     initialItem={editing.item}
                     languages={availableLanguages}
                     translations={translations}
+                    menuIndex={menu.length}
                     onSave={(updated) => updateItem(editing.index, updated)}
                     onClose={() => setEditing(null)}
                 />

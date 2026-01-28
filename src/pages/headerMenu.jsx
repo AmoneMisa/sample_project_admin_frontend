@@ -3,7 +3,7 @@ import {useToast} from "../components/ToastContext";
 import {useAuditLog} from "../hooks/useAuditLog";
 import MenuItemDialog from "../components/MenuItemDialog";
 import {useAuth} from "../hooks/authContext";
-import {FiEdit, FiRotateCcw, FiTrash} from "react-icons/fi";
+import {FiEdit, FiTrash} from "react-icons/fi";
 import CustomTable from "../components/CustomTable";
 import Checkbox from "../components/Checkbox";
 
@@ -20,9 +20,7 @@ export default function HeaderMenu() {
 
     const canEdit = user && (user.role === "moderator" || user.role === "admin");
 
-    // ---------------------------------------------------------
     // LOAD MENU
-    // ---------------------------------------------------------
     useEffect(() => {
         if (!accessToken) return;
 
@@ -31,17 +29,14 @@ export default function HeaderMenu() {
                 headers: {Authorization: `Bearer ${accessToken}`},
             });
             if (res.ok) {
-                const data = await res.json();
-                setMenu(data);
+                setMenu(await res.json());
             }
         }
 
         loadMenu();
     }, [accessToken, API_URL]);
 
-    // ---------------------------------------------------------
-    // SAVE MENU (ONLY MENU JSON)
-    // ---------------------------------------------------------
+    // SAVE MENU
     async function saveMenu(next) {
         await fetch(`${API_URL}/header-menu`, {
             method: "PATCH",
@@ -57,6 +52,7 @@ export default function HeaderMenu() {
         showToast("Меню сохранено");
     }
 
+    // LOAD TRANSLATIONS (RU)
     useEffect(() => {
         async function loadTranslations() {
             if (!accessToken) return;
@@ -66,48 +62,37 @@ export default function HeaderMenu() {
             });
 
             if (res.ok) {
-                const data = await res.json();
-                setTranslations(data);
+                setTranslations(await res.json());
             }
         }
 
         loadTranslations();
     }, [accessToken, API_URL]);
 
-    // ---------------------------------------------------------
-    // ADD ITEM (opens dialog)
-    // ---------------------------------------------------------
+    // ADD ITEM
     function addItem() {
         setCreating(true);
     }
 
-    // ---------------------------------------------------------
-    // EDIT ITEM (opens dialog)
-    // ---------------------------------------------------------
+    // EDIT ITEM
     function editItem(index) {
         setEditingIndex(index);
     }
 
-    // ---------------------------------------------------------
-    // DELETE ITEM (ONLY MENU)
-    // ---------------------------------------------------------
+    // DELETE ITEM
     async function deleteItem(index) {
         const next = menu.filter((_, i) => i !== index);
         await saveMenu(next);
     }
 
-    // ---------------------------------------------------------
     // TOGGLE VISIBLE
-    // ---------------------------------------------------------
     async function toggleVisible(index) {
         const next = [...menu];
         next[index].visible = !next[index].visible;
         await saveMenu(next);
     }
 
-    // ---------------------------------------------------------
     // MOVE ITEM
-    // ---------------------------------------------------------
     async function moveItem(from, to) {
         const next = [...menu];
         const item = next.splice(from, 1)[0];
@@ -115,9 +100,7 @@ export default function HeaderMenu() {
         await saveMenu(next);
     }
 
-    // ---------------------------------------------------------
-    // HANDLE SAVE FROM POPUP
-    // ---------------------------------------------------------
+    // SAVE FROM POPUP
     async function handleSaveFromDialog(item, index = null) {
         const next = [...menu];
 

@@ -1,24 +1,18 @@
-import {useCallback, useEffect, useRef, useState} from "react";
-import EmojiPickerPopup from "../components/EmojiPicker";
-import {useBeforeUnload, useLocation} from "react-router-dom";
+import {useCallback, useEffect, useState} from "react";
 import {useAuditLog} from "../hooks/useAuditLog";
 import ConfirmDialog from "../components/ConfirmDialog";
 import AddKeyBar from "../components/AddKeyBar";
 import FiltersBar from "../components/FiltersBar";
 import HistoryDialog from "../components/HistoryDialog";
 import {useToast} from "../components/ToastContext";
-import {FiClock, FiEdit, FiRotateCcw, FiSave, FiSmile, FiTrash} from "react-icons/fi";
-import Checkbox from "../components/Checkbox";
+import {FiClock, FiEdit, FiRotateCcw, FiSave, FiTrash} from "react-icons/fi";
 import {useAuth} from "../hooks/authContext";
 import CustomTable from "../components/CustomTable";
-import LabeledInput from "../components/LabeledInput";
-import Modal from "../components/Modal";
 import TranslationDialog from "../components/TranslationDialog";
 
 export default function Index() {
     const API_URL = process.env.REACT_APP_API_URL || "/api";
     const [editingCell, setEditingCell] = useState(null);
-    const [emojiPickerFor, setEmojiPickerFor] = useState(null);
     const [languages, setLanguages] = useState([]);
     const [search, setSearch] = useState("");
     const [sortAsc, setSortAsc] = useState(true);
@@ -28,7 +22,6 @@ export default function Index() {
     const [deleteTarget, setDeleteTarget] = useState(null);
     const [historyOpen, setHistoryOpen] = useState(false);
 
-    const location = useLocation();
     const {accessToken, user} = useAuth();
     const canEdit = user && (user.role === "moderator" || user.role === "admin");
     const {showToast} = useToast();
@@ -75,7 +68,8 @@ export default function Index() {
                                 v = parsed.join("; ");
                                 isList = true;
                             }
-                        } catch {}
+                        } catch {
+                        }
                     }
 
                     all[key][lang.code] = v;
@@ -109,7 +103,7 @@ export default function Index() {
             }
         }
 
-        await fetch(`${API_URL}/translations/bulk-update`, {
+        await fetch(`${API_URL}/translations`, {
             method: "PATCH",
             headers: {"Content-Type": "application/json", Authorization: `Bearer ${accessToken}`},
             body: JSON.stringify({items}),
@@ -152,7 +146,7 @@ export default function Index() {
         setTranslations(nextTranslations);
         setDirty(false);
 
-        await fetch(`${API_URL}/translations/update`, {
+        await fetch(`${API_URL}/translations`, {
             method: "PATCH",
             headers: {"Content-Type": "application/json", Authorization: `Bearer ${accessToken}`},
             body: JSON.stringify({key, lang, value: payloadValue}),
@@ -184,7 +178,7 @@ export default function Index() {
         setMeta(restMeta);
         setDeleteTarget(null);
 
-        await fetch(`${API_URL}/translations/delete`, {
+        await fetch(`${API_URL}/translations`, {
             method: "DELETE",
             headers: {"Content-Type": "application/json", Authorization: `Bearer ${accessToken}`},
             body: JSON.stringify({key}),
@@ -198,12 +192,25 @@ export default function Index() {
     }
 
     // ADD KEY (via popup)
-    function handleAddKey(newKey) {
+    async function handleAddKey(newKey) {
+        if (!accessToken) return;
+
         const prevTranslations = translations;
         const prevMeta = meta;
 
         if (prevTranslations[newKey]) return;
 
+        // 1. Создаём ключ на бэке
+        await fetch(`${API_URL}/translations`, {
+            method: "POST",
+            headers: {"Content-Type": "application/json", Authorization: `Bearer ${accessToken}`},
+            body: JSON.stringify({
+                key: newKey,
+                values: Object.fromEntries(languages.map(l => [l.code, ""]))
+            }),
+        });
+
+        // 2. Обновляем локально
         const emptyRow = {};
         for (const lang of languages) emptyRow[lang.code] = "";
 
@@ -377,7 +384,7 @@ export default function Index() {
                                 <span style={{display: "flex", gap: 8}}>
                                     <button
                                         title="Редактировать"
-                                        className="button button_icon"
+                                        className="button button_icon button_reject"
                                         onClick={() =>
                                             setEditingCell({
                                                 key: row.key,

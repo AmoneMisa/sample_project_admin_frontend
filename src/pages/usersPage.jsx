@@ -6,17 +6,23 @@ import CustomTable from "../components/CustomTable";
 
 export default function UsersPage() {
     const API_URL = process.env.REACT_APP_API_URL || "/api";
-
     const {accessToken} = useAuth();
-
     const [users, setUsers] = useState([]);
     const [roleFilter, setRoleFilter] = useState("all");
     const [search, setSearch] = useState("");
 
     async function loadUsers() {
-        const url = roleFilter && roleFilter !== "all"
-            ? `${API_URL}/users/by-role/${roleFilter}`
-            : `${API_URL}/users`;
+        const params = new URLSearchParams();
+
+        if (roleFilter !== "all") {
+            params.set("role", roleFilter);
+        }
+
+        if (search.trim()) {
+            params.set("email", search.trim());
+        }
+
+        const url = `${API_URL}/users?${params.toString()}`;
 
         const res = await fetch(url, {
             headers: {Authorization: `Bearer ${accessToken}`},
@@ -28,7 +34,7 @@ export default function UsersPage() {
 
     useEffect(() => {
         if (accessToken) loadUsers();
-    }, [accessToken, roleFilter]);
+    }, [accessToken, roleFilter, search]);
 
     async function changeRole(id, role) {
         await fetch(`${API_URL}/users/${id}/role`, {
@@ -57,11 +63,6 @@ export default function UsersPage() {
         });
         loadUsers();
     }
-
-    const filtered = users.filter((u) =>
-        u.email.toLowerCase().includes(search.toLowerCase()) ||
-        u.full_name?.toLowerCase().includes(search.toLowerCase())
-    );
 
     const columns = [
         {key: "id", title: "ID"},
@@ -115,7 +116,7 @@ export default function UsersPage() {
     ];
 
     return (
-        <div className='page' style={{padding: 24, fontFamily: "sans-serif"}}>
+        <div className='page' style={{padding: 24}}>
             <div className="page__header">
                 <h2 className="gradient-text" style={{marginBottom: 24}}>
                     Управление пользователями
@@ -123,7 +124,7 @@ export default function UsersPage() {
 
                 <div className="field" style={{marginBottom: 20}}>
                     <LabeledInput
-                        label="Поиск"
+                        label="Поиск по email"
                         value={search}
                         onChange={setSearch}
                     />
@@ -142,7 +143,7 @@ export default function UsersPage() {
                 </div>
             </div>
 
-            <CustomTable columns={columns} data={filtered}/>
+            <CustomTable columns={columns} data={users}/>
         </div>
     );
 }

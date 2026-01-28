@@ -365,14 +365,40 @@ export default function MenuItemDialog({
     // -----------------------------------------------------
     // Validation
     // -----------------------------------------------------
-    function isValidUrl(url) {
+    function isValidUrl(input) {
+        if (!input || typeof input !== "string") return false;
+        const url = input.trim();
+
+        // 1) Абсолютный URL
         try {
             new URL(url);
             return true;
         } catch {
-            return false;
         }
+
+        // 2) Относительный путь: /path, /path/sub, /path?q=1#x
+        if (/^\/[A-Za-z0-9._~!$&'()*+,;=:@/%?-]*$/.test(url)) {
+            return true;
+        }
+
+        // 3) Относительный путь без ведущего слэша: about, blog/post-1
+        if (/^[A-Za-z0-9._~!$&'()*+,;=:@/%?-]+$/.test(url)) {
+            return true;
+        }
+
+        // 4) Только query: ?q=123
+        if (/^\?[A-Za-z0-9._~!$&'()*+,;=:@/%?-]*$/.test(url)) {
+            return true;
+        }
+
+        // 5) Только якорь: #section
+        if (/^#[A-Za-z0-9._~!$&'()*+,;=:@/%?-]+$/.test(url)) {
+            return true;
+        }
+
+        return false;
     }
+
 
     function validate() {
         const visibleKeys = collectVisibleKeys(item);
@@ -454,7 +480,7 @@ export default function MenuItemDialog({
             }
         }
 
-        await fetch(`${API_URL}/translations/bulk-update`, {
+        await fetch(`${API_URL}/translations`, {
             method: "PATCH",
             headers: {"Content-Type": "application/json"},
             body: JSON.stringify({items}),
@@ -462,13 +488,11 @@ export default function MenuItemDialog({
 
         const removedKeys = allKeysBefore.filter((k) => !visibleKeysNow.includes(k));
 
-        for (const key of removedKeys) {
-            await fetch(`${API_URL}/translations/delete`, {
-                method: "DELETE",
-                headers: {"Content-Type": "application/json"},
-                body: JSON.stringify({key}),
-            });
-        }
+        await fetch(`${API_URL}/translations`, {
+            method: "DELETE",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({keys: removedKeys}),
+        });
     }
 
     async function handleSave() {
@@ -478,21 +502,6 @@ export default function MenuItemDialog({
         if (!validate()) return;
 
         await saveTranslationsToBackend(allKeysBefore, visibleKeysNow);
-        const visibleKeys = collectVisibleKeys(item);
-
-        for (const key of visibleKeys) {
-            for (const lang of languages) {
-                const value = translations[key]?.[lang.code] ?? "";
-
-                if (key.endsWith(".label")) {
-                    item[`label_${lang.code}`] = value;
-                }
-
-                if (key.endsWith(".badge")) {
-                    item[`badge_${lang.code}`] = value;
-                }
-            }
-        }
 
         onSave(item);
         onClose();

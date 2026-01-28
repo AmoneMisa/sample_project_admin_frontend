@@ -77,6 +77,7 @@ export default function UsersPage() {
                         <>
                             <button
                                 className="button button_border"
+                                style={{color: "white"}}
                                 onClick={() =>
                                     changeRole(
                                         u.id,

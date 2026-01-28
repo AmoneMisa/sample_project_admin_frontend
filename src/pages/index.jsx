@@ -7,39 +7,30 @@ import AddKeyBar from "../components/AddKeyBar";
 import FiltersBar from "../components/FiltersBar";
 import HistoryDialog from "../components/HistoryDialog";
 import {useToast} from "../components/ToastContext";
-import {FiClock, FiRotateCcw, FiSave, FiSmile, FiTrash} from "react-icons/fi";
+import {FiClock, FiEdit, FiRotateCcw, FiSave, FiSmile, FiTrash} from "react-icons/fi";
 import Checkbox from "../components/Checkbox";
 import {useAuth} from "../hooks/authContext";
 import CustomTable from "../components/CustomTable";
 import LabeledInput from "../components/LabeledInput";
 import Modal from "../components/Modal";
+import TranslationDialog from "../components/TranslationDialog";
 
 export default function Index() {
     const API_URL = process.env.REACT_APP_API_URL || "/api";
     const [editingCell, setEditingCell] = useState(null);
+    const [emojiPickerFor, setEmojiPickerFor] = useState(null);
     const [languages, setLanguages] = useState([]);
     const [search, setSearch] = useState("");
     const [sortAsc, setSortAsc] = useState(true);
-    const [editing, setEditing] = useState({key: null, lang: null, initial: ""});
-    const [emojiPickerFor, setEmojiPickerFor] = useState(null);
     const [dirty, setDirty] = useState(false);
-    const [ignoreBlur, setIgnoreBlur] = useState(false);
     const [filterStatus, setFilterStatus] = useState("all");
     const [filterErrorLevel, setFilterErrorLevel] = useState("all");
     const [deleteTarget, setDeleteTarget] = useState(null);
+    const [historyOpen, setHistoryOpen] = useState(false);
+
     const location = useLocation();
     const {accessToken, user} = useAuth();
     const canEdit = user && (user.role === "moderator" || user.role === "admin");
-
-    useEffect(() => {
-        const params = new URLSearchParams(location.search);
-        const keyParam = params.get("key");
-        if (keyParam) {
-            setSearch(keyParam);
-        }
-    }, [location.search]);
-
-    const editingInputRef = useRef(null);
     const {showToast} = useToast();
 
     const {
@@ -54,25 +45,29 @@ export default function Index() {
         markDeleted,
     } = useAuditLog();
 
-    // LOAD DATA
+    // LOAD LANGUAGES + TRANSLATIONS
     useEffect(() => {
         async function load() {
             if (!accessToken) return;
-            const languagesRes = await fetch(`${API_URL}/languages/enabled`, {headers: {Authorization: `Bearer ${accessToken}`},});
+
+            const languagesRes = await fetch(`${API_URL}/languages/enabled`, {
+                headers: {Authorization: `Bearer ${accessToken}`},
+            });
             const langs = await languagesRes.json();
-            if (!Array.isArray(langs)) {
-                console.error("API вернул не массив:", langs);
-                return;
-            }
             setLanguages(langs);
+
             let all = {};
             for (const lang of langs) {
-                const res = await fetch(`${API_URL}/translations?lang=${lang.code}`, {headers: {Authorization: `Bearer ${accessToken}`},});
+                const res = await fetch(`${API_URL}/translations?lang=${lang.code}`, {
+                    headers: {Authorization: `Bearer ${accessToken}`},
+                });
                 const data = await res.json();
+
                 for (const [key, value] of Object.entries(data)) {
                     if (!all[key]) all[key] = {};
                     let v = value;
                     let isList = false;
+
                     if (typeof v === "string" && v.trim().startsWith("[") && v.trim().endsWith("]")) {
                         try {
                             const parsed = JSON.parse(v);
@@ -80,80 +75,49 @@ export default function Index() {
                                 v = parsed.join("; ");
                                 isList = true;
                             }
-                        } catch {
-                        }
+                        } catch {}
                     }
+
                     all[key][lang.code] = v;
                     meta[key] = meta[key] || {};
                     if (isList) meta[key].isList = true;
                 }
             }
+
             setTranslations(all);
         }
 
         load();
     }, [accessToken, setTranslations, meta, API_URL]);
+
+    // SAVE ALL
     const saveAll = useCallback(async () => {
         if (!accessToken) return;
+
         const items = [];
         for (const [key, values] of Object.entries(translations)) {
             const metaForKey = meta[key] || {};
+            const isList = !!metaForKey.isList;
+
             for (const lang of languages) {
                 const rawValue = values[lang.code];
-                const isList = !!metaForKey.isList;
-                const payloadValue = isList ? String(rawValue).split(";").map((s) => s.trim()).filter(Boolean) : rawValue;
+                const payloadValue = isList
+                    ? String(rawValue).split(";").map((s) => s.trim()).filter(Boolean)
+                    : rawValue;
+
                 items.push({key, lang: lang.code, value: payloadValue});
             }
         }
+
         await fetch(`${API_URL}/translations/bulk-update`, {
             method: "PATCH",
-            headers: {"Content-Type": "application/json", Authorization: `Bearer ${accessToken}`,},
+            headers: {"Content-Type": "application/json", Authorization: `Bearer ${accessToken}`},
             body: JSON.stringify({items}),
         });
+
         showToast("Ключи успешно сохранены");
         setDirty(false);
     }, [translations, languages, meta, showToast, accessToken, API_URL]);
-
-    // CTRL+S
-    useEffect(() => {
-        function handleKey(e) {
-            if (e.ctrlKey && e.key === "s") {
-                e.preventDefault();
-                saveAll();
-                showToast("Ключи успешно сохранены");
-            }
-            if (e.ctrlKey && e.key === "z") {
-                e.preventDefault();
-                const metaSnapshot = undo();
-                if (metaSnapshot) setMeta(metaSnapshot);
-            }
-        }
-
-        window.addEventListener("keydown", handleKey);
-        return () => window.removeEventListener("keydown", handleKey);
-    }, [saveAll, undo, setMeta, showToast]);
-
-    // BEFORE UNLOAD (browser)
-    useEffect(() => {
-        function beforeUnload(e) {
-            if (!dirty) return;
-            e.preventDefault();
-            e.returnValue = "";
-        }
-
-        window.addEventListener("beforeunload", beforeUnload);
-        return () => window.removeEventListener("beforeunload", beforeUnload);
-    }, [dirty]);
-
-    // BEFORE UNLOAD (router)
-    useBeforeUnload(
-        dirty
-            ? (e) => {
-                e.preventDefault();
-                e.returnValue = "У вас есть несохранённые изменения!";
-            }
-            : undefined
-    );
 
     // SAVE SINGLE VALUE
     async function saveValue(key, lang, newValue) {
@@ -163,6 +127,7 @@ export default function Index() {
 
         const prevTranslations = translations;
         const prevMeta = meta;
+
         const nextTranslations = {
             ...prevTranslations,
             [key]: {
@@ -183,106 +148,17 @@ export default function Index() {
             prevMeta,
             `Изменён ${lang} перевод у ключа '${key}'`
         );
+
         setTranslations(nextTranslations);
         setDirty(false);
 
         await fetch(`${API_URL}/translations/update`, {
             method: "PATCH",
-            headers: {"Content-Type": "application/json", Authorization: `Bearer ${accessToken}`,},
+            headers: {"Content-Type": "application/json", Authorization: `Bearer ${accessToken}`},
             body: JSON.stringify({key, lang, value: payloadValue}),
         });
+
         showToast("Ключ сохранён");
-    }
-
-    // STATUS / ERROR LEVEL
-    function getKeyStatus(key, values) {
-        const langs = languages;
-        if (!langs.length) return {errorLevel: "none", isComplete: false};
-
-        const enabledCodes = langs.map((l) => l.code);
-        const filled = enabledCodes.filter(
-            (code) => typeof values[code] === "string" && values[code].trim() !== ""
-        );
-
-        const metaForKey = meta[key] || {};
-        const allowEmpty = !!metaForKey.allowEmpty;
-
-        if (allowEmpty) {
-            return {
-                errorLevel: "none",
-                isComplete: !!metaForKey.isComplete,
-            };
-        }
-
-        if (filled.length === 0) {
-            return {errorLevel: "error", isComplete: false};
-        }
-        if (filled.length < enabledCodes.length) {
-            return {errorLevel: "warning", isComplete: false};
-        }
-        return {errorLevel: "none", isComplete: true};
-    }
-
-    // FILTER + SORT
-    const filtered = Object.entries(translations).filter(([key, valuesRaw]) => {
-        const values = (typeof valuesRaw === "object" && valuesRaw !== null)
-            ? valuesRaw
-            : {};
-
-        const s = search.toLowerCase();
-        if (s && !key.toLowerCase().includes(s)) {
-            const match = Object.values(values).some((v) =>
-                String(v).toLowerCase().includes(s)
-            );
-            if (!match) return false;
-        }
-
-        const {errorLevel, isComplete} = getKeyStatus(key, values);
-
-        if (filterStatus === "complete" && !isComplete) return false;
-        if (filterStatus === "incomplete" && isComplete) return false;
-
-        if (filterErrorLevel === "error" && errorLevel !== "error") return false;
-        if (filterErrorLevel === "warning" && errorLevel !== "warning") return false;
-
-        return true;
-    });
-
-    const sorted = [...filtered].sort(([a], [b]) =>
-        sortAsc ? a.localeCompare(b) : b.localeCompare(a)
-    );
-
-    // ADD KEY
-    function handleAddKey(newKey) {
-        const prevTranslations = translations;
-        const prevMeta = meta;
-
-        if (prevTranslations[newKey]) return;
-
-        const emptyRow = {};
-        for (const lang of languages) {
-            emptyRow[lang.code] = "";
-        }
-
-        const nextTranslations = {
-            ...prevTranslations,
-            [newKey]: emptyRow,
-        };
-
-        const nextMeta = {
-            ...prevMeta,
-            [newKey]: {allowEmpty: false},
-        };
-
-        pushSnapshot(
-            nextTranslations,
-            prevMeta,
-            `Добавлен ключ '${newKey}'`
-        );
-        setTranslations(nextTranslations);
-        setMeta(nextMeta);
-        setDirty(true);
-        setSearch(newKey);
     }
 
     // DELETE KEY
@@ -303,14 +179,17 @@ export default function Index() {
 
         markDeleted(key, removedTranslations, removedMeta);
         pushSnapshot(rest, restMeta, `Удалён ключ '${key}'`);
+
         setTranslations(rest);
         setMeta(restMeta);
         setDeleteTarget(null);
+
         await fetch(`${API_URL}/translations/delete`, {
             method: "DELETE",
-            headers: {"Content-Type": "application/json", Authorization: `Bearer ${accessToken}`,},
+            headers: {"Content-Type": "application/json", Authorization: `Bearer ${accessToken}`},
             body: JSON.stringify({key}),
         });
+
         showToast("Ключ успешно удалён");
     }
 
@@ -318,55 +197,55 @@ export default function Index() {
         setDeleteTarget(null);
     }
 
-    // TOGGLE META
-    function toggleMetaFlag(key, flag) {
-        setMeta((prev) => {
-            const prevForKey = prev[key] || {};
-            const nextForKey = {
-                ...prevForKey,
-                [flag]: !prevForKey[flag],
-            };
-            return {
-                ...prev,
-                [key]: nextForKey,
-            };
-        });
+    // ADD KEY (via popup)
+    function handleAddKey(newKey) {
+        const prevTranslations = translations;
+        const prevMeta = meta;
+
+        if (prevTranslations[newKey]) return;
+
+        const emptyRow = {};
+        for (const lang of languages) emptyRow[lang.code] = "";
+
+        const nextTranslations = {
+            ...prevTranslations,
+            [newKey]: emptyRow,
+        };
+
+        const nextMeta = {
+            ...prevMeta,
+            [newKey]: {allowEmpty: false},
+        };
+
+        pushSnapshot(nextTranslations, prevMeta, `Добавлен ключ '${newKey}'`);
+        setTranslations(nextTranslations);
+        setMeta(nextMeta);
         setDirty(true);
+        setSearch(newKey);
     }
 
-    function isKeyFullyEmpty(values, languages) {
-        return languages.every((lang) => {
-            const v = values[lang.code];
+    // FILTER + SORT
+    const filtered = Object.entries(translations).filter(([key, values]) => {
+        const s = search.toLowerCase();
+        if (s && !key.toLowerCase().includes(s)) {
+            const match = Object.values(values).some((v) =>
+                String(v).toLowerCase().includes(s)
+            );
+            if (!match) return false;
+        }
+        return true;
+    });
 
-            if (typeof v !== "string") return true;
-
-            return v.trim() === "";
-        });
-    }
-
-    const [historyOpen, setHistoryOpen] = useState(false);
-
-    function restoreSpecific(index) {
-        const history = getHistory();
-        const item = history[index];
-        if (!item) return;
-
-        setTranslations(structuredClone(item.state));
-
-        setMeta(() => {
-            const next = structuredClone(item.meta);
-            for (const key of Object.keys(item.state)) {
-                if (!next[key]) next[key] = {};
-            }
-            return next;
-        });
-    }
+    const sorted = [...filtered].sort(([a], [b]) =>
+        sortAsc ? a.localeCompare(b) : b.localeCompare(a)
+    );
 
     // RENDER
     return (
-        <div className={'page'} style={{padding: 24, fontFamily: "sans-serif"}}>
+        <div className="page" style={{padding: 24}}>
             <div className="page__header">
                 <h1>Переводы</h1>
+
                 <div style={{display: "flex", gap: 12}}>
                     {canEdit && (
                         <>
@@ -381,6 +260,7 @@ export default function Index() {
                             >
                                 <FiRotateCcw size={16}/>
                             </button>
+
                             <button
                                 className="button button_icon button_border"
                                 onClick={saveAll}
@@ -388,6 +268,7 @@ export default function Index() {
                             >
                                 <FiSave size={16}/> Сохранить
                             </button>
+
                             <button
                                 className="button button_icon button_border"
                                 onClick={() => setHistoryOpen(true)}
@@ -398,7 +279,19 @@ export default function Index() {
                             <HistoryDialog
                                 open={historyOpen}
                                 history={getHistory()}
-                                onRestore={restoreSpecific}
+                                onRestore={(i) => {
+                                    const item = getHistory()[i];
+                                    if (!item) return;
+
+                                    setTranslations(structuredClone(item.state));
+                                    setMeta(() => {
+                                        const next = structuredClone(item.meta);
+                                        for (const key of Object.keys(item.state)) {
+                                            if (!next[key]) next[key] = {};
+                                        }
+                                        return next;
+                                    });
+                                }}
                                 onClose={() => setHistoryOpen(false)}
                             />
                         </>
@@ -408,7 +301,14 @@ export default function Index() {
                 <div className="page__header-row">
                     {canEdit && (
                         <AddKeyBar
-                            onAdd={handleAddKey}
+                            onAdd={(newKey) =>
+                                setEditingCell({
+                                    key: newKey,
+                                    values: Object.fromEntries(
+                                        languages.map(l => [l.code, ""])
+                                    )
+                                })
+                            }
                             existingKeys={Object.keys(translations)}
                         />
                     )}
@@ -436,13 +336,12 @@ export default function Index() {
                                     setSortAsc(prev => !prev);
                                 }}
                             >
-                            Ключ {sortAsc ? "▲" : "▼"}
+                                Ключ {sortAsc ? "▲" : "▼"}
                             </span>
                         ),
-                        render: (value) => (
-                            <span>{value}</span>
-                        ),
+                        render: (value) => <span>{value}</span>,
                     },
+
                     ...languages.map((lang) => ({
                         key: lang.code,
                         title: lang.code,
@@ -451,70 +350,59 @@ export default function Index() {
                             const val = Array.isArray(raw) ? raw.join("; ") : String(raw ?? "");
 
                             return (
-                                <div onClick={() => {
-                                    if (!canEdit) return;
-                                    setEditing({key: row.key, lang: lang.code, initial: val});
-                                }}
-                                     style={{cursor: canEdit ? "pointer" : "default", width: "280px"}}>
-                                    <div
-                                        onClick={() => {
-                                            if (!canEdit) return;
-                                            setEditingCell({
-                                                key: row.key,
-                                                values: {...row.values}
-                                            });
-                                        }}
-                                        style={{cursor: canEdit ? "pointer" : "default", width: "280px"}}
-                                    >
-                                        {val}
-                                    </div>
+                                <div
+                                    onClick={() => {
+                                        if (!canEdit) return;
+                                        setEditingCell({
+                                            key: row.key,
+                                            values: {...row.values}
+                                        });
+                                    }}
+                                    style={{
+                                        cursor: canEdit ? "pointer" : "default",
+                                        width: "280px"
+                                    }}
+                                >
+                                    {val}
                                 </div>
                             );
                         },
                     })),
-                    {
-                        key: "meta",
-                        title: "Флаги",
-                        render: (_, row) => {
-                            const metaForKey = meta[row.key] || {};
-                            return canEdit ? (
-                                <div style={{display: "flex", flexDirection: "column", gap: 4}}>
-                                    {isKeyFullyEmpty(row.values, languages) && (
-                                        <Checkbox
-                                            label="Пустой перевод"
-                                            title="Разрешить пустое значение для этого ключа"
-                                            checked={metaForKey.allowEmpty || false}
-                                            onChange={() => toggleMetaFlag(row.key, "allowEmpty")}
-                                        />
-                                    )}
-                                    <Checkbox
-                                        label="Список"
-                                        title="Интерпретировать значение как список"
-                                        checked={metaForKey.isList || false}
-                                        onChange={() => toggleMetaFlag(row.key, "isList")}
-                                    />
-                                </div>
-                            ) : null;
-                        },
-                    },
+
                     {
                         key: "actions",
                         title: "Действия",
                         render: (_, row) =>
                             canEdit && (
-                                <button
-                                    title="Удалить ключ"
-                                    className="button button_icon button_reject"
-                                    onClick={() => requestDeleteKey(row.key)}
-                                >
-                                    <FiTrash size={16}/>
-                                </button>
+                                <span style={{display: "flex", gap: 8}}>
+                                    <button
+                                        title="Редактировать"
+                                        className="button button_icon"
+                                        onClick={() =>
+                                            setEditingCell({
+                                                key: row.key,
+                                                values: {...row.values}
+                                            })
+                                        }
+                                    >
+                                        <FiEdit size={16}/>
+                                    </button>
+
+                                    <button
+                                        title="Удалить"
+                                        className="button button_icon button_reject"
+                                        onClick={() => requestDeleteKey(row.key)}
+                                    >
+                                        <FiTrash size={16}/>
+                                    </button>
+                                </span>
                             ),
                     },
                 ]}
                 data={sorted.map(([key, values]) => ({key, values}))}
             />
 
+            {/* DELETE CONFIRM */}
             {canEdit && (
                 <ConfirmDialog
                     open={!!deleteTarget}
@@ -526,56 +414,33 @@ export default function Index() {
             )}
 
             {editingCell && (
-                <Modal
+                <TranslationDialog
                     open={true}
-                    title={`Редактирование ключа: ${editingCell.key}`}
+                    languages={languages}
+                    initialKey={editingCell.key}
+                    initialValues={editingCell.values}
+                    existingKeys={Object.keys(translations)}
                     onClose={() => setEditingCell(null)}
-                    width={600}
-                >
-                    {languages.map((lang) => (
-                        <LabeledInput
-                            key={lang.code}
-                            label={lang.code.toUpperCase()}
-                            value={editingCell.values[lang.code] ?? ""}
-                            onChange={(v) =>
-                                setEditingCell((prev) => ({
-                                    ...prev,
-                                    values: {
-                                        ...prev.values,
-                                        [lang.code]: v
-                                    }
-                                }))
-                            }
-                        />
-                    ))}
+                    onSave={async (key, values) => {
+                        // если ключ новый — создаём
+                        if (!translations[key]) {
+                            handleAddKey(key);
+                        }
 
-                    <div style={{display: "flex", justifyContent: "flex-end", marginTop: 20}}>
-                        <button
-                            className="button button_border"
-                            onClick={() => setEditingCell(null)}
-                        >
-                            Отмена
-                        </button>
+                        // сохраняем все языки
+                        for (const lang of languages) {
+                            await saveValue(
+                                key,
+                                lang.code,
+                                values[lang.code] ?? ""
+                            );
+                        }
 
-                        <button
-                            className="button button_accept"
-                            style={{marginLeft: 12}}
-                            onClick={() => {
-                                for (const lang of languages) {
-                                    saveValue(
-                                        editingCell.key,
-                                        lang.code,
-                                        editingCell.values[lang.code] ?? ""
-                                    );
-                                }
-                                setEditingCell(null);
-                            }}
-                        >
-                            Сохранить
-                        </button>
-                    </div>
-                </Modal>
+                        setEditingCell(null);
+                    }}
+                />
             )}
+
         </div>
     );
 }

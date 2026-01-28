@@ -1,9 +1,9 @@
 import {useEffect, useState} from "react";
 import Modal from "./Modal";
 import LabeledInput from "./LabeledInput";
-import UploadInput from "./UploadInput";
 import {useAuth} from "../hooks/authContext";
-import {useToast} from "../components/ToastContext";
+import {useToast} from "./ToastContext";
+import LabeledFileInput from "./LabeledFileInput";
 
 export default function FeatureCardDialog({initial, index, mode, onClose}) {
     const API_URL = process.env.REACT_APP_API_URL || "/api";
@@ -167,7 +167,7 @@ export default function FeatureCardDialog({initial, index, mode, onClose}) {
             <div className="dialog__window">
                 <h2>{mode === "edit" ? "Редактировать карточку" : "Создать карточку"}</h2>
 
-                <UploadInput
+                <LabeledFileInput
                     label="Изображение"
                     value={form.image}
                     error={errors.image}

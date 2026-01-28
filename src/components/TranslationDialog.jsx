@@ -42,7 +42,7 @@ export default function TranslationDialog({
 
             {/* Поля для переводов */}
             {languages.map((lang) => (
-                <div key={lang.code} style={{position: "relative"}}>
+                <div key={lang.code} style={{position: "relative", width: "-webkit-fill-available"}}>
                     <LabeledInput
                         label={lang.code.toUpperCase()}
                         value={state.values[lang.code] ?? ""}
@@ -60,7 +60,7 @@ export default function TranslationDialog({
                     {/* Emoji button */}
                     <button
                         type="button"
-                        className="button button_icon"
+                        className="button button_icon button_reject"
                         style={{position: "absolute", right: 0, top: 28}}
                         onClick={() =>
                             setEmojiPickerFor({

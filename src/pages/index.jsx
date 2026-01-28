@@ -377,7 +377,7 @@ export default function Index() {
                                 <span style={{display: "flex", gap: 8}}>
                                     <button
                                         title="Редактировать"
-                                        className="button button_icon"
+                                        className="button button_icon button_reject"
                                         onClick={() =>
                                             setEditingCell({
                                                 key: row.key,

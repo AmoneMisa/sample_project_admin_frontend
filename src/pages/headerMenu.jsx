@@ -136,24 +136,12 @@ export default function HeaderMenu() {
                 <h1>Хедер‑меню</h1>
 
                 {canEdit && (
-                    <div style={{display: "flex", gap: 12}}>
-                        <button
-                            className="button button_icon button_border"
-                            style={{color: "var(--color-error)"}}
-                            disabled={!canUndo}
-                            onClick={undo}
-                            title="Отменить последнее изменение"
-                        >
-                            <FiRotateCcw size={16}/>
-                        </button>
-
-                        <button
-                            className="button"
-                            onClick={() => setCreating(true)}
-                        >
-                            Добавить
-                        </button>
-                    </div>
+                    <button
+                        className="button"
+                        onClick={() => setCreating(true)}
+                    >
+                        Добавить
+                    </button>
                 )}
             </div>
 

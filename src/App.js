@@ -10,6 +10,10 @@ import UsersPage from "./pages/usersPage";
 import {AuthProvider} from "./hooks/authContext";
 import PrivateRoute from "./components/PrivateRoute";
 import AdminPage from "./pages/adminPage";
+import FeatureCardsPage from "./pages/featureCardsPage";
+import ContactsPage from "./pages/contactsPage";
+import MenuPage from "./pages/menuPage";
+import FooterPage from "./pages/footerPage";
 
 export default function App() {
     return (
@@ -31,7 +35,10 @@ export default function App() {
                             <Route index element={<Index/>}/>
                             <Route path="testimonials" element={<Testimonials/>}/>
                             <Route path="header-menu" element={<HeaderMenu/>}/>
-
+                            <Route path="footer" element={<FooterPage/>}/>
+                            <Route path="contacts" element={<ContactsPage/>}/>
+                            <Route path="menu" element={<MenuPage/>}/>
+                            <Route path="feature-cards" element={<FeatureCardsPage/>}/>
                             <Route
                                 path="admin"
                                 element={

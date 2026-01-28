@@ -81,3 +81,7 @@
 .admin-menu__item_active:hover {
     filter: brightness(110%);
 }
+
+.admin-menu__logout {
+    margin-left: auto;
+}

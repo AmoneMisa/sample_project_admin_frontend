@@ -1,5 +1,5 @@
 import {NavLink} from "react-router-dom";
-import {FiHome, FiLogOut, FiMenu, FiMessageSquare, FiUsers} from "react-icons/fi";
+import {FiGrid, FiHome, FiLayers, FiLogOut, FiMenu, FiMessageSquare, FiPhone, FiUsers} from "react-icons/fi";
 import {useAuth} from "../hooks/authContext";
 
 export default function AdminMenu() {
@@ -40,6 +40,38 @@ export default function AdminMenu() {
                 <span>Главное меню</span>
             </NavLink>
 
+            <NavLink to="/feature-cards" className={({ isActive }) =>
+                "admin-menu__item" + (isActive ? " admin-menu__item_active" : "")
+            }
+            >
+                <FiGrid size={18}/>
+                <span>Feature Cards</span>
+            </NavLink>
+
+            <NavLink to="/contacts" className={({ isActive }) =>
+                "admin-menu__item" + (isActive ? " admin-menu__item_active" : "")
+            }
+            >
+                <FiPhone size={18}/>
+                <span>Контакты</span>
+            </NavLink>
+
+            <NavLink to="/menu" className={({ isActive }) =>
+                "admin-menu__item" + (isActive ? " admin-menu__item_active" : "")
+            }
+            >
+                <FiMenu size={18}/>
+                <span>Футер меню</span>
+            </NavLink>
+
+            <NavLink to="/footer" className={({ isActive }) =>
+                "admin-menu__item" + (isActive ? " admin-menu__item_active" : "")
+            }
+            >
+                <FiLayers size={18}/>
+                <span>Футер</span>
+            </NavLink>
+
             {isAdmin && (
                 <NavLink
                     to="/users"
@@ -64,7 +96,7 @@ export default function AdminMenu() {
                 </NavLink>
             )}
 
-            <button className="admin-menu__item admin-menu__logout" onClick={logout} >
+            <button className="admin-menu__item admin-menu__logout gradient-text button_border" onClick={logout} >
                 <FiLogOut size={18} />
                 <span>Выйти</span>
             </button>

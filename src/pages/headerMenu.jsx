@@ -5,6 +5,7 @@ import {useAuditLog} from "../hooks/useAuditLog";
 import MenuItemDialog from "../components/MenuItemDialog";
 import {useAuth} from "../hooks/authContext";
 import CustomTable from "../components/CustomTable";
+import Checkbox from "../components/Checkbox";
 
 function isValidKey(str) {
     return /^[a-zA-Z0-9._-]+$/.test(str);
@@ -65,6 +66,16 @@ export default function HeaderMenu() {
         loadMeta();
     }, [accessToken, API_URL]);
 
+    function generateTranslationKeys(item, index, availableLanguages) {
+        const baseKey = `headerMenu.simple${index}.label`;
+
+        return availableLanguages.map(lang => ({
+            key: baseKey,
+            lang: lang.code,
+            value: item[`label_${lang.code}`] || ""
+        }));
+    }
+
     useEffect(() => {
         if (!accessToken) return;
 
@@ -91,7 +102,7 @@ export default function HeaderMenu() {
                 "Content-Type": "application/json",
                 Authorization: `Bearer ${accessToken}`,
             },
-            body: JSON.stringify({json: next}),
+            body: JSON.stringify({ json: next }),
         });
         setMenu(next);
         pushSnapshot(next, null, "Меню обновлено");
@@ -126,33 +137,65 @@ export default function HeaderMenu() {
         return item;
     }
 
-    function updateItem(index, updated) {
+    async function updateItem(index, updated) {
         const next = [...menu];
         next[index] = normalizeItem(updated);
-        saveMenu(next);
+        await saveMenu(next);
+
+        const keys = generateTranslationKeys(updated, index, availableLanguages);
+        await fetch(`${API_URL}/translations/bulk-update`, {
+            method: "PATCH",
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${accessToken}`,
+            },
+            body: JSON.stringify({ items: keys }),
+        });
     }
 
-    function deleteItem(index) {
+    async function deleteItem(index) {
+        const item = menu[index];
         const next = menu.filter((_, i) => i !== index);
-        saveMenu(next);
+        await saveMenu(next);
+
+        const keys = generateTranslationKeys(item, index, availableLanguages);
+        await fetch(`${API_URL}/translations/delete`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${accessToken}`,
+            },
+            body: JSON.stringify({ keys: keys.map(k => k.key) }),
+        });
     }
 
-    function addItem(item) {
+    async function addItem(item) {
         const next = [...menu, normalizeItem(item)];
-        saveMenu(next);
+        await saveMenu(next);
+
+        const index = next.length - 1;
+        const keys = generateTranslationKeys(item, index, availableLanguages);
+        await fetch(`${API_URL}/translations/bulk-update`, {
+            method: "PATCH",
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${accessToken}`,
+            },
+            body: JSON.stringify({ items: keys }),
+        });
     }
 
-    function toggleVisible(index) {
+    async function toggleVisible(index) {
         const next = [...menu];
-        next[index].visible = next[index].visible === false ? true : !next[index].visible;
-        saveMenu(next);
+        next[index].visible = !next[index].visible;
+        await saveMenu(next);
     }
 
-    function moveItem(from, to) {
+    async function moveItem(from, to) {
         const next = [...menu];
         const item = next.splice(from, 1)[0];
         next.splice(to, 0, item);
-        saveMenu(next);
+        await saveMenu(next);
     }
 
     return (
@@ -190,8 +233,7 @@ export default function HeaderMenu() {
                         key: "visible",
                         title: "Отображать",
                         render: (_, item, index) => (
-                            <input
-                                type="checkbox"
+                            <Checkbox
                                 checked={item.visible !== false}
                                 onChange={() => toggleVisible(index)}
                             />
@@ -204,7 +246,7 @@ export default function HeaderMenu() {
                             const ru = translations[value]?.ru || "(нет перевода)";
                             return (
                                 <a
-                                    href={`/?key=${value}`}
+                                    href={`/admin/?key=${value}`}
                                     className="table__cell-text"
                                     style={{color: "var(--color-link)"}}
                                 >

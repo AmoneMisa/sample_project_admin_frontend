@@ -1,12 +1,9 @@
-import { useState } from "react";
+import {useState} from "react";
 import Modal from "./Modal";
 import LabeledInput from "./LabeledInput";
 import LabeledSelect from "./LabeledSelect";
 import Checkbox from "./Checkbox";
 
-// -----------------------------------------------------
-//  Utility: collect all translation keys
-// -----------------------------------------------------
 function collectAllKeys(item) {
     const keys = [];
 
@@ -36,9 +33,6 @@ function collectAllKeys(item) {
     return Array.from(new Set(keys));
 }
 
-// -----------------------------------------------------
-//  Utility: collect only visible translation keys
-// -----------------------------------------------------
 function collectVisibleKeys(item) {
     const keys = [];
 
@@ -81,10 +75,7 @@ function collectVisibleKeys(item) {
     return Array.from(new Set(keys));
 }
 
-// -----------------------------------------------------
-//  Badge key generator
-// -----------------------------------------------------
-function generateBadgeKey({ menuIndex, type, itemIndex = null, colIndex = null }) {
+function generateBadgeKey({menuIndex, type, itemIndex = null, colIndex = null}) {
     const base = "headerMenu";
 
     if (type === "simple") {
@@ -107,17 +98,14 @@ export default function MenuItemDialog({
                                            languages,
                                            initialItem,
                                            initialTranslations,
-                                           menuIndex,        // индекс меню
+                                           menuIndex,
                                            onSave,
                                            onClose,
                                        }) {
     const API_URL = process.env.REACT_APP_API_URL || "/api";
 
-    // -----------------------------------------------------
-    // Normalize initial item
-    // -----------------------------------------------------
     function normalizeInitialItem(src) {
-        const base = src || { type: "simple", label: "", href: "", visible: true };
+        const base = src || {type: "simple", label: "", href: "", visible: true};
 
         if (base.type === "simple") {
             return {
@@ -171,7 +159,7 @@ export default function MenuItemDialog({
     }
 
     const [item, setItem] = useState(() => normalizeInitialItem(initialItem));
-    const [translations, setTranslations] = useState({ ...(initialTranslations || {}) });
+    const [translations, setTranslations] = useState({...(initialTranslations || {})});
     const [fieldErrors, setFieldErrors] = useState({});
     const [error, setError] = useState("");
 
@@ -288,7 +276,7 @@ export default function MenuItemDialog({
                     visible: current.visible !== false,
                     items: current.items?.length
                         ? current.items
-                        : [{ label: "", href: "", visible: true }],
+                        : [{label: "", href: "", visible: true}],
                 };
             }
 
@@ -302,7 +290,7 @@ export default function MenuItemDialog({
                         : [
                             {
                                 title: "",
-                                items: [{ label: "", href: "", visible: true }],
+                                items: [{label: "", href: "", visible: true}],
                             },
                         ],
                     image: {
@@ -323,7 +311,7 @@ export default function MenuItemDialog({
         if (item.type !== "dropdown-simple") return;
         setItem((prev) => ({
             ...prev,
-            items: [...prev.items, { label: "", href: "", visible: true }],
+            items: [...prev.items, {label: "", href: "", visible: true}],
         }));
     }
 
@@ -332,7 +320,7 @@ export default function MenuItemDialog({
         setItem((prev) => {
             const items = [...prev.items];
             items.splice(i, 1);
-            return { ...prev, items };
+            return {...prev, items};
         });
     }
 
@@ -342,7 +330,7 @@ export default function MenuItemDialog({
             ...prev,
             columns: [
                 ...prev.columns,
-                { title: "", items: [{ label: "", href: "", visible: true }] },
+                {title: "", items: [{label: "", href: "", visible: true}]},
             ],
         }));
     }
@@ -352,7 +340,7 @@ export default function MenuItemDialog({
         setItem((prev) => {
             const cols = [...prev.columns];
             cols.splice(c, 1);
-            return { ...prev, columns: cols };
+            return {...prev, columns: cols};
         });
     }
 
@@ -360,8 +348,8 @@ export default function MenuItemDialog({
         if (item.type !== "dropdown-mega") return;
         setItem((prev) => {
             const cols = [...prev.columns];
-            cols[c].items.push({ label: "", href: "", visible: true });
-            return { ...prev, columns: cols };
+            cols[c].items.push({label: "", href: "", visible: true});
+            return {...prev, columns: cols};
         });
     }
 
@@ -370,7 +358,7 @@ export default function MenuItemDialog({
         setItem((prev) => {
             const cols = [...prev.columns];
             cols[c].items.splice(s, 1);
-            return { ...prev, columns: cols };
+            return {...prev, columns: cols};
         });
     }
 
@@ -468,8 +456,8 @@ export default function MenuItemDialog({
 
         await fetch(`${API_URL}/translations/bulk-update`, {
             method: "PATCH",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ items }),
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({items}),
         });
 
         const removedKeys = allKeysBefore.filter((k) => !visibleKeysNow.includes(k));
@@ -477,8 +465,8 @@ export default function MenuItemDialog({
         for (const key of removedKeys) {
             await fetch(`${API_URL}/translations/delete`, {
                 method: "DELETE",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ key }),
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify({key}),
             });
         }
     }
@@ -490,6 +478,21 @@ export default function MenuItemDialog({
         if (!validate()) return;
 
         await saveTranslationsToBackend(allKeysBefore, visibleKeysNow);
+        const visibleKeys = collectVisibleKeys(item);
+
+        for (const key of visibleKeys) {
+            for (const lang of languages) {
+                const value = translations[key]?.[lang.code] ?? "";
+
+                if (key.endsWith(".label")) {
+                    item[`label_${lang.code}`] = value;
+                }
+
+                if (key.endsWith(".badge")) {
+                    item[`badge_${lang.code}`] = value;
+                }
+            }
+        }
 
         onSave(item);
         onClose();
@@ -514,106 +517,126 @@ export default function MenuItemDialog({
             </div>
         );
     }
+
     // -----------------------------------------------------
     // Render
     // -----------------------------------------------------
     return (
-        <Modal open={true} title={title} onClose={onClose} width={800}>
+        <Modal open={true} title={title} onClose={onClose} width={800} className={"menu-modal"}>
             {error && <div className="field-error">{error}</div>}
 
             <LabeledSelect
                 label="Тип меню"
                 value={item.type}
                 onChange={updateType}
+                className={"menu-modal__select"}
                 options={[
-                    { value: "simple", label: "Обычный пункт" },
-                    { value: "dropdown-simple", label: "Выпадающее меню" },
-                    { value: "dropdown-mega", label: "Мега-меню" },
+                    {value: "simple", label: "Простое"},
+                    {value: "dropdown-simple", label: "Выпадающее меню"},
+                    {value: "dropdown-mega", label: "Мега-меню"},
                 ]}
             />
 
             {/* SIMPLE */}
             {item.type === "simple" && (
-                <>
-                    <Checkbox
-                        label="Отображать пункт меню"
-                        checked={item.visible !== false}
-                        onChange={() => toggleVisible([])}
-                    />
+                <div className="menu-modal__row">
+                    <div className="menu-modal__row-item">
+                        <Checkbox
+                            label="Отображать пункт меню"
+                            checked={item.visible !== false}
+                            onChange={() => toggleVisible([])}
+                        />
 
-                    {renderTranslationInputs(item.label, "Заголовок")}
+                        {renderTranslationInputs(item.label, "Заголовок")}
+                    </div>
 
-                    <LabeledInput
-                        label="Ссылка"
-                        value={item.href}
-                        onChange={(v) => updateHref([], v)}
-                        error={fieldErrors["href"] ?? ""}
-                    />
+                    <div className="menu-modal__row-item">
+                        <LabeledInput
+                            label="Ссылка"
+                            value={item.href}
+                            onChange={(v) => updateHref([], v)}
+                            error={fieldErrors["href"] ?? ""}
+                        />
+                    </div>
 
-                    {/* Badge always visible */}
-                    <Checkbox
-                        label="Показывать бейдж"
-                        checked={item.showBadge === true}
-                        onChange={() =>
-                            toggleBadge([], "simple", null, null)
-                        }
-                    />
+                    <div className="menu-modal__row-item">
+                        <Checkbox
+                            label="Показывать бейдж"
+                            checked={item.showBadge === true}
+                            onChange={() => toggleBadge([], "simple")}
+                        />
 
-                    {item.showBadge && item.badgeKey &&
-                        renderTranslationInputs(item.badgeKey, "Бейдж")}
-                </>
+                        {item.showBadge && item.badgeKey &&
+                            renderTranslationInputs(item.badgeKey, "Бейдж")}
+                    </div>
+                </div>
             )}
 
             {/* DROPDOWN-SIMPLE */}
             {item.type === "dropdown-simple" && (
                 <>
-                    <Checkbox
-                        label="Отображать меню"
-                        checked={item.visible !== false}
-                        onChange={() => toggleVisible([])}
-                    />
-
-                    {renderTranslationInputs(item.label, "Заголовок меню")}
-
-                    {item.items.map((sub, i) => (
-                        <div key={i} className="sub-item">
-                            <div className="sub-item-header">
-                                <Checkbox
-                                    label={`Отображать пункт ${i + 1}`}
-                                    checked={sub.visible !== false}
-                                    onChange={() => toggleVisible(["items", i])}
-                                />
-                                <button
-                                    type="button"
-                                    className="button button_small button_danger"
-                                    onClick={() => removeSimpleItem(i)}
-                                >
-                                    Удалить пункт
-                                </button>
-                            </div>
-
-                            {renderTranslationInputs(sub.label, `Пункт ${i + 1}`)}
-
-                            <LabeledInput
-                                label="Ссылка"
-                                value={sub.href}
-                                onChange={(v) => updateHref(["items", i], v)}
-                                error={fieldErrors[`items.${i}.href`] ?? ""}
-                            />
-
-                            {/* Badge always visible */}
+                    <div className="menu-modal__row">
+                        <div className="menu-modal__row-item">
                             <Checkbox
-                                label="Показывать бейдж"
-                                checked={sub.showBadge === true}
-                                onChange={() =>
-                                    toggleBadge(["items", i], "dropdown-simple", i, null)
-                                }
+                                label="Отображать меню"
+                                checked={item.visible !== false}
+                                onChange={() => toggleVisible([])}
                             />
 
-                            {sub.showBadge && sub.badgeKey &&
-                                renderTranslationInputs(sub.badgeKey, "Бейдж")}
+                            {renderTranslationInputs(item.label, "Заголовок меню")}
                         </div>
-                    ))}
+
+                        <div className="menu-modal__row-item">
+                            {item.items.map((sub, i) => (
+                                <div key={i} className="menu-modal__sub-item-wrapper">
+
+                                    <div className="menu-modal__sub-item">
+                                        <div className="menu-modal__sub-item-row">
+                                            <Checkbox
+                                                label={`Отображать пункт ${i + 1}`}
+                                                checked={sub.visible !== false}
+                                                onChange={() => toggleVisible(["items", i])}
+                                            />
+                                            <button
+                                                type="button"
+                                                className="button button_reject"
+                                                onClick={() => removeSimpleItem(i)}
+                                            >
+                                                Удалить пункт
+                                            </button>
+                                        </div>
+
+                                        <div className="menu-modal__sub-item-row">
+                                            {renderTranslationInputs(sub.label, `Пункт ${i + 1}`)}
+                                        </div>
+                                    </div>
+
+                                    <div className="menu-modal__sub-item">
+                                        <LabeledInput
+                                            label="Ссылка"
+                                            value={sub.href}
+                                            onChange={(v) => updateHref(["items", i], v)}
+                                            error={fieldErrors[`items.${i}.href`] ?? ""}
+                                        />
+                                    </div>
+
+                                    <div className="menu-modal__sub-item">
+                                        <Checkbox
+                                            label="Показывать бейдж"
+                                            checked={sub.showBadge === true}
+                                            onChange={() =>
+                                                toggleBadge(["items", i], "dropdown-simple", i)
+                                            }
+                                        />
+
+                                        {sub.showBadge && sub.badgeKey &&
+                                            renderTranslationInputs(sub.badgeKey, "Бейдж")}
+                                    </div>
+
+                                </div>
+                            ))}
+                        </div>
+                    </div>
 
                     <button
                         type="button"
@@ -625,91 +648,102 @@ export default function MenuItemDialog({
                 </>
             )}
 
-            {/* DROPDOWN-MEGA */}
             {item.type === "dropdown-mega" && (
                 <>
-                    <Checkbox
-                        label="Отображать меню"
-                        checked={item.visible !== false}
-                        onChange={() => toggleVisible([])}
-                    />
+                    <div className="menu-modal__row">
+                        <div className="menu-modal__row-item">
+                            <Checkbox
+                                label="Отображать меню"
+                                checked={item.visible !== false}
+                                onChange={() => toggleVisible([])}
+                            />
 
-                    {renderTranslationInputs(item.label, "Заголовок меню")}
+                            {renderTranslationInputs(item.label, "Заголовок меню")}
+                        </div>
+                    </div>
 
                     {item.columns.map((col, c) => (
-                        <div key={c} className="mega-column">
-                            <div className="mega-column-header">
+                        <div key={c} className="menu-modal__row">
+                            <div className="menu-modal__row-item">
                                 {renderTranslationInputs(col.title, `Список ${c + 1}`)}
+
                                 <button
                                     type="button"
-                                    className="button button_small button_danger"
+                                    className="button button_reject"
                                     onClick={() => removeColumn(c)}
                                 >
                                     Удалить список
                                 </button>
-                            </div>
 
-                            {col.items.map((sub, s) => (
-                                <div key={s} className="mega-item">
-                                    <div className="mega-item-header">
-                                        <Checkbox
-                                            label={`Отображать пункт ${s + 1}`}
-                                            checked={sub.visible !== false}
-                                            onChange={() =>
-                                                toggleVisible(["columns", c, "items", s])
-                                            }
-                                        />
-                                        <button
-                                            type="button"
-                                            className="button button_small button_danger"
-                                            onClick={() => removeMegaItem(c, s)}
-                                        >
-                                            Удалить пункт
-                                        </button>
+                                {col.items.map((sub, s) => (
+                                    <div key={s} className="menu-modal__sub-item">
+
+                                        <div className="menu-modal__sub-item-row">
+                                            <Checkbox
+                                                label={`Отображать пункт ${s + 1}`}
+                                                checked={sub.visible !== false}
+                                                onChange={() =>
+                                                    toggleVisible(["columns", c, "items", s])
+                                                }
+                                            />
+
+                                            <button
+                                                type="button"
+                                                className="button button_reject"
+                                                onClick={() => removeMegaItem(c, s)}
+                                            >
+                                                Удалить пункт
+                                            </button>
+                                        </div>
+
+                                        <div className="menu-modal__sub-item-row">
+                                            {renderTranslationInputs(
+                                                sub.label,
+                                                `Пункт ${c + 1}.${s + 1}`
+                                            )}
+                                        </div>
+
+                                        <div className="menu-modal__sub-item-row">
+                                            <LabeledInput
+                                                label="Ссылка"
+                                                value={sub.href}
+                                                onChange={(v) =>
+                                                    updateHref(["columns", c, "items", s], v)
+                                                }
+                                                error={
+                                                    fieldErrors[`columns.${c}.items.${s}.href`] ?? ""
+                                                }
+                                            />
+                                        </div>
+
+                                        <div className="menu-modal__sub-item-row">
+                                            <Checkbox
+                                                label="Бейдж"
+                                                checked={sub.showBadge === true}
+                                                onChange={() =>
+                                                    toggleBadge(
+                                                        ["columns", c, "items", s],
+                                                        "dropdown-mega",
+                                                        s,
+                                                        c
+                                                    )
+                                                }
+                                            />
+
+                                            {sub.showBadge && sub.badgeKey &&
+                                                renderTranslationInputs(sub.badgeKey, "Бейдж")}
+                                        </div>
                                     </div>
+                                ))}
 
-                                    {renderTranslationInputs(
-                                        sub.label,
-                                        `Пункт ${c + 1}.${s + 1}`
-                                    )}
-
-                                    <LabeledInput
-                                        label="Ссылка"
-                                        value={sub.href}
-                                        onChange={(v) =>
-                                            updateHref(["columns", c, "items", s], v)
-                                        }
-                                        error={
-                                            fieldErrors[`columns.${c}.items.${s}.href`] ?? ""
-                                        }
-                                    />
-
-                                    {/* Badge always visible */}
-                                    <Checkbox
-                                        label="Показывать бейдж"
-                                        checked={sub.showBadge === true}
-                                        onChange={() =>
-                                            toggleBadge(
-                                                ["columns", c, "items", s],
-                                                "dropdown-mega",
-                                                s,
-                                                c
-                                            )
-                                        }
-                                    />
-
-                                    {sub.showBadge && sub.badgeKey &&
-                                        renderTranslationInputs(sub.badgeKey, "Бейдж")}
-                                </div>
-                            ))}
-
-                            <button
-                                type="button"
-                                className="button button_secondary"
-                                onClick={() => addMegaItem(c)}
-                            >
-                                Добавить пункт в список
-                            </button>
+                                <button
+                                    type="button"
+                                    className="button button_border"
+                                    onClick={() => addMegaItem(c)}
+                                >
+                                    Добавить пункт в список
+                                </button>
+                            </div>
                         </div>
                     ))}
 
@@ -721,22 +755,26 @@ export default function MenuItemDialog({
                         Добавить список
                     </button>
 
-                    <LabeledInput
-                        label="Изображение (src)"
-                        value={item.image?.src ?? ""}
-                        onChange={(v) => updateImage("src", v)}
-                        error={fieldErrors["image.src"] ?? ""}
-                    />
+                    <div className="menu-modal__row">
+                        <div className="menu-modal__row-item">
+                            <LabeledInput
+                                label="Изображение (src)"
+                                value={item.image?.src ?? ""}
+                                onChange={(v) => updateImage("src", v)}
+                                error={fieldErrors["image.src"] ?? ""}
+                            />
 
-                    <LabeledSelect
-                        label="Позиция изображения"
-                        value={item.image?.position ?? "right"}
-                        onChange={(v) => updateImage("position", v)}
-                        options={[
-                            { value: "right", label: "Справа" },
-                            { value: "left", label: "Слева" },
-                        ]}
-                    />
+                            <LabeledSelect
+                                label="Позиция изображения"
+                                value={item.image?.position ?? "right"}
+                                onChange={(v) => updateImage("position", v)}
+                                options={[
+                                    {value: "right", label: "Справа"},
+                                    {value: "left", label: "Слева"},
+                                ]}
+                            />
+                        </div>
+                    </div>
                 </>
             )}
 
@@ -744,5 +782,6 @@ export default function MenuItemDialog({
                 Сохранить
             </button>
         </Modal>
-    );
+    )
+        ;
 }

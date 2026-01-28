@@ -1,81 +1,27 @@
 import {useEffect, useState} from "react";
-import {FiEdit, FiRotateCcw, FiTrash} from "react-icons/fi";
 import {useToast} from "../components/ToastContext";
 import {useAuditLog} from "../hooks/useAuditLog";
 import MenuItemDialog from "../components/MenuItemDialog";
 import {useAuth} from "../hooks/authContext";
+import {FiEdit, FiRotateCcw, FiTrash} from "react-icons/fi";
 import CustomTable from "../components/CustomTable";
 import Checkbox from "../components/Checkbox";
-
-function isValidKey(str) {
-    return /^[a-zA-Z0-9._-]+$/.test(str);
-}
-
-function slugify(key) {
-    return key.split(".").pop().toLowerCase();
-}
-
-function inheritHref(parentHref, childKey) {
-    return `${parentHref}/${slugify(childKey)}`;
-}
 
 export default function HeaderMenu() {
     const API_URL = process.env.REACT_APP_API_URL || "/api";
     const [menu, setMenu] = useState([]);
-    const [editing, setEditing] = useState(null);
+    const [editingIndex, setEditingIndex] = useState(null);
     const [creating, setCreating] = useState(false);
-    const [availableLanguages, setAvailableLanguages] = useState([]);
-    const [translations, setTranslations] = useState({});
 
-    const {pushSnapshot, undo, canUndo} = useAuditLog([]);
+    const {pushSnapshot} = useAuditLog([]);
     const {showToast} = useToast();
     const {accessToken, user} = useAuth();
 
     const canEdit = user && (user.role === "moderator" || user.role === "admin");
 
-    useEffect(() => {
-        if (!accessToken) return;
-
-        async function loadMeta() {
-            try {
-                const resLang = await fetch(`${API_URL}/languages`, {
-                    headers: {Authorization: `Bearer ${accessToken}`},
-                });
-                const langs = await resLang.json();
-                setAvailableLanguages(langs);
-
-                const result = {};
-                for (const lang of langs) {
-                    const res = await fetch(`${API_URL}/translations/structured?lang=${lang.code}`, {
-                        headers: {Authorization: `Bearer ${accessToken}`},
-                    });
-                    const data = await res.json();
-
-                    for (const [key, value] of Object.entries(data)) {
-                        if (!result[key]) result[key] = {};
-                        result[key][lang.code] = value;
-                    }
-                }
-                setTranslations(result);
-
-            } catch (e) {
-                console.error("Ошибка загрузки языков/переводов", e);
-            }
-        }
-
-        loadMeta();
-    }, [accessToken, API_URL]);
-
-    function generateTranslationKeys(item, index, availableLanguages) {
-        const baseKey = `headerMenu.simple${index}.label`;
-
-        return availableLanguages.map(lang => ({
-            key: baseKey,
-            lang: lang.code,
-            value: item[`label_${lang.code}`] || ""
-        }));
-    }
-
+    // ---------------------------------------------------------
+    // LOAD MENU
+    // ---------------------------------------------------------
     useEffect(() => {
         if (!accessToken) return;
 
@@ -92,9 +38,9 @@ export default function HeaderMenu() {
         loadMenu();
     }, [accessToken, API_URL]);
 
-    // -----------------------------
-    // Сохранение меню
-    // -----------------------------
+    // ---------------------------------------------------------
+    // SAVE MENU (ONLY MENU JSON)
+    // ---------------------------------------------------------
     async function saveMenu(next) {
         await fetch(`${API_URL}/header-menu`, {
             method: "PATCH",
@@ -102,99 +48,67 @@ export default function HeaderMenu() {
                 "Content-Type": "application/json",
                 Authorization: `Bearer ${accessToken}`,
             },
-            body: JSON.stringify({ json: next }),
+            body: JSON.stringify({json: next}),
         });
+
         setMenu(next);
         pushSnapshot(next, null, "Меню обновлено");
         showToast("Меню сохранено");
     }
 
-    function normalizeItem(item, parentHref = "") {
-        if (!isValidKey(item.label)) {
-            showToast(`Некорректный ключ: ${item.label}`);
-        }
-
-        if (!item.href) {
-            item.href = parentHref
-                ? inheritHref(parentHref, item.label)
-                : `/${slugify(item.label)}`;
-        }
-
-        if (item.items) {
-            item.items = item.items.map((sub) =>
-                normalizeItem(sub, item.href)
-            );
-        }
-        if (item.columns) {
-            item.columns = item.columns.map((col) => ({
-                ...col,
-                title: col.title,
-                items: col.items.map((sub) =>
-                    normalizeItem(sub, item.href)
-                ),
-            }));
-        }
-        return item;
+    // ---------------------------------------------------------
+    // ADD ITEM (opens dialog)
+    // ---------------------------------------------------------
+    function addItem() {
+        setCreating(true);
     }
 
-    async function updateItem(index, updated) {
-        const next = [...menu];
-        next[index] = normalizeItem(updated);
-        await saveMenu(next);
-
-        const keys = generateTranslationKeys(updated, index, availableLanguages);
-        await fetch(`${API_URL}/translations/bulk-update`, {
-            method: "PATCH",
-            headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${accessToken}`,
-            },
-            body: JSON.stringify({ items: keys }),
-        });
+    // ---------------------------------------------------------
+    // EDIT ITEM (opens dialog)
+    // ---------------------------------------------------------
+    function editItem(index) {
+        setEditingIndex(index);
     }
 
+    // ---------------------------------------------------------
+    // DELETE ITEM (ONLY MENU)
+    // ---------------------------------------------------------
     async function deleteItem(index) {
-        const item = menu[index];
         const next = menu.filter((_, i) => i !== index);
         await saveMenu(next);
-
-        const keys = generateTranslationKeys(item, index, availableLanguages);
-        await fetch(`${API_URL}/translations/delete`, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${accessToken}`,
-            },
-            body: JSON.stringify({ keys: keys.map(k => k.key) }),
-        });
     }
 
-    async function addItem(item) {
-        const next = [...menu, normalizeItem(item)];
-        await saveMenu(next);
-
-        const index = next.length - 1;
-        const keys = generateTranslationKeys(item, index, availableLanguages);
-        await fetch(`${API_URL}/translations/bulk-update`, {
-            method: "PATCH",
-            headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${accessToken}`,
-            },
-            body: JSON.stringify({ items: keys }),
-        });
-    }
-
+    // ---------------------------------------------------------
+    // TOGGLE VISIBLE
+    // ---------------------------------------------------------
     async function toggleVisible(index) {
         const next = [...menu];
         next[index].visible = !next[index].visible;
         await saveMenu(next);
     }
 
+    // ---------------------------------------------------------
+    // MOVE ITEM
+    // ---------------------------------------------------------
     async function moveItem(from, to) {
         const next = [...menu];
         const item = next.splice(from, 1)[0];
         next.splice(to, 0, item);
+        await saveMenu(next);
+    }
+
+    // ---------------------------------------------------------
+    // HANDLE SAVE FROM POPUP
+    // ---------------------------------------------------------
+    async function handleSaveFromDialog(item, index = null) {
+        const next = [...menu];
+
+        if (index === null) {
+            next.push(item);
+        } else {
+            next[index] = item;
+        }
+
         await saveMenu(next);
     }
 
@@ -289,7 +203,7 @@ export default function HeaderMenu() {
                                 <span style={{display: "flex", gap: 8}}>
                                     <button
                                         className="button button_icon button_reject"
-                                        onClick={() => setEditing({index, item})}
+                                        onClick={() => setEditingIndex(index)}
                                         title="Редактировать меню"
                                     >
                                         <FiEdit size={16}/>
@@ -308,26 +222,17 @@ export default function HeaderMenu() {
                 data={menu}
             />
 
-            {creating && canEdit && (
-                <MenuItemDialog
-                    title="Добавить пункт меню"
-                    languages={availableLanguages}
-                    translations={translations}
-                    onSave={addItem}
-                    menuIndex={menu.length}
-                    onClose={() => setCreating(false)}
+            {creating && (
+                <MenuItemDialog title="Создать пункт меню" initialItem={null}
+                                onSave={(item) => handleSaveFromDialog(item, null)}
+                                onClose={() => setCreating(false)}
                 />
             )}
 
-            {editing && canEdit && (
-                <MenuItemDialog
-                    title="Редактировать пункт"
-                    initialItem={editing.item}
-                    languages={availableLanguages}
-                    translations={translations}
-                    menuIndex={menu.length}
-                    onSave={(updated) => updateItem(editing.index, updated)}
-                    onClose={() => setEditing(null)}
+            {editingIndex !== null && (
+                <MenuItemDialog title="Редактировать пункт меню" initialItem={menu[editingIndex]}
+                                onSave={(item) => handleSaveFromDialog(item, editingIndex)}
+                                onClose={() => setEditingIndex(null)}
                 />
             )}
         </div>

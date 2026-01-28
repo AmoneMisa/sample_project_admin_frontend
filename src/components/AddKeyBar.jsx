@@ -24,7 +24,7 @@ export default function AddKeyBar({onAdd, existingKeys}) {
     }
 
     return (
-        <div className="field" style={{display: "flex", gap: 12, alignItems: "flex-start"}}>
+        <div className="field" style={{display: "flex", gap: 12, alignItems: "center"}}>
             <LabeledInput
                 label="Новый ключ"
                 placeholder="Новый ключ"

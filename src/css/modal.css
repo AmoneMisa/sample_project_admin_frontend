@@ -61,3 +61,15 @@
     flex-direction: column;
     gap: 6px;
 }
+
+.menu-modal__row,
+.menu-modal__sub-item {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+.menu-modal__sub-item-row,
+.menu-modal__row-item {
+    display: flex;
+    gap: 10px;
+}

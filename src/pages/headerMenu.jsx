@@ -12,6 +12,7 @@ export default function HeaderMenu() {
     const [menu, setMenu] = useState([]);
     const [editingIndex, setEditingIndex] = useState(null);
     const [creating, setCreating] = useState(false);
+    const [translations, setTranslations] = useState({});
 
     const {pushSnapshot} = useAuditLog([]);
     const {showToast} = useToast();
@@ -55,6 +56,23 @@ export default function HeaderMenu() {
         pushSnapshot(next, null, "Меню обновлено");
         showToast("Меню сохранено");
     }
+
+    useEffect(() => {
+        async function loadTranslations() {
+            if (!accessToken) return;
+
+            const res = await fetch(`${API_URL}/translations?lang=ru`, {
+                headers: {Authorization: `Bearer ${accessToken}`},
+            });
+
+            if (res.ok) {
+                const data = await res.json();
+                setTranslations(data);
+            }
+        }
+
+        loadTranslations();
+    }, [accessToken, API_URL]);
 
     // ---------------------------------------------------------
     // ADD ITEM (opens dialog)

@@ -171,7 +171,7 @@ export default function ContactsPage() {
                                         borderRadius: 8,
                                         padding: 16
                                     }}> {contact.type === "phone" ? (
-                                        <> <PhoneInput defaultCountry={geoCountry} international
+                                        <> <PhoneInput international
                                                        withCountryCallingCode value={contact.value}
                                                        onChange={v => {
                                                            contact.value = v || "";

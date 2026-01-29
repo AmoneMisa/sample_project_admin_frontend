@@ -1,4 +1,4 @@
-import {useCallback, useEffect, useState} from "react";
+import {useEffect, useState} from "react";
 import {useAuditLog} from "../hooks/useAuditLog";
 import ConfirmDialog from "../components/modals/ConfirmDialog";
 import AddKeyBar from "../components/customElems/AddKeyBar";
@@ -9,9 +9,9 @@ import {FiClock, FiEdit, FiRotateCcw, FiSave, FiTrash} from "react-icons/fi";
 import {useAuth} from "../hooks/authContext";
 import CustomTable from "../components/customElems/CustomTable";
 import TranslationDialog from "../components/modals/TranslationDialog";
+import {useTranslations} from "../hooks/useTranslations";
 
 export default function Index() {
-    const API_URL = process.env.REACT_APP_API_URL || "/api";
     const [editingCell, setEditingCell] = useState(null);
     const [search, setSearch] = useState("");
     const [sortAsc, setSortAsc] = useState(true);
@@ -19,32 +19,28 @@ export default function Index() {
     const [filterErrorLevel, setFilterErrorLevel] = useState("all");
     const [deleteTarget, setDeleteTarget] = useState(null);
     const [historyOpen, setHistoryOpen] = useState(false);
+
     const {accessToken, user} = useAuth();
     const canEdit = user && (user.role === "moderator" || user.role === "admin");
     const {showToast} = useToast();
+
+    const audit = useAuditLog();
     const {
         translations,
-        setTranslations,
-        meta,
-        setMeta,
-        pushSnapshot,
-        undo,
-        canUndo,
-        getHistory,
-        markDeleted
-    } = useAuditLog();
-    const {languages, loadAllTranslations, saveAll, saveValue, deleteKeys} = useTranslations({
-        translations,
-        setTranslations,
-        meta,
-        setMeta,
-        pushSnapshot,
-        markDeleted
-    });
+        languages,
+        loadAllTranslations,
+        saveValue,
+        deleteKeys,
+        setMeta
+    } = useTranslations(audit);
+
     useEffect(() => {
         if (accessToken) loadAllTranslations();
-    }, [accessToken, loadAllTranslations]);
+    }, [accessToken]);
 
+    // -----------------------------
+    // DELETE KEY
+    // -----------------------------
     function requestDeleteKey(key) {
         setDeleteTarget(key);
     }
@@ -59,35 +55,46 @@ export default function Index() {
         setDeleteTarget(null);
     }
 
+    // -----------------------------
+    // ADD KEY
+    // -----------------------------
     async function handleAddKey(newKey) {
         if (!accessToken) return;
         if (translations[newKey]) return;
-        await fetch(`${API_URL}/translations`, {
-            method: "POST",
-            headers: {"Content-Type": "application/json", Authorization: `Bearer ${accessToken}`},
-            body: JSON.stringify({key: newKey, values: Object.fromEntries(languages.map(l => [l.code, ""]))})
-        });
-        const emptyRow = {};
-        for (const lang of languages) emptyRow[lang.code] = "";
-        const nextTranslations = {...translations, [newKey]: emptyRow};
-        const nextMeta = {...meta, [newKey]: {allowEmpty: false}};
-        pushSnapshot(nextTranslations, meta, `Добавлен ключ '${newKey}'`);
-        setTranslations(nextTranslations);
-        setMeta(nextMeta);
+
+        // создаём пустые значения
+        for (const lang of languages) {
+            await saveValue(newKey, lang.code, "");
+        }
+
+        // meta
+        setMeta(prev => ({
+            ...prev,
+            [newKey]: {allowEmpty: false}
+        }));
+
         setSearch(newKey);
         showToast("Ключ добавлен");
     }
 
+    // -----------------------------
+    // FILTER + SORT
+    // -----------------------------
     const filtered = Object.entries(translations).filter(([key, values]) => {
         const s = search.toLowerCase();
-        if (s && !key.toLowerCase().includes(s)) {
-            const match = Object.values(values).some(v => String(v).toLowerCase().includes(s));
-            if (!match) return false;
-        }
-        return true;
+        if (!s) return true;
+
+        if (key.toLowerCase().includes(s)) return true;
+
+        return Object.values(values).some(v =>
+            String(v).toLowerCase().includes(s)
+        );
     });
-    const sorted = [...filtered].sort(([a], [b]) => sortAsc ? a.localeCompare(b) : b.localeCompare(a));
-    // RENDER
+
+    const sorted = [...filtered].sort(([a], [b]) =>
+        sortAsc ? a.localeCompare(b) : b.localeCompare(a)
+    );
+
     return (
         <div className="page" style={{padding: 24}}>
             <div className="page__header">

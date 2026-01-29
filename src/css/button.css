@@ -45,7 +45,7 @@ button, .button {
 }
 
 .button_icon {
-    background-color: transparent;
+    background: none;
     color: var(--color-link);
     border: none;
 
@@ -55,9 +55,8 @@ button, .button {
 }
 
 .button_border {
-    background-color: transparent;
     border: 1px solid currentColor;
-    background-image: none;
+    background: none;
     color: var(--color-link);
 
     &:hover {

@@ -1,33 +1,45 @@
 import {useEffect, useState} from "react";
-import {useToast} from "../components/layout/ToastContext";
-import {useAuditLog} from "../hooks/useAuditLog";
-import MenuItemDialog from "../components/modals/MenuItemDialog";
-import {useAuth} from "../hooks/authContext";
-import {FiEdit, FiTrash} from "react-icons/fi";
 import CustomTable from "../components/customElems/CustomTable";
+import {useAuth} from "../hooks/authContext";
+import {useToast} from "../components/layout/ToastContext";
+import MenuItemDialog from "../components/modals/MenuItemDialog";
 import Checkbox from "../components/controls/Checkbox";
+import {FiEdit, FiTrash} from "react-icons/fi";
+import {useAuditLogList} from "../hooks/useAuditLogList";
+import {useTranslations} from "../hooks/useTranslations";
+import {useAuditLog} from "../hooks/useAuditLog";
 
 export default function HeaderMenu() {
     const API_URL = process.env.REACT_APP_API_URL || "/api";
+
+    const {accessToken, user} = useAuth();
+    const {showToast} = useToast();
+    const canEdit = user && (user.role === "moderator" || user.role === "admin");
+
     const [menu, setMenu] = useState([]);
     const [editingItem, setEditingItem] = useState(null);
     const [creating, setCreating] = useState(false);
-    const [translations, setTranslations] = useState({});
 
-    const {pushSnapshot} = useAuditLog([]);
-    const {showToast} = useToast();
-    const {accessToken, user} = useAuth();
+    const {setState, pushSnapshot} = useAuditLogList([]);
 
-    const canEdit = user && (user.role === "moderator" || user.role === "admin");
+    const {
+        translations,
+        loadAllTranslations
+    } = useTranslations(useAuditLog());
 
+    // -----------------------------
     // LOAD MENU
+    // -----------------------------
     useEffect(() => {
         if (!accessToken) return;
 
-        async function loadMenu() {
+        (async () => {
+            await loadAllTranslations();
+
             const res = await fetch(`${API_URL}/header-menu`, {
-                headers: {Authorization: `Bearer ${accessToken}`},
+                headers: {Authorization: `Bearer ${accessToken}`}
             });
+
             if (!res.ok) return;
 
             const data = await res.json();
@@ -39,78 +51,74 @@ export default function HeaderMenu() {
                 return {
                     ...item,
                     id,
-                    labelKey,
+                    labelKey
                 };
             });
 
             setMenu(normalized);
+            setState(normalized);
             pushSnapshot(normalized, null, "Меню загружено");
-        }
+        })();
+    }, [accessToken]);
 
-        loadMenu();
-    }, [accessToken, API_URL]);
-
+    // -----------------------------
     // SAVE MENU
+    // -----------------------------
     async function saveMenu(next) {
         await fetch(`${API_URL}/header-menu`, {
             method: "PATCH",
             headers: {
                 "Content-Type": "application/json",
-                Authorization: `Bearer ${accessToken}`,
+                Authorization: `Bearer ${accessToken}`
             },
-            body: JSON.stringify({json: next}),
+            body: JSON.stringify({json: next})
         });
 
         setMenu(next);
+        setState(next);
         pushSnapshot(next, null, "Меню обновлено");
         showToast("Меню сохранено");
     }
 
-    // LOAD TRANSLATIONS (RU)
-    useEffect(() => {
-        async function loadTranslations() {
-            if (!accessToken) return;
-
-            const res = await fetch(`${API_URL}/translations?lang=ru`, {
-                headers: {Authorization: `Bearer ${accessToken}`},
-            });
-
-            if (!res.ok) return;
-
-            // ожидаем объект вида { key: { ru, en, ... } }
-            setTranslations(await res.json());
-        }
-
-        loadTranslations();
-    }, [accessToken, API_URL]);
-
+    // -----------------------------
     // DELETE ITEM
+    // -----------------------------
     async function deleteItem(id) {
-        const next = menu.filter((item) => item.id !== id);
+        const next = menu.filter(item => item.id !== id);
         await saveMenu(next);
     }
 
+    // -----------------------------
     // TOGGLE VISIBLE
+    // -----------------------------
     async function toggleVisible(id) {
-        const next = menu.map((item) =>
-            item.id === id ? {...item, visible: item.visible === false ? true : !item.visible} : item
+        const next = menu.map(item =>
+            item.id === id
+                ? {...item, visible: item.visible === false ? true : !item.visible}
+                : item
         );
+
         await saveMenu(next);
     }
 
+    // -----------------------------
     // MOVE ITEM
+    // -----------------------------
     async function moveItem(fromId, toId) {
         const current = [...menu];
-        const fromIndex = current.findIndex((i) => i.id === fromId);
-        const toIndex = current.findIndex((i) => i.id === toId);
+        const fromIndex = current.findIndex(i => i.id === fromId);
+        const toIndex = current.findIndex(i => i.id === toId);
         if (fromIndex === -1 || toIndex === -1) return;
 
         const item = current.splice(fromIndex, 1)[0];
         current.splice(toIndex, 0, item);
+
         await saveMenu(current);
     }
 
-    // SAVE FROM POPUP
+    // -----------------------------
+    // SAVE FROM DIALOG
+    // -----------------------------
     async function handleSaveFromDialog(item) {
         let next;
 
@@ -119,12 +127,15 @@ export default function HeaderMenu() {
             const withId = {...item, id: maxId + 1};
             next = [...menu, withId];
         } else {
-            next = menu.map((it) => (it.id === item.id ? item : it));
+            next = menu.map(it => (it.id === item.id ? item : it));
         }
 
         await saveMenu(next);
     }
 
+    // -----------------------------
+    // TABLE COLUMNS
+    // -----------------------------
     const columns = [
         {key: "type", title: "Тип", width: "120px"},
 
@@ -138,7 +149,7 @@ export default function HeaderMenu() {
                     onChange={() => canEdit && toggleVisible(item.id)}
                     disabled={!canEdit}
                 />
-            ),
+            )
         },
 
         {
@@ -147,8 +158,7 @@ export default function HeaderMenu() {
             render: (value) => {
                 if (!value) return <span className="table__cell-text">(нет ключа)</span>;
 
-                const t = translations[value];
-                const ru = t?.ru || t || "(нет перевода)";
+                const ru = translations[value]?.ru || "(нет перевода)";
 
                 return (
                     <a
@@ -159,7 +169,7 @@ export default function HeaderMenu() {
                         {ru}
                     </a>
                 );
-            },
+            }
         },
 
         {
@@ -171,9 +181,7 @@ export default function HeaderMenu() {
                     <button
                         className="button button_icon"
                         disabled={index === 0 || !canEdit}
-                        onClick={() =>
-                            moveItem(item.id, menu[index - 1]?.id)
-                        }
+                        onClick={() => moveItem(item.id, menu[index - 1]?.id)}
                         title="Переместить вверх"
                     >
                         ↑
@@ -182,15 +190,13 @@ export default function HeaderMenu() {
                     <button
                         className="button button_icon"
                         disabled={index === menu.length - 1 || !canEdit}
-                        onClick={() =>
-                            moveItem(item.id, menu[index + 1]?.id)
-                        }
+                        onClick={() => moveItem(item.id, menu[index + 1]?.id)}
                         title="Переместить вниз"
                     >
                         ↓
                     </button>
                 </div>
-            ),
+            )
         },
 
         {
@@ -215,8 +221,8 @@ export default function HeaderMenu() {
                             <FiTrash size={16}/>
                         </button>
                     </span>
-                ),
-        },
+                )
+        }
     ];
 
     return (
@@ -225,10 +231,7 @@ export default function HeaderMenu() {
                 <h1>Хедер‑меню</h1>
 
                 {canEdit && (
-                    <button
-                        className="button"
-                        onClick={() => setCreating(true)}
-                    >
+                    <button className="button" onClick={() => setCreating(true)}>
                         Добавить
                     </button>
                 )}

@@ -7,6 +7,8 @@ import {useEffect, useState, useMemo} from "react";
 import {useAuditLogList} from "../hooks/useAuditLogList";
 import {useToast} from "../components/layout/ToastContext";
 import {useAuth} from "../hooks/authContext";
+import LabeledInput from "../components/controls/LabeledInput";
+import LabeledSelect from "../components/controls/LabeledSelect";
 
 export default function Testimonials() {
     const API_URL = process.env.REACT_APP_API_URL || "/api";
@@ -15,14 +17,12 @@ export default function Testimonials() {
     const [editing, setEditing] = useState(null);
     const [creating, setCreating] = useState(false);
     const [deleteTarget, setDeleteTarget] = useState(null);
+    const [filterErrors, setFilterErrors] = useState({});
 
     const {showToast} = useToast();
     const {accessToken, user} = useAuth();
     const canEdit = user && (user.role === "moderator" || user.role === "admin");
 
-    // -----------------------------
-    // ФИЛЬТРЫ
-    // -----------------------------
     const [filters, setFilters] = useState({
         name: "",
         role: "",
@@ -31,9 +31,17 @@ export default function Testimonials() {
         search: "",
     });
 
-    // -----------------------------
-    // СОРТИРОВКА
-    // -----------------------------
+    function validateFilters() {
+        const e = {};
+
+        if (filters.rating && (isNaN(filters.rating) || filters.rating < 0)) {
+            e.rating = "Введите число ≥ 0";
+        }
+
+        setFilterErrors(e);
+        return Object.keys(e).length === 0;
+    }
+
     const [sort, setSort] = useState({
         field: "id",
         direction: "asc",
@@ -61,6 +69,7 @@ export default function Testimonials() {
                 setState(data);
             }
         }
+
         load();
     }, [accessToken, API_URL, setState]);
 
@@ -271,11 +280,11 @@ export default function Testimonials() {
                             onClick={undo}
                             style={{color: "var(--color-error)"}}
                         >
-                            <FiRotateCcw size={16}/> Отменить
+                            <FiRotateCcw size={16}/>
                         </button>
 
                         <button className="button" onClick={() => setCreating(true)}>
-                            Создать отзыв
+                            Создать
                         </button>
                     </div>
                 )}
@@ -283,46 +292,52 @@ export default function Testimonials() {
 
             {/* ФИЛЬТРЫ */}
             <div style={{display: "flex", gap: 12, marginBottom: 16}}>
-                <input
-                    className="field"
-                    placeholder="Имя"
-                    value={filters.name}
-                    onChange={(e) => setFilters({...filters, name: e.target.value})}
-                />
+                {/* ФИЛЬТРЫ */}
+                <div style={{display: "flex", gap: 12, marginBottom: 16}}>
 
-                <input
-                    className="field"
-                    placeholder="Роль"
-                    value={filters.role}
-                    onChange={(e) => setFilters({...filters, role: e.target.value})}
-                />
+                    <LabeledInput
+                        label="Имя"
+                        value={filters.name}
+                        onChange={v => setFilters({...filters, name: v})}
+                    />
 
-                <select
-                    className="field"
-                    value={filters.visible}
-                    onChange={(e) => setFilters({...filters, visible: e.target.value})}
-                >
-                    <option value="all">Все</option>
-                    <option value="visible">Только видимые</option>
-                    <option value="hidden">Только скрытые</option>
-                </select>
+                    <LabeledInput
+                        label="Роль"
+                        value={filters.role}
+                        onChange={v => setFilters({...filters, role: v})}
+                    />
 
-                <input
-                    className="field"
-                    placeholder="Рейтинг"
-                    type="number"
-                    value={filters.rating}
-                    onChange={(e) => setFilters({...filters, rating: e.target.value})}
-                    style={{width: 100}}
-                />
+                    <LabeledSelect
+                        label="Отображение"
+                        value={filters.visible}
+                        options={[
+                            {value: "all", label: "Все"},
+                            {value: "visible", label: "Только видимые"},
+                            {value: "hidden", label: "Только скрытые"},
+                        ]}
+                        onChange={v => setFilters({...filters, visible: v})}
+                    />
 
-                <input
-                    className="field"
-                    placeholder="Поиск по тексту"
-                    value={filters.search}
-                    onChange={(e) => setFilters({...filters, search: e.target.value})}
-                    style={{flex: 1}}
-                />
+                    <LabeledInput
+                        label="Рейтинг"
+                        type="number"
+                        value={filters.rating}
+                        error={filterErrors.rating}
+                        onChange={v => {
+                            setFilters({...filters, rating: v});
+                            validateFilters();
+                        }}
+                        style={{width: 100}}
+                    />
+
+                    <LabeledInput
+                        label="Поиск по тексту"
+                        value={filters.search}
+                        onChange={v => setFilters({...filters, search: v})}
+                        style={{flex: 1}}
+                    />
+                </div>
+
             </div>
 
             <CustomTable columns={columns} data={sorted}/>

@@ -1,10 +1,15 @@
 import {useEffect, useState} from "react";
+import CustomTable from "../components/customElems/CustomTable";
 import {useAuth} from "../hooks/authContext";
 import {useToast} from "../components/layout/ToastContext";
 import FooterMenuItemDialog from "../components/modals/FooterMenuItemDialog";
 import ConfirmDialog from "../components/modals/ConfirmDialog";
+import {useTranslations} from "../hooks/useTranslations";
+import {useAuditLog} from "../hooks/useAuditLog";
+import Checkbox from "../components/controls/Checkbox";
+import {FiEdit, FiTrash} from "react-icons/fi";
 
-export default function MenuPage() {
+export default function FooterMenuPage() {
     const API_URL = process.env.REACT_APP_API_URL || "/api";
     const {accessToken} = useAuth();
     const {showToast} = useToast();
@@ -15,8 +20,13 @@ export default function MenuPage() {
     const [editing, setEditing] = useState(null);
     const [deleteTarget, setDeleteTarget] = useState(null);
 
+    const {
+        translations,
+        loadAllTranslations
+    } = useTranslations(useAuditLog());
+
     // -----------------------------
-    // LOAD FOOTER BLOCKS
+    // LOAD FOOTER BLOCKS + TRANSLATIONS
     // -----------------------------
     async function load() {
         const res = await fetch(`${API_URL}/footer?all=true`, {
@@ -25,10 +35,8 @@ export default function MenuPage() {
 
         const blocks = await res.json();
 
-        // ищем блок меню
         let block = blocks.find(b => b.type === "menu");
 
-        // если нет — создаём
         if (!block) {
             const createRes = await fetch(`${API_URL}/footer`, {
                 method: "POST",
@@ -50,17 +58,20 @@ export default function MenuPage() {
 
         setMenuBlock(block);
 
-        // загружаем items
         const itemsRes = await fetch(`${API_URL}/footer/${block.id}/items`, {
             headers: {Authorization: `Bearer ${accessToken}`}
         });
 
-        const itemsData = await itemsRes.json();
-        setItems(itemsData);
+        setItems(await itemsRes.json());
     }
 
     useEffect(() => {
-        if (accessToken) load();
+        if (!accessToken) return;
+
+        (async () => {
+            await loadAllTranslations();
+            await load();
+        })();
     }, [accessToken]);
 
     // -----------------------------
@@ -77,6 +88,86 @@ export default function MenuPage() {
     }
 
     // -----------------------------
+    // TOGGLE VISIBLE
+    // -----------------------------
+    async function toggleVisible(item) {
+        const res = await fetch(`${API_URL}/footer/items/${item.id}`, {
+            method: "PATCH",
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${accessToken}`
+            },
+            body: JSON.stringify({isVisible: !item.isVisible})
+        });
+
+        const updated = await res.json();
+        setItems(prev => prev.map(i => (i.id === updated.id ? updated : i)));
+    }
+
+    // -----------------------------
+    // COLUMNS FOR CustomTable
+    // -----------------------------
+    const columns = [
+        { key: "id", title: "ID", width: "80px" },
+
+        {
+            key: "labelKey",
+            title: "Название (ru)",
+            render: (_, row) => {
+                const ru = translations[row.labelKey]?.ru || "(нет перевода)";
+                return ru;
+            }
+        },
+
+        {
+            key: "href",
+            title: "Ссылка",
+            render: (value) => value || "-"
+        },
+
+        {
+            key: "order",
+            title: "Порядок",
+            width: "120px",
+            render: (value) => value ?? "-"
+        },
+
+        {
+            key: "isVisible",
+            title: "Отображать",
+            width: "120px",
+            render: (value, row) => (
+                <Checkbox checked={value} onChange={() => toggleVisible(row)} />
+            )
+        },
+
+        {
+            key: "actions",
+            title: "Действия",
+            width: "140px",
+            render: (_, row) => (
+                <div style={{display: "flex", gap: 8}}>
+                    <button
+                        className="button button_icon"
+                        onClick={() => setEditing(row)}
+                        title="Редактировать"
+                    >
+                        <FiEdit size={16} />
+                    </button>
+
+                    <button
+                        className="button button_icon button_reject"
+                        onClick={() => setDeleteTarget(row.id)}
+                        title="Удалить"
+                    >
+                        <FiTrash size={16} />
+                    </button>
+                </div>
+            )
+        }
+    ];
+
+    // -----------------------------
     // RENDER
     // -----------------------------
     if (!menuBlock) {
@@ -87,33 +178,13 @@ export default function MenuPage() {
         <div className="page" style={{padding: 24}}>
             <h1>Меню футера</h1>
 
-            <button className="button" onClick={() => setCreating(true)}>
-                Создать пункт
-            </button>
-
-            <div className="menu-list">
-                {items.map(item => (
-                    <div key={item.id} className="menu-item">
-                        <div className="menu-header">
-                            <strong>{item.labelKey}</strong>
-
-                            <button
-                                className="button button_small"
-                                onClick={() => setEditing(item)}
-                            >
-                                Редактировать
-                            </button>
-
-                            <button
-                                className="button button_small button_reject"
-                                onClick={() => setDeleteTarget(item.id)}
-                            >
-                                Удалить
-                            </button>
-                        </div>
-                    </div>
-                ))}
+            <div style={{marginBottom: 12}}>
+                <button className="button" onClick={() => setCreating(true)}>
+                    Создать пункт
+                </button>
             </div>
+
+            <CustomTable columns={columns} data={items} />
 
             {creating && (
                 <FooterMenuItemDialog

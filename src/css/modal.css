@@ -73,3 +73,13 @@
     display: flex;
     gap: 10px;
 }
+
+.modal__header {
+    margin-bottom: 12px;
+}
+
+.modal__actions {
+    display: flex;
+    gap: 12px;
+    justify-content: space-between;
+}

@@ -7,6 +7,8 @@ import ConfirmDialog from "../components/modals/ConfirmDialog";
 import Checkbox from "../components/controls/Checkbox";
 import {FiEdit, FiRotateCcw, FiTrash} from "react-icons/fi";
 import {useAuditLogList} from "../hooks/useAuditLogList";
+import {useTranslations} from "../hooks/useTranslations";
+import {useAuditLog} from "../hooks/useAuditLog";
 
 export default function FeatureCardsPage() {
     const API_URL = process.env.REACT_APP_API_URL || "/api";
@@ -22,18 +24,14 @@ export default function FeatureCardsPage() {
 
     const {setState, pushSnapshot, undo, canUndo} = useAuditLogList([]);
 
-    // -----------------------------
-    // LOAD TRANSLATION FOR ONE KEY
-    // -----------------------------
-    async function loadTranslation(key) {
-        const res = await fetch(`${API_URL}/translations?key=${encodeURIComponent(key)}`, {
-            headers: {Authorization: `Bearer ${accessToken}`}
-        });
-        return await res.json();
-    }
+    const {
+        translations,
+        loadAllTranslations,
+        languages
+    } = useTranslations(useAuditLog());
 
     // -----------------------------
-    // LOAD ALL CARDS + TRANSLATIONS
+    // LOAD ALL CARDS
     // -----------------------------
     async function load() {
         const res = await fetch(`${API_URL}/feature-cards?all=true`, {
@@ -42,26 +40,17 @@ export default function FeatureCardsPage() {
 
         const data = await res.json();
 
-        // Подгружаем переводы
-        const enriched = await Promise.all(
-            data.map(async card => {
-                const title = await loadTranslation(card.titleKey);
-                const description = await loadTranslation(card.descriptionKey);
-
-                return {
-                    ...card,
-                    titleText: title["ru"] || "",
-                    descriptionText: description["ru"] || ""
-                };
-            })
-        );
-
-        setItems(enriched);
-        setState(enriched);
+        setItems(data);
+        setState(data);
     }
 
     useEffect(() => {
-        if (accessToken) load();
+        if (!accessToken) return;
+
+        (async () => {
+            await loadAllTranslations();
+            await load();
+        })();
     }, [accessToken]);
 
     // -----------------------------
@@ -125,15 +114,19 @@ export default function FeatureCardsPage() {
         },
 
         {
-            key: "titleText",
+            key: "titleKey",
             title: "Заголовок (ru)",
-            width: "250px"
+            width: "250px",
+            render: (_, row) =>
+                translations[row.titleKey]?.ru || ""
         },
 
         {
-            key: "descriptionText",
+            key: "descriptionKey",
             title: "Описание (ru)",
-            width: "350px"
+            width: "350px",
+            render: (_, row) =>
+                translations[row.descriptionKey]?.ru || ""
         },
 
         {
@@ -195,7 +188,7 @@ export default function FeatureCardsPage() {
                         </button>
 
                         <button className="button" onClick={() => setCreating(true)}>
-                            Создать карточку
+                            Создать
                         </button>
                     </div>
                 )}

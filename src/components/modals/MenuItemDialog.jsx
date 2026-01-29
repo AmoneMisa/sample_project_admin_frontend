@@ -1,13 +1,16 @@
 import {useEffect, useState} from "react";
-import {v4 as uuid} from "uuid";
+import Modal from "../layout/Modal";
+import LabeledInput from "../controls/LabeledInput";
+import LabeledSelect from "../controls/LabeledSelect";
 import {useAuth} from "../../hooks/authContext";
 import {useToast} from "../layout/ToastContext";
-import LabeledInput from "../controls/LabeledInput";
-import Modal from "./Modal";
-import MenuItemSimple from "../menuCreateComponents/MenuItemSimple";
-import LabeledSelect from "../controls/LabeledSelect";
-import MenuItemDropdownMega from "../menuCreateComponents/MenuItemDropdownMega";
-import MenuItemDropdown from "../menuCreateComponents/MenuItemDropdown";
+import {useTranslations} from "../../hooks/useTranslations";
+import {useAuditLog} from "../../hooks/useAuditLog";
+import {v4 as uuid} from "uuid";
+
+import MenuItemSimple from "./MenuItemSimple";
+import MenuItemDropdown from "./MenuItemDropdown";
+import MenuItemDropdownMega from "./MenuItemDropdownMega";
 
 // -----------------------------------------------------
 // Collect all translation keys
@@ -15,93 +18,73 @@ import MenuItemDropdown from "../menuCreateComponents/MenuItemDropdown";
 function collectAllKeys(item) {
     const keys = [];
 
-    if (item.labelKey) keys.push(item.labelKey);
+    function walk(node) {
+        if (!node || typeof node !== "object") return;
 
-    if (item.type === "simple") {
-        if (item.badgeKey) keys.push(item.badgeKey);
-    }
+        if (node.labelKey) keys.push(node.labelKey);
+        if (node.titleKey) keys.push(node.titleKey);
+        if (node.showBadge && node.badgeKey) keys.push(node.badgeKey);
 
-    if (item.type === "dropdown-simple") {
-        for (const sub of item.items || []) {
-            if (sub.labelKey) keys.push(sub.labelKey);
-            if (sub.badgeKey) keys.push(sub.badgeKey);
+        if (Array.isArray(node.items)) node.items.forEach(walk);
+        if (Array.isArray(node.columns)) {
+            node.columns.forEach(col => {
+                walk(col);
+                if (Array.isArray(col.items)) col.items.forEach(walk);
+            });
         }
     }
 
-    if (item.type === "dropdown-mega") {
-        for (const col of item.columns || []) {
-            if (col.titleKey) keys.push(col.titleKey);
-            for (const sub of col.items || []) {
-                if (sub.labelKey) keys.push(sub.labelKey);
-                if (sub.badgeKey) keys.push(sub.badgeKey);
-            }
-        }
-    }
-
-    return Array.from(new Set(keys));
+    walk(item);
+    return keys;
 }
 
 // -----------------------------------------------------
-// Collect only visible translation keys
+// Collect only visible keys
 // -----------------------------------------------------
 function collectVisibleKeys(item) {
     const keys = [];
 
-    if (item.visible !== false && item.labelKey) {
-        keys.push(item.labelKey);
-    }
+    function walk(node) {
+        if (!node || typeof node !== "object") return;
 
-    if (item.type === "simple") {
-        if (item.showBadge && item.badgeKey) keys.push(item.badgeKey);
-    }
+        if (node.labelKey) keys.push(node.labelKey);
+        if (node.titleKey) keys.push(node.titleKey);
+        if (node.showBadge && node.badgeKey) keys.push(node.badgeKey);
 
-    if (item.type === "dropdown-simple") {
-        for (const sub of item.items || []) {
-            if (sub.visible !== false && sub.labelKey) {
-                keys.push(sub.labelKey);
-                if (sub.showBadge && sub.badgeKey) keys.push(sub.badgeKey);
-            }
+        if (Array.isArray(node.items)) node.items.forEach(walk);
+        if (Array.isArray(node.columns)) {
+            node.columns.forEach(col => {
+                walk(col);
+                if (Array.isArray(col.items)) col.items.forEach(walk);
+            });
         }
     }
 
-    if (item.type === "dropdown-mega") {
-        for (const col of item.columns || []) {
-            if (col.titleKey) keys.push(col.titleKey);
-
-            for (const sub of col.items || []) {
-                if (sub.visible !== false && sub.labelKey) {
-                    keys.push(sub.labelKey);
-                    if (sub.showBadge && sub.badgeKey) keys.push(sub.badgeKey);
-                }
-            }
-        }
-    }
-
-    return Array.from(new Set(keys));
+    walk(item);
+    return keys;
 }
-// -----------------------------------------------------
-export default function MenuItemDialog({
-                                           title,
-                                           initialItem,
-                                           onSave,
-                                           onClose
-                                       }) {
-    const API_URL = process.env.REACT_APP_API_URL || "/api";
+
+export default function MenuItemDialog({initialItem, onSave, onClose, title}) {
     const {accessToken} = useAuth();
     const {showToast} = useToast();
 
-    const [item, setItem] = useState(() => normalizeInitialItem(initialItem));
-    const [languages, setLanguages] = useState([]);
-    const [translations, setTranslations] = useState({});
+    const {
+        translations,
+        languages,
+        loadAllTranslations,
+        saveValue,
+        deleteKeys
+    } = useTranslations(useAuditLog());
+
+    const [loading, setLoading] = useState(true);
     const [fieldErrors, setFieldErrors] = useState({});
     const [error, setError] = useState("");
-    const [loading, setLoading] = useState(true);
 
     // -----------------------------------------------------
     // Normalize initial item
     // -----------------------------------------------------
-    function normalizeInitialItem(src) {
-        if (!src) {
+    const [item, setItem] = useState(() => {
+        if (!initialItem) {
             const id = uuid();
             return {
                 id,
@@ -114,19 +97,25 @@ export default function MenuItemDialog({
             };
         }
 
-        // Backward compatibility
-        if (!src.labelKey && src.label) {
-            return {
-                ...src,
-                labelKey: src.label
-            };
+        if (!initialItem.labelKey && initialItem.label) {
+            return {...initialItem, labelKey: initialItem.label};
         }
 
-        return {...src};
-    }
+        return structuredClone(initialItem);
+    });
 
     // -----------------------------------------------------
-    // Generic update
+    // Load translations
+    // -----------------------------------------------------
+    useEffect(() => {
+        (async () => {
+            await loadAllTranslations();
+            setLoading(false);
+        })();
+    }, [accessToken]);
+
+    // -----------------------------------------------------
+    // Update helpers
     // -----------------------------------------------------
     function updateItem(updater) {
         setItem(prev => {
@@ -136,64 +125,28 @@ export default function MenuItemDialog({
         });
     }
 
-    function updateTranslation(key, langCode, value) {
-        setTranslations(prev => ({
-            ...prev,
-            [key]: {
-                ...(prev[key] || {}),
-                [langCode]: value
-            }
-        }));
+    function updateTranslation(key, lang, value) {
+        saveValue(key, lang, value);
     }
 
-    // -----------------------------------------------------
-    // Update href
-    // -----------------------------------------------------
     function updateHref(path, value) {
-        setItem(prev => {
-            const next = structuredClone(prev);
+        updateItem(next => {
             let target = next;
             for (const p of path) target = target[p];
             target.href = value;
-            return next;
         });
     }
 
-    // -----------------------------------------------------
-    // Update image (mega)
-    // -----------------------------------------------------
-    function updateImage(field, value) {
-        setItem(prev => {
-            if (prev.type !== "dropdown-mega") return prev;
-            return {
-                ...prev,
-                image: {
-                    ...prev.image,
-                    [field]: value
-                }
-            };
-        });
-    }
-
-    // -----------------------------------------------------
-    // Toggle visible
-    // -----------------------------------------------------
     function toggleVisible(path) {
-        setItem(prev => {
-            const next = structuredClone(prev);
+        updateItem(next => {
             let target = next;
             for (const p of path) target = target[p];
             target.visible = target.visible === false ? true : !target.visible;
-            return next;
         });
     }
 
-    // -----------------------------------------------------
-    // Toggle badge
-    // -----------------------------------------------------
     function toggleBadge(path, type, itemIndex = null, colIndex = null) {
-        setItem(prev => {
-            const next = structuredClone(prev);
+        updateItem(next => {
             let target = next;
             for (const p of path) target = target[p];
 
@@ -209,13 +162,11 @@ export default function MenuItemDialog({
                 }
 
                 target.showBadge = true;
-                return next;
+                return;
             }
 
             target.showBadge = !target.showBadge;
             if (!target.showBadge) target.badgeKey = null;
-
-            return next;
         });
     }
 
@@ -238,9 +189,7 @@ export default function MenuItemDialog({
 
     function removeSimpleItem(i) {
         if (item.type !== "dropdown-simple") return;
-        updateItem(next => {
-            next.items.splice(i, 1);
-        });
+        updateItem(next => next.items.splice(i, 1));
     }
 
     function addColumn() {
@@ -262,9 +211,7 @@ export default function MenuItemDialog({
 
     function removeColumn(c) {
         if (item.type !== "dropdown-mega") return;
-        updateItem(next => {
-            next.columns.splice(c, 1);
-        });
+        updateItem(next => next.columns.splice(c, 1));
     }
 
     function addMegaItem(c) {
@@ -284,8 +231,13 @@ export default function MenuItemDialog({
 
     function removeMegaItem(c, s) {
         if (item.type !== "dropdown-mega") return;
+        updateItem(next => next.columns[c].items.splice(s, 1));
+    }
+
+    function updateImage(field, value) {
         updateItem(next => {
-            next.columns[c].items.splice(s, 1);
+            if (!next.image) next.image = {};
+            next.image[field] = value;
         });
     }
 
@@ -297,7 +249,7 @@ export default function MenuItemDialog({
             const id = current.id;
 
             if (newType === "simple") {
-                return Object.assign(current, {
+                Object.assign(current, {
                     type: "simple",
                     href: current.href || "",
                     labelKey: current.labelKey,
@@ -305,6 +257,10 @@ export default function MenuItemDialog({
                     badgeKey: current.badgeKey || null,
                     showBadge: !!current.showBadge
                 });
+                delete current.items;
+                delete current.columns;
+                delete current.image;
+                return;
             }
 
             if (newType === "dropdown-simple") {
@@ -318,7 +274,9 @@ export default function MenuItemDialog({
                         badgeKey: null,
                         showBadge: false
                     }];
-                return current;
+                delete current.columns;
+                delete current.image;
+                return;
             }
 
             if (newType === "dropdown-mega") {
@@ -339,7 +297,8 @@ export default function MenuItemDialog({
                     src: current.image?.src || "",
                     position: current.image?.position || "right"
                 };
-                return current;
+                delete current.items;
+                return;
             }
         });
     }
@@ -354,10 +313,9 @@ export default function MenuItemDialog({
 
         // translations
         for (const key of visibleKeys) {
-            const langs = translations[key] || {};
             for (const lang of languages) {
-                const v = langs[lang.code];
-                if (!v || v.trim() === "") {
+                const v = translations[key]?.[lang.code];
+                if (!v || !v.trim()) {
                     hasError = true;
                     if (!newErrors[key]) newErrors[key] = {};
                     newErrors[key][lang.code] = "Поле обязательно";
@@ -428,102 +386,32 @@ export default function MenuItemDialog({
     }
 
     // -----------------------------------------------------
-    // Backend sync
+    // Save
     // -----------------------------------------------------
-    async function saveTranslationsToBackend(allKeysBefore, visibleKeysNow) {
-        const itemsPayload = [];
-
-        for (const key of visibleKeysNow) {
-            const langs = translations[key] || {};
-            for (const lang of languages) {
-                itemsPayload.push({
-                    key,
-                    lang: lang.code,
-                    value: langs[lang.code] ?? ""
-                });
-            }
-        }
-
-        await fetch(`${API_URL}/translations`, {
-            method: "PATCH",
-            headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${accessToken}`
-            },
-            body: JSON.stringify({items: itemsPayload})
-        });
-
-        const removedKeys = allKeysBefore.filter(k => !visibleKeysNow.includes(k));
-
-        if (removedKeys.length) {
-            await fetch(`${API_URL}/translations`, {
-                method: "DELETE",
-                headers: {
-                    "Content-Type": "application/json",
-                    Authorization: `Bearer ${accessToken}`
-                },
-                body: JSON.stringify({keys: removedKeys})
-            });
-        }
-    }
-
     async function handleSave() {
-        const allKeysBefore = collectAllKeys(initialItem || {});
-        const visibleKeysNow = collectVisibleKeys(item);
+        const allBefore = collectAllKeys(initialItem || {});
+        const visibleNow = collectVisibleKeys(item);
 
         if (!validate()) return;
 
-        await saveTranslationsToBackend(allKeysBefore, visibleKeysNow);
+        // save translations
+        for (const key of visibleNow) {
+            for (const lang of languages) {
+                const value = translations[key]?.[lang.code] || "";
+                await saveValue(key, lang.code, value);
+            }
+        }
+
+        // delete removed keys
+        const removed = allBefore.filter(k => !visibleNow.includes(k));
+        if (removed.length) {
+            await deleteKeys(removed);
+        }
 
         onSave(item);
         showToast("Пункт меню сохранён");
         onClose();
     }
-
-    // -----------------------------------------------------
-    // Load languages + translations
-    // -----------------------------------------------------
-    async function loadLanguages() {
-        const res = await fetch(`${API_URL}/languages`, {
-            headers: {Authorization: `Bearer ${accessToken}`}
-        });
-        return await res.json();
-    }
-
-    async function loadTranslationsForKeys(keys, langs) {
-        const result = {};
-
-        for (const key of keys) {
-            const res = await fetch(`${API_URL}/translations?key=${encodeURIComponent(key)}`, {
-                headers: {Authorization: `Bearer ${accessToken}`}
-            });
-            const data = await res.json();
-            result[key] = {};
-            langs.forEach(lang => {
-                result[key][lang.code] = data[lang.code] || "";
-            });
-        }
-
-        return result;
-    }
-
-    useEffect(() => {
-        (async () => {
-            try {
-                const langs = await loadLanguages();
-                setLanguages(langs);
-
-                const keys = collectAllKeys(item);
-                const t = await loadTranslationsForKeys(keys, langs);
-                setTranslations(t);
-            } catch {
-                setError("Не удалось загрузить данные");
-            } finally {
-                setLoading(false);
-            }
-        })();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
 
     // -----------------------------------------------------
     // Render translation inputs

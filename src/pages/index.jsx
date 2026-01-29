@@ -13,19 +13,15 @@ import TranslationDialog from "../components/modals/TranslationDialog";
 export default function Index() {
     const API_URL = process.env.REACT_APP_API_URL || "/api";
     const [editingCell, setEditingCell] = useState(null);
-    const [languages, setLanguages] = useState([]);
     const [search, setSearch] = useState("");
     const [sortAsc, setSortAsc] = useState(true);
-    const [, setDirty] = useState(false);
     const [filterStatus, setFilterStatus] = useState("all");
     const [filterErrorLevel, setFilterErrorLevel] = useState("all");
     const [deleteTarget, setDeleteTarget] = useState(null);
     const [historyOpen, setHistoryOpen] = useState(false);
-
     const {accessToken, user} = useAuth();
     const canEdit = user && (user.role === "moderator" || user.role === "admin");
     const {showToast} = useToast();
-
     const {
         translations,
         setTranslations,
@@ -35,218 +31,62 @@ export default function Index() {
         undo,
         canUndo,
         getHistory,
-        markDeleted,
+        markDeleted
     } = useAuditLog();
-
-    // LOAD LANGUAGES + TRANSLATIONS
+    const {languages, loadAllTranslations, saveAll, saveValue, deleteKeys} = useTranslations({
+        translations,
+        setTranslations,
+        meta,
+        setMeta,
+        pushSnapshot,
+        markDeleted
+    });
     useEffect(() => {
-        async function load() {
-            if (!accessToken) return;
+        if (accessToken) loadAllTranslations();
+    }, [accessToken, loadAllTranslations]);
 
-            const languagesRes = await fetch(`${API_URL}/languages/enabled`, {
-                headers: {Authorization: `Bearer ${accessToken}`},
-            });
-            const langs = await languagesRes.json();
-            setLanguages(langs);
-
-            let all = {};
-            for (const lang of langs) {
-                const res = await fetch(`${API_URL}/translations?lang=${lang.code}`, {
-                    headers: {Authorization: `Bearer ${accessToken}`},
-                });
-                const data = await res.json();
-
-                for (const [key, value] of Object.entries(data)) {
-                    if (!all[key]) all[key] = {};
-                    let v = value;
-                    let isList = false;
-
-                    if (typeof v === "string" && v.trim().startsWith("[") && v.trim().endsWith("]")) {
-                        try {
-                            const parsed = JSON.parse(v);
-                            if (Array.isArray(parsed)) {
-                                v = parsed.join("; ");
-                                isList = true;
-                            }
-                        } catch {
-                        }
-                    }
-
-                    all[key][lang.code] = v;
-                    meta[key] = meta[key] || {};
-                    if (isList) meta[key].isList = true;
-                }
-            }
-
-            setTranslations(all);
-        }
-
-        load();
-    }, [accessToken, setTranslations, meta, API_URL]);
-
-    // SAVE ALL
-    const saveAll = useCallback(async () => {
-        if (!accessToken) return;
-
-        const items = [];
-        for (const [key, values] of Object.entries(translations)) {
-            const metaForKey = meta[key] || {};
-            const isList = !!metaForKey.isList;
-
-            for (const lang of languages) {
-                const rawValue = values[lang.code];
-                const payloadValue = isList
-                    ? String(rawValue).split(";").map((s) => s.trim()).filter(Boolean)
-                    : rawValue;
-
-                items.push({key, lang: lang.code, value: payloadValue});
-            }
-        }
-
-        await fetch(`${API_URL}/translations`, {
-            method: "PATCH",
-            headers: {"Content-Type": "application/json", Authorization: `Bearer ${accessToken}`},
-            body: JSON.stringify({items}),
-        });
-
-        showToast("Ключи успешно сохранены");
-        setDirty(false);
-    }, [translations, languages, meta, showToast, accessToken, API_URL]);
-
-    // SAVE SINGLE VALUE
-    async function saveValue(key, lang, newValue) {
-        if (!accessToken) return;
-
-        setDirty(true);
-
-        const prevTranslations = translations;
-        const prevMeta = meta;
-
-        const nextTranslations = {
-            ...prevTranslations,
-            [key]: {
-                ...prevTranslations[key],
-                [lang]: newValue,
-            },
-        };
-
-        const metaForKey = meta[key] || {};
-        const isList = !!metaForKey.isList;
-
-        const payloadValue = isList
-            ? newValue.split(";").map(s => s.trim()).filter(Boolean)
-            : newValue;
-
-        pushSnapshot(
-            nextTranslations,
-            prevMeta,
-            `Изменён ${lang} перевод у ключа '${key}'`
-        );
-
-        setTranslations(nextTranslations);
-        setDirty(false);
-
-        await fetch(`${API_URL}/translations`, {
-            method: "PATCH",
-            headers: {"Content-Type": "application/json", Authorization: `Bearer ${accessToken}`},
-            body: JSON.stringify({key, lang, value: payloadValue}),
-        });
-
-        showToast("Ключ сохранён");
-    }
-
-    // DELETE KEY
     function requestDeleteKey(key) {
         setDeleteTarget(key);
     }
 
     async function confirmDeleteKey() {
-        if (!accessToken) return;
-        const key = deleteTarget;
-        if (!key) return;
-
-        const prevTranslations = translations;
-        const prevMeta = meta;
-
-        const {[key]: removedTranslations, ...rest} = prevTranslations;
-        const {[key]: removedMeta, ...restMeta} = prevMeta;
-
-        markDeleted(key, removedTranslations, removedMeta);
-        pushSnapshot(rest, restMeta, `Удалён ключ '${key}'`);
-
-        setTranslations(rest);
-        setMeta(restMeta);
+        if (!deleteTarget) return;
+        await deleteKeys([deleteTarget]);
         setDeleteTarget(null);
-
-        await fetch(`${API_URL}/translations`, {
-            method: "DELETE",
-            headers: {"Content-Type": "application/json", Authorization: `Bearer ${accessToken}`},
-            body: JSON.stringify({key}),
-        });
-
-        showToast("Ключ успешно удалён");
     }
 
     function cancelDeleteKey() {
         setDeleteTarget(null);
     }
 
-    // ADD KEY (via popup)
     async function handleAddKey(newKey) {
         if (!accessToken) return;
-
-        const prevTranslations = translations;
-        const prevMeta = meta;
-
-        if (prevTranslations[newKey]) return;
-
-        // 1. Создаём ключ на бэке
+        if (translations[newKey]) return;
         await fetch(`${API_URL}/translations`, {
             method: "POST",
             headers: {"Content-Type": "application/json", Authorization: `Bearer ${accessToken}`},
-            body: JSON.stringify({
-                key: newKey,
-                values: Object.fromEntries(languages.map(l => [l.code, ""]))
-            }),
+            body: JSON.stringify({key: newKey, values: Object.fromEntries(languages.map(l => [l.code, ""]))})
         });
-
-        // 2. Обновляем локально
         const emptyRow = {};
         for (const lang of languages) emptyRow[lang.code] = "";
-
-        const nextTranslations = {
-            ...prevTranslations,
-            [newKey]: emptyRow,
-        };
-
-        const nextMeta = {
-            ...prevMeta,
-            [newKey]: {allowEmpty: false},
-        };
-
-        pushSnapshot(nextTranslations, prevMeta, `Добавлен ключ '${newKey}'`);
+        const nextTranslations = {...translations, [newKey]: emptyRow};
+        const nextMeta = {...meta, [newKey]: {allowEmpty: false}};
+        pushSnapshot(nextTranslations, meta, `Добавлен ключ '${newKey}'`);
         setTranslations(nextTranslations);
         setMeta(nextMeta);
-        setDirty(true);
         setSearch(newKey);
+        showToast("Ключ добавлен");
     }
 
-    // FILTER + SORT
     const filtered = Object.entries(translations).filter(([key, values]) => {
         const s = search.toLowerCase();
         if (s && !key.toLowerCase().includes(s)) {
-            const match = Object.values(values).some((v) =>
-                String(v).toLowerCase().includes(s)
-            );
+            const match = Object.values(values).some(v => String(v).toLowerCase().includes(s));
             if (!match) return false;
         }
         return true;
     });
-
-    const sorted = [...filtered].sort(([a], [b]) =>
-        sortAsc ? a.localeCompare(b) : b.localeCompare(a)
-    );
-
+    const sorted = [...filtered].sort(([a], [b]) => sortAsc ? a.localeCompare(b) : b.localeCompare(a));
     // RENDER
     return (
         <div className="page" style={{padding: 24}}>
@@ -429,9 +269,8 @@ export default function Index() {
                     existingKeys={Object.keys(translations)}
                     onClose={() => setEditingCell(null)}
                     onSave={async (key, values) => {
-                        // если ключ новый — создаём
                         if (!translations[key]) {
-                            handleAddKey(key);
+                            await handleAddKey(key);
                         }
 
                         // сохраняем все языки

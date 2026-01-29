@@ -1,219 +1,116 @@
-import {useEffect, useState} from "react";
-import {useAuth} from "../hooks/authContext";
-import {useToast} from "../components/layout/ToastContext";
+import {useState, useEffect} from "react";
+import {useAuditLog} from "../hooks/useAuditLog";
+import {useTranslations} from "../hooks/useTranslations";
+import PhoneInput from "react-phone-number-input";
 import LabeledInput from "../components/controls/LabeledInput";
 import Checkbox from "../components/controls/Checkbox";
 import MultilangInput from "../components/controls/MultilangInput";
-import PhoneInput from "react-phone-number-input";
-import "react-phone-number-input/style.css";
-import {isValidPhoneNumber} from "libphonenumber-js";
+import {FiSave, FiTrash} from "react-icons/fi";
+import {useAuth} from "../hooks/authContext";
+import {useToast} from "../components/layout/ToastContext";
+
 
 export default function ContactsPage() {
     const API_URL = process.env.REACT_APP_API_URL || "/api";
     const {accessToken} = useAuth();
     const {showToast} = useToast();
-
     const [contacts, setContacts] = useState([]);
-    const [languages, setLanguages] = useState([]);
-    const [translations, setTranslations] = useState({});
     const [errors, setErrors] = useState({});
-    const [expanded, setExpanded] = useState(null);
     const [loading, setLoading] = useState(true);
     const [geoCountry, setGeoCountry] = useState("RO");
+    const FIXED_SOCIALS = ["facebook", "instagram", "telegram", "whatsapp", "linkedin", "youtube", "pinterest", "github", "headhunter"];
+    const {translations, setTranslations, meta, setMeta, pushSnapshot, markDeleted} = useAuditLog();
+    const {languages, loadAllTranslations, saveValue, deleteKeys} = useTranslations({
+        translations,
+        setTranslations,
+        meta,
+        setMeta,
+        pushSnapshot,
+        markDeleted
+    });
 
-    const FIXED_SOCIALS = [
-        "facebook",
-        "instagram",
-        "telegram",
-        "whatsapp",
-        "linkedin",
-        "youtube",
-    ];
-
-    // -----------------------------
-    // HELPERS
-    // -----------------------------
     function createContact(type) {
         const id = `${type}-${Date.now()}`;
-        return {
-            id,
-            type,
-            value: "",
-            isVisible: true,
-            labelKey: `contacts.${type}.${id}.label`,
-        };
+        return {id, type, value: "", isVisible: true, labelKey: `contacts.${type}.${id}.label`};
     }
 
     function createDefaultContacts() {
         const defaults = [];
-
         defaults.push(createContact("phone"));
         defaults.push(createContact("email"));
         defaults.push(createContact("address"));
-
         FIXED_SOCIALS.forEach(s => {
             defaults.push({
                 id: `social-${s}`,
                 type: `social.${s}`,
                 value: "",
                 isVisible: true,
-                labelKey: `contacts.social.${s}.label`,
+                labelKey: `contacts.social.${s}.label`
             });
         });
-
         defaults.push({
             id: "copyright",
             type: "copyright",
             value: "",
             isVisible: true,
-            labelKey: "contacts.copyright.label",
+            labelKey: "contacts.copyright.label"
         });
-
         return defaults;
     }
 
-    function isAddressValid(str) {
-        return str.trim().length > 5 && /[a-zA-Zа-яА-Я]/.test(str);
-    }
-
-    function getGoogleMapsUrl(address) {
-        return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
-            address,
-        )}`;
-    }
-
-    // -----------------------------
-    // LOADERS
-    // -----------------------------
-    async function loadLanguages() {
-        const res = await fetch(`${API_URL}/languages`, {
-            headers: {Authorization: `Bearer ${accessToken}`},
-        });
-        return await res.json();
-    }
-
     async function loadContacts() {
-        const res = await fetch(`${API_URL}/contacts?all=true`, {
-            headers: {Authorization: `Bearer ${accessToken}`},
-        });
+        const res = await fetch(`${API_URL}/contacts?all=true`, {headers: {Authorization: `Bearer ${accessToken}`}});
         return await res.json();
     }
 
-    async function loadContactTranslations(contact, langs) {
-        const labelKey = contact.labelKey;
-        const valueKey = `contacts.${contact.id}.value`;
-
-        async function loadKey(key) {
-            const res = await fetch(
-                `${API_URL}/translations?key=${encodeURIComponent(key)}`,
-                {
-                    headers: {Authorization: `Bearer ${accessToken}`},
-                },
-            );
-            const data = await res.json();
-
-            const map = {};
-            langs.forEach(lang => {
-                map[lang] = data[lang] || "";
-            });
-            return map;
-        }
-
-        const labelTranslations = await loadKey(labelKey);
-        const valueTranslations = await loadKey(valueKey);
-
-        setTranslations(prev => ({
-            ...prev,
-            [contact.id]: {
-                label: labelTranslations,
-                value: valueTranslations,
-            },
-        }));
-    }
-
-    // -----------------------------
-    // INITIAL LOAD
-    // -----------------------------
     useEffect(() => {
         if (!accessToken) return;
-
         (async () => {
             setLoading(true);
-
             try {
                 const geoRes = await fetch("https://ipapi.co/json/");
                 const geo = await geoRes.json();
                 if (geo?.country_code) setGeoCountry(geo.country_code);
-            } catch(e) {
-                console.error("https://ipapi.co/json/ error:", e);
+            } catch {
             }
-
-            const langs = await loadLanguages();
-            setLanguages(langs);
-
+            await loadAllTranslations();
             let loaded = await loadContacts();
-            if (loaded.length === 0) {
-                loaded = createDefaultContacts();
-            }
-
+            if (loaded.length === 0) loaded = createDefaultContacts();
             setContacts(loaded);
-
+            const next = {};
             for (const c of loaded) {
-                await loadContactTranslations(c, langs);
+                next[c.id] = {
+                    label: Object.fromEntries(languages.map(l => [l.code, ""])),
+                    value: Object.fromEntries(languages.map(l => [l.code, ""]))
+                };
             }
-
+            setTranslations(prev => ({...next, ...prev}));
             setLoading(false);
         })();
-    }, [accessToken]);
+    }, [accessToken, loadAllTranslations, languages, setTranslations]);
 
-    // -----------------------------
-    // ADD CONTACT
-    // -----------------------------
     function addContact(type) {
         const newC = createContact(type);
-
         setContacts(prev => [...prev, newC]);
-
-        setTranslations(prev => ({
-            ...prev,
-            [newC.id]: {
-                label: Object.fromEntries(languages.map(l => [l, ""])),
-                value: Object.fromEntries(languages.map(l => [l, ""])),
-            },
-        }));
+        const empty = {
+            label: Object.fromEntries(languages.map(l => [l.code, ""])),
+            value: Object.fromEntries(languages.map(l => [l.code, ""]))
+        };
+        setTranslations(prev => ({...prev, [newC.id]: empty}));
     }
 
-    // -----------------------------
-    // SAVE CONTACT
-    // -----------------------------
     async function saveContact(contact) {
-        const isTemp =
-            contact.id.startsWith("phone-") ||
-            contact.id.startsWith("email-") ||
-            contact.id.startsWith("address-");
-
+        const isTemp = contact.id.startsWith("phone-") || contact.id.startsWith("email-") || contact.id.startsWith("address-");
         const method = isTemp ? "POST" : "PATCH";
-        const url =
-            method === "POST"
-                ? `${API_URL}/contacts`
-                : `${API_URL}/contacts/${contact.id}`;
-
+        const url = method === "POST" ? `${API_URL}/contacts` : `${API_URL}/contacts/${contact.id}`;
         const res = await fetch(url, {
             method,
-            headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${accessToken}`,
-            },
-            body: JSON.stringify(contact),
+            headers: {"Content-Type": "application/json", Authorization: `Bearer ${accessToken}`},
+            body: JSON.stringify(contact)
         });
-
         const data = await res.json();
-
         if (isTemp && data.id) {
-            setContacts(prev =>
-                prev.map(c => (c.id === contact.id ? {...data} : c)),
-            );
-
+            setContacts(prev => prev.map(c => (c.id === contact.id ? {...data} : c)));
             setTranslations(prev => {
                 const t = prev[contact.id];
                 const next = {...prev};
@@ -224,272 +121,120 @@ export default function ContactsPage() {
         }
     }
 
-    async function saveTranslationsForContact(contact) {
-        const t = translations[contact.id];
-
-        await fetch(`${API_URL}/translations`, {
-            method: "PATCH",
-            headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${accessToken}`,
-            },
-            body: JSON.stringify({
-                key: contact.labelKey,
-                translations: t.label,
-            }),
-        });
-
-        await fetch(`${API_URL}/translations`, {
-            method: "PATCH",
-            headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${accessToken}`,
-            },
-            body: JSON.stringify({
-                key: `contacts.${contact.id}.value`,
-                translations: t.value,
-            }),
-        });
-    }
-
-    // -----------------------------
-    // VALIDATION
-    // -----------------------------
-    function validate(contact) {
-        const e = {};
-
-        if (contact.type === "phone") {
-            if (!contact.value || !isValidPhoneNumber(contact.value)) {
-                e.value = "Некорректный номер телефона";
-            }
-        }
-
-        if (contact.type === "email") {
-            if (
-                !contact.value ||
-                !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contact.value)
-            ) {
-                e.value = "Некорректный email";
-            }
-        }
-
-        if (contact.type === "address") {
-            if (!isAddressValid(contact.value)) {
-                e.value = "Некорректный адрес";
-            }
-        }
-
-        const t = translations[contact.id];
-        if (t) {
-            const tErrors = {label: {}, value: {}};
-            let hasTErrors = false;
-
-            languages.forEach(lang => {
-                if (!t.label[lang]?.trim()) {
-                    tErrors.label[lang] = "Обязательное поле";
-                    hasTErrors = true;
-                }
-                if (!t.value[lang]?.trim()) {
-                    tErrors.value[lang] = "Обязательное поле";
-                    hasTErrors = true;
-                }
-            });
-
-            if (hasTErrors) {
-                e.translations = tErrors;
-            }
-        }
-
-        setErrors(prev => ({...prev, [contact.id]: e}));
-
-        return Object.keys(e).length === 0;
-    }
-
     async function saveAll(contact) {
-        if (!validate(contact)) {
-            showToast("Исправьте ошибки перед сохранением");
-            return;
+        const t = translations[contact.id];
+        for (const [lang, value] of Object.entries(t.label)) {
+            await saveValue(contact.labelKey, lang, value);
         }
-
+        for (const [lang, value] of Object.entries(t.value)) {
+            await saveValue(`contacts.${contact.id}.value`, lang, value);
+        }
         await saveContact(contact);
-        await saveTranslationsForContact(contact);
-
         showToast("Контакт сохранён");
     }
 
-    // -----------------------------
-    // RENDER
-    // -----------------------------
-    if (loading) {
-        return (
-            <div className="contacts-page">
-                <h2>Загрузка…</h2>
-            </div>
-        );
+    function requestDelete(contact) {
+        deleteKeys([contact.labelKey, `contacts.${contact.id}.value`]);
+        setContacts(prev => prev.filter(c => c.id !== contact.id));
+        showToast("Контакт удалён");
     }
 
+    const grouped = {
+        phone: contacts.filter(c => c.type === "phone"),
+        email: contacts.filter(c => c.type === "email"),
+        address: contacts.filter(c => c.type === "address"),
+        social: contacts.filter(c => c.type.startsWith("social.")),
+        other: contacts.filter(c => !["phone", "email", "address"].includes(c.type) && !c.type.startsWith("social."))
+    };
+    if (loading) return null;
+
     return (
-        <div className="page" style={{padding: 24}}>
-            <div className="page__header">
-                <div className="page__header-row">
-                    <h1>Контакты</h1>
-
-                    <div style={{display: "flex", gap: 8}}>
-                        <button className="button" onClick={() => addContact("phone")}>
-                            Добавить телефон
-                        </button>
-                        <button className="button" onClick={() => addContact("email")}>
-                            Добавить email
-                        </button>
-                        <button className="button" onClick={() => addContact("address")}>
-                            Добавить адрес
-                        </button>
-                    </div>
-                </div>
+        <div className="page" style={{padding: 24}}><h1>Контакты</h1>
+            <div style={{display: "flex", gap: 8, marginBottom: 24}}>
+                <button className="button" onClick={() => addContact("phone")}>Добавить телефон</button>
+                <button className="button" onClick={() => addContact("email")}>Добавить email</button>
+                <button className="button" onClick={() => addContact("address")}>Добавить адрес</button>
             </div>
-
-            <div className="contacts-list">
-                {contacts.map(contact => {
-                    const cErrors = errors[contact.id] || {};
-                    const tErrors = cErrors.translations || {label: {}, value: {}};
-                    const t = translations[contact.id] || {label: {}, value: {}};
-                    const isPhone = contact.type === "phone";
-                    const isAddress = contact.type === "address";
-
-                    return (
-                        <div key={contact.id} className="contact-item">
-                            <div
-                                className="contact-header"
-                                onClick={() =>
-                                    setExpanded(expanded === contact.id ? null : contact.id)
-                                }
-                            >
-                                <strong>{contact.type}</strong>
-                                <span>{contact.value}</span>
-                            </div>
-
-                            {expanded === contact.id && (
-                                <div className="contact-body">
-                                    <div className="field">
-                                        <div className="field-holder" style={{flex: 1}}>
-                                            {isPhone ? (
-                                                <>
-                                                    <label className="field-holder__label">
-                                                        Телефон
-                                                    </label>
-                                                    <PhoneInput
-                                                        className={
-                                                            "contact-item__phone" +
-                                                            (cErrors.value
-                                                                ? " field-holder__input_error"
-                                                                : "")
-                                                        }
-                                                        defaultCountry={geoCountry}
-                                                        international
-                                                        withCountryCallingCode
-                                                        value={contact.value}
-                                                        onChange={v => {
-                                                            contact.value = v || "";
-                                                            setContacts([...contacts]);
-                                                        }}
-                                                    />
-                                                    {cErrors.value && (
-                                                        <div className="field-holder__error">
-                                                            {cErrors.value}
-                                                        </div>
-                                                    )}
-                                                </>
-                                            ) : (
-                                                <LabeledInput
-                                                    label={
-                                                        contact.type === "email"
-                                                            ? "Email"
-                                                            : contact.type === "address"
-                                                                ? "Адрес"
-                                                                : "Значение"
-                                                    }
-                                                    value={contact.value}
-                                                    error={cErrors.value}
-                                                    onChange={v => {
-                                                        contact.value = v;
-                                                        setContacts([...contacts]);
-                                                    }}
-                                                />
-                                            )}
-                                        </div>
-
-                                        <Checkbox
-                                            label="Отображать"
-                                            checked={contact.isVisible}
-                                            onChange={() => {
-                                                contact.isVisible = !contact.isVisible;
-                                                setContacts([...contacts]);
-                                            }}
+            {Object.entries(grouped).map(([groupName, list]) => (
+                    <div key={groupName} style={{marginBottom: 32}}>
+                        <h2
+                            style={{marginBottom: 16}}> {groupName === "phone" && "Телефоны"}
+                            {groupName === "email" && "Email"}
+                            {groupName === "address" && "Адреса"}
+                            {groupName === "social" && "Соцсети"}
+                            {groupName === "other" && "Прочее"}
+                        </h2>
+                        <div style={{display: "flex", flexWrap: "wrap", gap: 16}}> {list.map(contact => {
+                                const t = translations[contact.id] || {label: {}, value: {}};
+                                return (<div key={contact.id} style={{
+                                        flex: "1 1 calc(33.333% - 16px)",
+                                        minWidth: 280,
+                                        border: "1px solid #ddd",
+                                        borderRadius: 8,
+                                        padding: 16
+                                    }}> {contact.type === "phone" ? (
+                                        <> <PhoneInput defaultCountry={geoCountry} international
+                                                       withCountryCallingCode value={contact.value}
+                                                       onChange={v => {
+                                                           contact.value = v || "";
+                                                           setContacts([...contacts]);
+                                                       }}/> {errors[contact.id]?.value && (
+                                            <div className="field-holder__error"> {errors[contact.id].value} </div>)} </>) : (
+                                        <LabeledInput label="Значение" value={contact.value} error={errors[contact.id]?.value}
+                                                      onChange={v => {
+                                                          contact.value = v;
+                                                          setContacts([...contacts]);
+                                                      }}
                                         />
-                                    </div>
-
-                                    {isAddress && contact.value && (
-                                        <div className="field-holder">
-                                            <a
-                                                href={getGoogleMapsUrl(contact.value)}
-                                                target="_blank"
-                                                rel="noreferrer"
-                                            >
-                                                Открыть в Google Maps
-                                            </a>
-                                        </div>
                                     )}
-
-                                    <div className="field" style={{alignItems: "flex-start"}}>
-                                        <MultilangInput
-                                            label="Label"
-                                            languages={languages}
-                                            valueMap={t.label}
-                                            errors={tErrors.label || {}}
-                                            onChange={next =>
-                                                setTranslations(prev => ({
-                                                    ...prev,
-                                                    [contact.id]: {
-                                                        ...prev[contact.id],
-                                                        label: next,
-                                                    },
-                                                }))
-                                            }
-                                            className="contact-item__multilang"
+                                        <Checkbox label="Отображать" checked={contact.isVisible}
+                                                  onChange={() => {
+                                                      contact.isVisible = !contact.isVisible;
+                                                      setContacts([...contacts]);
+                                                  }}
                                         />
-
-                                        <MultilangInput
-                                            label="Value"
-                                            languages={languages}
-                                            valueMap={t.value}
-                                            errors={tErrors.value || {}}
-                                            onChange={next =>
-                                                setTranslations(prev => ({
-                                                    ...prev,
-                                                    [contact.id]: {
-                                                        ...prev[contact.id],
-                                                        value: next,
-                                                    },
-                                                }))
-                                            }
-                                            className="contact-item__multilang"
+                                        <MultilangInput label="Label"
+                                                        languages={languages.map(l => l.code)}
+                                                        valueMap={t.label}
+                                                        errors={errors[contact.id]?.translations?.label}
+                                                        onChange={next => setTranslations(prev => ({
+                                                                ...prev,
+                                                                [contact.id]: {
+                                                                    ...prev[contact.id],
+                                                                    label: next
+                                                                }
+                                                            })
+                                                        )}
                                         />
+                                        <MultilangInput label="Value"
+                                                        languages={languages.map(l => l.code)}
+                                                        valueMap={t.value}
+                                                        errors={errors[contact.id]?.translations?.value}
+                                                        onChange={next => setTranslations(prev => ({
+                                                                ...prev,
+                                                                [contact.id]: {
+                                                                    ...prev[contact.id],
+                                                                    value: next
+                                                                }
+                                                            })
+                                                        )}
+                                        />
+                                        <div style={{display: "flex", justifyContent: "flex-end", gap: 8}}>
+                                            <button className="button button_icon" onClick={() => saveAll(contact)}>
+                                                <FiSave size={16}/>
+                                            </button>
+                                            <button className="button button_icon" onClick={() => requestDelete(contact)}>
+                                                <FiTrash size={16}/>
+                                            </button>
+                                        </div>
                                     </div>
-
-                                    <div className="field" style={{justifyContent: "flex-end"}}>
-                                        <button
-                                            className="button"
-                                            onClick={() => saveAll(contact)}
-                                        >
-                                            Сохранить
-                                        </button>
-                                    </div>
-                                </div>
-                            )}
+                                );
+                            }
+                        )}
                         </div>
-                    );
-                })}
-            </div>
+                    </div>
+                )
+            )}
         </div>
     );
 }

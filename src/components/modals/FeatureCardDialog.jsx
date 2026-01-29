@@ -28,7 +28,7 @@ export default function FeatureCardDialog({initial, mode, onClose}) {
     const [loading, setLoading] = useState(true);
 
     function updateField(key, value) {
-        setForm({...form, [key]: value});
+        setForm(prev => ({...prev, [key]: value}));
     }
 
     // -----------------------------
@@ -102,16 +102,22 @@ export default function FeatureCardDialog({initial, mode, onClose}) {
     }
 
     // -----------------------------
-    // SAVE TRANSLATIONS
+    // SAVE TRANSLATIONS (правильный формат!)
     // -----------------------------
     async function saveTranslations(key, translations) {
+        const items = Object.entries(translations).map(([lang, value]) => ({
+            key,
+            lang,
+            value
+        }));
+
         await fetch(`${API_URL}/translations`, {
             method: "PATCH",
             headers: {
                 "Content-Type": "application/json",
                 Authorization: `Bearer ${accessToken}`
             },
-            body: JSON.stringify({key, translations})
+            body: JSON.stringify({items})
         });
     }
 
@@ -124,8 +130,8 @@ export default function FeatureCardDialog({initial, mode, onClose}) {
                 method: "PATCH",
                 headers: {
                     "Content-Type": "application/json",
-                    Authorization: `Bearer ${accessToken}`}
-                ,
+                    Authorization: `Bearer ${accessToken}`
+                },
                 body: JSON.stringify(form)
             });
             return form.id;
@@ -135,8 +141,8 @@ export default function FeatureCardDialog({initial, mode, onClose}) {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
-                Authorization: `Bearer ${accessToken}`}
-            ,
+                Authorization: `Bearer ${accessToken}`
+            },
             body: JSON.stringify(form)
         });
 
@@ -165,8 +171,8 @@ export default function FeatureCardDialog({initial, mode, onClose}) {
             method: "PATCH",
             headers: {
                 "Content-Type": "application/json",
-                Authorization: `Bearer ${accessToken}`}
-            ,
+                Authorization: `Bearer ${accessToken}`
+            },
             body: JSON.stringify({
                 titleKey: finalTitleKey,
                 descriptionKey: finalDescriptionKey
@@ -183,53 +189,51 @@ export default function FeatureCardDialog({initial, mode, onClose}) {
     if (loading) {
         return (
             <Modal open={true} onClose={onClose}>
-                <div className="dialog__window">
-                    <h2>Загрузка…</h2>
-                </div>
+                <h2 className="modal__header gradient-text">Загрузка…</h2>
             </Modal>
         );
     }
 
     return (
         <Modal open={true} onClose={onClose}>
-            <div className="dialog__window">
-                <h2>{mode === "edit" ? "Редактировать карточку" : "Создать карточку"}</h2>
+            <h2 className="modal__header gradient-text">
+                {mode === "edit" ? "Редактировать карточку" : "Создать карточку"}
+            </h2>
 
+            <LabeledInput
+                label="URL изображения"
+                value={form.image}
+                error={errors.image}
+                onChange={(v) => updateField("image", v)}
+            />
+
+            {languages.map(lang => (
                 <LabeledInput
-                    label="URL изображения"
-                    value={form.image}
-                    error={errors.image}
-                    onChange={(v) => updateField("image", v)}
+                    key={lang.code}
+                    label={`Заголовок (${lang.code})`}
+                    value={titleTranslations[lang.code]}
+                    error={errors.titleTranslations?.[lang.code]}
+                    onChange={(v) =>
+                        setTitleTranslations({...titleTranslations, [lang.code]: v})
+                    }
                 />
+            ))}
 
-                {languages.map(lang => (
-                    <LabeledInput
-                        key={lang.code}
-                        label={`Заголовок (${lang.code})`}
-                        value={titleTranslations[lang.code]}
-                        error={errors.titleTranslations?.[lang.code]}
-                        onChange={(v) =>
-                            setTitleTranslations({...titleTranslations, [lang.code]: v})
-                        }
-                    />
-                ))}
+            {languages.map(lang => (
+                <LabeledInput
+                    key={lang.code}
+                    label={`Описание (${lang.code})`}
+                    value={descriptionTranslations[lang.code]}
+                    error={errors.descriptionTranslations?.[lang.code]}
+                    onChange={(v) =>
+                        setDescriptionTranslations({...descriptionTranslations, [lang.code]: v})
+                    }
+                />
+            ))}
 
-                {languages.map(lang => (
-                    <LabeledInput
-                        key={lang.code}
-                        label={`Описание (${lang.code})`}
-                        value={descriptionTranslations[lang.code]}
-                        error={errors.descriptionTranslations?.[lang.code]}
-                        onChange={(v) =>
-                            setDescriptionTranslations({...descriptionTranslations, [lang.code]: v})
-                        }
-                    />
-                ))}
-
-                <div className="dialog__actions">
-                    <button className="button" onClick={save}>Сохранить</button>
-                    <button className="button button_border" onClick={onClose}>Отмена</button>
-                </div>
+            <div className="modal__actions">
+                <button className="button" onClick={save}>Сохранить</button>
+                <button className="button button_border" onClick={onClose}>Отмена</button>
             </div>
         </Modal>
     );

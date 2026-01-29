@@ -3,6 +3,9 @@ import Modal from "./Modal";
 import LabeledInput from "../controls/LabeledInput";
 import {useAuth} from "../../hooks/authContext";
 import {useToast} from "../layout/ToastContext";
+import {useAuditLog} from "../../hooks/useAuditLog";
+import {useTranslations} from "../../hooks/useTranslations";
+import {FiSave, FiTrash} from "react-icons/fi";
 
 export default function FooterMenuItemDialog({initial, index, mode, blockId, onClose}) {
     const API_URL = process.env.REACT_APP_API_URL || "/api";
@@ -15,66 +18,60 @@ export default function FooterMenuItemDialog({initial, index, mode, blockId, onC
             labelKey: `footer.menu.${index}.label`,
             href: "",
             order: index,
-            isVisible: true,
+            isVisible: true
         }
     );
 
-    const [languages, setLanguages] = useState([]);
-    const [labelTranslations, setLabelTranslations] = useState({});
     const [errors, setErrors] = useState({});
     const [loading, setLoading] = useState(true);
+
+    const {
+        translations,
+        setTranslations,
+        meta,
+        setMeta,
+        pushSnapshot,
+        markDeleted
+    } = useAuditLog();
+
+    const {
+        languages,
+        loadAllTranslations,
+        saveValue
+    } = useTranslations({
+        translations,
+        setTranslations,
+        meta,
+        setMeta,
+        pushSnapshot,
+        markDeleted
+    });
+
+    useEffect(() => {
+        if (!accessToken) return;
+        (async () => {
+            await loadAllTranslations();
+            setLoading(false);
+        })();
+    }, [accessToken, loadAllTranslations]);
 
     function updateField(key, value) {
         setForm({...form, [key]: value});
     }
 
-    async function loadLanguages() {
-        const res = await fetch(`${API_URL}/languages`, {
-            headers: {Authorization: `Bearer ${accessToken}`}
-        });
-        return await res.json();
-    }
-
-    async function loadTranslations(key, langs) {
-        const res = await fetch(`${API_URL}/translations?key=${encodeURIComponent(key)}`, {
-            headers: {Authorization: `Bearer ${accessToken}`}
-        });
-        const data = await res.json();
-
-        const map = {};
-        langs.forEach(lang => map[lang] = data[lang] || "");
-        setLabelTranslations(map);
-    }
-
-    useEffect(() => {
-        (async () => {
-            const langs = await loadLanguages();
-            setLanguages(langs);
-
-            await loadTranslations(form.labelKey, langs);
-
-            setLoading(false);
-        })();
-    }, []);
-
-    // -----------------------------
-    // VALIDATION
-    // -----------------------------
     function validate() {
         const e = {};
 
-        if (!form.href.trim()) {
-            e.href = "Обязательное поле";
-        }
+        if (!form.href.trim()) e.href = "Обязательное поле";
+        if (form.order < 0 || form.order === "" || isNaN(form.order)) e.order = "Введите число ≥ 0";
 
-        if (form.order < 0 || form.order === "" || isNaN(form.order)) {
-            e.order = "Введите число ≥ 0";
-        }
+        const t = translations[form.labelKey] || {};
+        const labelMap = t || {};
 
         languages.forEach(lang => {
-            if (!labelTranslations[lang]?.trim()) {
+            if (!labelMap[lang.code]?.trim()) {
                 if (!e.labelTranslations) e.labelTranslations = {};
-                e.labelTranslations[lang] = "Обязательное поле";
+                e.labelTranslations[lang.code] = "Обязательное поле";
             }
         });
 
@@ -82,23 +79,8 @@ export default function FooterMenuItemDialog({initial, index, mode, blockId, onC
         return Object.keys(e).length === 0;
     }
 
-    async function saveTranslations() {
-        await fetch(`${API_URL}/translations`, {
-            method: "PATCH",
-            headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${accessToken}`
-            },
-            body: JSON.stringify({
-                key: form.labelKey,
-                translations: labelTranslations
-            })
-        });
-    }
-
     async function saveItem() {
         if (mode === "edit") {
-            // PATCH /footer/items/{id}
             await fetch(`${API_URL}/footer/items/${form.id}`, {
                 method: "PATCH",
                 headers: {
@@ -108,7 +90,6 @@ export default function FooterMenuItemDialog({initial, index, mode, blockId, onC
                 body: JSON.stringify(form)
             });
         } else {
-            // POST /footer/{blockId}/items
             await fetch(`${API_URL}/footer/${blockId}/items`, {
                 method: "POST",
                 headers: {
@@ -123,8 +104,14 @@ export default function FooterMenuItemDialog({initial, index, mode, blockId, onC
     async function save() {
         if (!validate()) return;
 
+        const t = translations[form.labelKey] || {};
+
+        for (const lang of languages) {
+            const value = t[lang.code] || "";
+            await saveValue(form.labelKey, lang.code, value);
+        }
+
         await saveItem();
-        await saveTranslations();
 
         showToast("Пункт меню сохранён");
         onClose();
@@ -133,51 +120,57 @@ export default function FooterMenuItemDialog({initial, index, mode, blockId, onC
     if (loading) {
         return (
             <Modal open={true} onClose={onClose}>
-                <div className="dialog__window">
-                    <h2>Загрузка…</h2>
-                </div>
+                <h2 className="modal__header">Загрузка…</h2>
             </Modal>
         );
     }
 
+    const t = translations[form.labelKey] || {};
+
     return (
         <Modal open={true} onClose={onClose}>
-            <div className="dialog__window">
-                <h2>{mode === "edit" ? "Редактировать пункт" : "Создать пункт"}</h2>
+            <h2 className="modal__header">
+                {mode === "edit" ? "Редактировать пункт" : "Создать пункт"}
+            </h2>
 
-                <LabeledInput label="Ключ" value={form.labelKey} disabled />
+            <LabeledInput label="Ключ" value={form.labelKey} disabled />
 
-                {languages.map(lang => (
-                    <LabeledInput
-                        key={lang}
-                        label={`Label (${lang})`}
-                        value={labelTranslations[lang]}
-                        error={errors.labelTranslations?.[lang]}
-                        onChange={(v) =>
-                            setLabelTranslations({...labelTranslations, [lang]: v})
-                        }
-                    />
-                ))}
-
+            {languages.map(lang => (
                 <LabeledInput
-                    label="Ссылка"
-                    value={form.href}
-                    error={errors.href}
-                    onChange={(v) => updateField("href", v)}
+                    key={lang.code}
+                    label={`Label (${lang.code})`}
+                    value={t[lang.code] || ""}
+                    error={errors.labelTranslations?.[lang.code]}
+                    onChange={v =>
+                        setTranslations(prev => ({
+                            ...prev,
+                            [form.labelKey]: {
+                                ...(prev[form.labelKey] || {}),
+                                [lang.code]: v
+                            }
+                        }))
+                    }
                 />
+            ))}
 
-                <LabeledInput
-                    label="Порядок"
-                    type="number"
-                    value={form.order}
-                    error={errors.order}
-                    onChange={(v) => updateField("order", Number(v))}
-                />
+            <LabeledInput
+                label="Ссылка"
+                value={form.href}
+                error={errors.href}
+                onChange={v => updateField("href", v)}
+            />
 
-                <div className="dialog__actions">
-                    <button className="button" onClick={save}>Сохранить</button>
-                    <button className="button button_border" onClick={onClose}>Отмена</button>
-                </div>
+            <LabeledInput
+                label="Порядок"
+                type="number"
+                value={form.order}
+                error={errors.order}
+                onChange={v => updateField("order", Number(v))}
+            />
+
+            <div className="modal__actions">
+                <button className="button button_icon" onClick={save}><FiSave size={16} /> </button>
+                <button className="button button_icon" onClick={onClose}><FiTrash size={16} /></button>
             </div>
         </Modal>
     );

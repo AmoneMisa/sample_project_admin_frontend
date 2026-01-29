@@ -12,7 +12,7 @@ import PrivateRoute from "./components/layout/PrivateRoute";
 import AdminPage from "./pages/adminPage";
 import FeatureCardsPage from "./pages/featureCardsPage";
 import ContactsPage from "./pages/contactsPage";
-import MenuPage from "./pages/menuPage";
+import FooterMenuPage from "./pages/footerMenuPage";
 import FooterPage from "./pages/footerPage";
 
 export default function App() {
@@ -37,7 +37,7 @@ export default function App() {
                             <Route path="header-menu" element={<HeaderMenu/>}/>
                             <Route path="footer" element={<FooterPage/>}/>
                             <Route path="contacts" element={<ContactsPage/>}/>
-                            <Route path="menu" element={<MenuPage/>}/>
+                            <Route path="menu" element={<FooterMenuPage/>}/>
                             <Route path="feature-cards" element={<FeatureCardsPage/>}/>
                             <Route
                                 path="admin"

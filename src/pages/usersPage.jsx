@@ -1,8 +1,8 @@
 import {useEffect, useState} from "react";
-import LabeledInput from "../components/LabeledInput";
-import LabeledSelect from "../components/LabeledSelect";
+import LabeledInput from "../components/controls/LabeledInput";
+import LabeledSelect from "../components/controls/LabeledSelect";
 import {useAuth} from "../hooks/authContext";
-import CustomTable from "../components/CustomTable";
+import CustomTable from "../components/customElems/CustomTable";
 
 export default function UsersPage() {
     const API_URL = process.env.REACT_APP_API_URL || "/api";

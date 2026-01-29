@@ -1,9 +1,9 @@
 import {useEffect, useState} from "react";
 import {useAuth} from "../hooks/authContext";
-import {useToast} from "../components/ToastContext";
-import LabeledInput from "../components/LabeledInput";
-import Checkbox from "../components/Checkbox";
-import MultilangInput from "../components/MultilangInput";
+import {useToast} from "../components/layout/ToastContext";
+import LabeledInput from "../components/controls/LabeledInput";
+import Checkbox from "../components/controls/Checkbox";
+import MultilangInput from "../components/controls/MultilangInput";
 import PhoneInput from "react-phone-number-input";
 import "react-phone-number-input/style.css";
 import {isValidPhoneNumber} from "libphonenumber-js";

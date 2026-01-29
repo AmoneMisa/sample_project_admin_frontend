@@ -3,19 +3,20 @@ import Modal from "./Modal";
 import LabeledInput from "./LabeledInput";
 import {useAuth} from "../hooks/authContext";
 import {useToast} from "./ToastContext";
-import LabeledFileInput from "./LabeledFileInput";
+import {v4 as uuid} from "uuid";
 
-export default function FeatureCardDialog({initial, index, mode, onClose}) {
+export default function FeatureCardDialog({initial, mode, onClose}) {
     const API_URL = process.env.REACT_APP_API_URL || "/api";
     const {accessToken} = useAuth();
     const {showToast} = useToast();
 
+    const tempId = uuid();
+
     const [form, setForm] = useState(
         initial || {
             image: "",
-            titleKey: `featureCards.${index}.title`,
-            descriptionKey: `featureCards.${index}.description`,
-            order: index,
+            titleKey: `temp.featureCard.${tempId}.title`,
+            descriptionKey: `temp.featureCard.${tempId}.description`,
             isVisible: true,
         }
     );
@@ -51,7 +52,7 @@ export default function FeatureCardDialog({initial, index, mode, onClose}) {
 
         const map = {};
         langs.forEach(lang => {
-            map[lang] = data[lang] || "";
+            map[lang.code] = data[lang.code] || "";
         });
 
         setter(map);
@@ -78,27 +79,23 @@ export default function FeatureCardDialog({initial, index, mode, onClose}) {
     function validate() {
         const e = {};
 
-        // image
         if (!form.image.trim()) {
             e.image = "Обязательное поле";
         }
 
-        // translations
         languages.forEach(lang => {
-            if (!titleTranslations[lang]?.trim()) {
+            const code = lang.code;
+
+            if (!titleTranslations[code]?.trim()) {
                 if (!e.titleTranslations) e.titleTranslations = {};
-                e.titleTranslations[lang] = "Обязательное поле";
+                e.titleTranslations[code] = "Обязательное поле";
             }
-            if (!descriptionTranslations[lang]?.trim()) {
+
+            if (!descriptionTranslations[code]?.trim()) {
                 if (!e.descriptionTranslations) e.descriptionTranslations = {};
-                e.descriptionTranslations[lang] = "Обязательное поле";
+                e.descriptionTranslations[code] = "Обязательное поле";
             }
         });
-
-        // order
-        if (form.order < 0 || form.order === "" || isNaN(form.order)) {
-            e.order = "Введите число ≥ 0";
-        }
 
         setErrors(e);
         return Object.keys(e).length === 0;
@@ -122,20 +119,29 @@ export default function FeatureCardDialog({initial, index, mode, onClose}) {
     // SAVE CARD
     // -----------------------------
     async function saveCard() {
-        const method = mode === "edit" ? "PATCH" : "POST";
-        const url =
-            mode === "edit"
-                ? `${API_URL}/feature-cards/${form.id}`
-                : `${API_URL}/feature-cards`;
+        if (mode === "edit") {
+            await fetch(`${API_URL}/feature-cards/${form.id}`, {
+                method: "PATCH",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${accessToken}`}
+                ,
+                body: JSON.stringify(form)
+            });
+            return form.id;
+        }
 
-        await fetch(url, {
-            method,
+        const res = await fetch(`${API_URL}/feature-cards`, {
+            method: "POST",
             headers: {
                 "Content-Type": "application/json",
                 Authorization: `Bearer ${accessToken}`}
             ,
             body: JSON.stringify(form)
         });
+
+        const card = await res.json();
+        return card.id;
     }
 
     // -----------------------------
@@ -144,14 +150,36 @@ export default function FeatureCardDialog({initial, index, mode, onClose}) {
     async function save() {
         if (!validate()) return;
 
-        await saveCard();
-        await saveTranslations(form.titleKey, titleTranslations);
-        await saveTranslations(form.descriptionKey, descriptionTranslations);
+        const id = await saveCard();
+
+        // Генерируем финальные ключи
+        const finalTitleKey = `featureCard.${id}.title`;
+        const finalDescriptionKey = `featureCard.${id}.description`;
+
+        // Сохраняем переводы
+        await saveTranslations(finalTitleKey, titleTranslations);
+        await saveTranslations(finalDescriptionKey, descriptionTranslations);
+
+        // Обновляем карточку с финальными ключами
+        await fetch(`${API_URL}/feature-cards/${id}`, {
+            method: "PATCH",
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${accessToken}`}
+            ,
+            body: JSON.stringify({
+                titleKey: finalTitleKey,
+                descriptionKey: finalDescriptionKey
+            })
+        });
 
         showToast("Карточка сохранена");
         onClose();
     }
 
+    // -----------------------------
+    // RENDER
+    // -----------------------------
     if (loading) {
         return (
             <Modal open={true} onClose={onClose}>
@@ -167,48 +195,36 @@ export default function FeatureCardDialog({initial, index, mode, onClose}) {
             <div className="dialog__window">
                 <h2>{mode === "edit" ? "Редактировать карточку" : "Создать карточку"}</h2>
 
-                <LabeledFileInput
-                    label="Изображение"
+                <LabeledInput
+                    label="URL изображения"
                     value={form.image}
                     error={errors.image}
                     onChange={(v) => updateField("image", v)}
                 />
 
-                <LabeledInput label="Ключ заголовка" value={form.titleKey} disabled />
-
                 {languages.map(lang => (
                     <LabeledInput
-                        key={lang}
-                        label={`Заголовок (${lang})`}
-                        value={titleTranslations[lang]}
-                        error={errors.titleTranslations?.[lang]}
+                        key={lang.code}
+                        label={`Заголовок (${lang.code})`}
+                        value={titleTranslations[lang.code]}
+                        error={errors.titleTranslations?.[lang.code]}
                         onChange={(v) =>
-                            setTitleTranslations({...titleTranslations, [lang]: v})
+                            setTitleTranslations({...titleTranslations, [lang.code]: v})
                         }
                     />
                 ))}
 
-                <LabeledInput label="Ключ описания" value={form.descriptionKey} disabled />
-
                 {languages.map(lang => (
                     <LabeledInput
-                        key={lang}
-                        label={`Описание (${lang})`}
-                        value={descriptionTranslations[lang]}
-                        error={errors.descriptionTranslations?.[lang]}
+                        key={lang.code}
+                        label={`Описание (${lang.code})`}
+                        value={descriptionTranslations[lang.code]}
+                        error={errors.descriptionTranslations?.[lang.code]}
                         onChange={(v) =>
-                            setDescriptionTranslations({...descriptionTranslations, [lang]: v})
+                            setDescriptionTranslations({...descriptionTranslations, [lang.code]: v})
                         }
                     />
                 ))}
-
-                <LabeledInput
-                    label="Порядок"
-                    type="number"
-                    value={form.order}
-                    error={errors.order}
-                    onChange={(v) => updateField("order", Number(v))}
-                />
 
                 <div className="dialog__actions">
                     <button className="button" onClick={save}>Сохранить</button>

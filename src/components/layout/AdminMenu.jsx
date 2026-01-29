@@ -1,6 +1,6 @@
 import {NavLink} from "react-router-dom";
 import {FiGrid, FiHome, FiLayers, FiLogOut, FiMenu, FiMessageSquare, FiPhone, FiUsers} from "react-icons/fi";
-import {useAuth} from "../hooks/authContext";
+import {useAuth} from "../../hooks/authContext";
 
 export default function AdminMenu() {
     const {user, logout} = useAuth();

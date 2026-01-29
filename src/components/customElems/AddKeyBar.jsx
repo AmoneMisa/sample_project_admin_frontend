@@ -1,5 +1,5 @@
 import {useState} from "react";
-import LabeledInput from "./LabeledInput";
+import LabeledInput from "../controls/LabeledInput";
 
 export default function AddKeyBar({onAdd, existingKeys}) {
     const [newKey, setNewKey] = useState("");

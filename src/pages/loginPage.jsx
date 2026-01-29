@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../hooks/authContext";
-import LabeledInput from "../components/LabeledInput";
-import Checkbox from "../components/Checkbox";
+import LabeledInput from "../components/controls/LabeledInput";
+import Checkbox from "../components/controls/Checkbox";
 
 export default function LoginPage() {
     const { login, user, accessToken, loading } = useAuth();

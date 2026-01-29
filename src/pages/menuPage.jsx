@@ -1,8 +1,8 @@
 import {useEffect, useState} from "react";
 import {useAuth} from "../hooks/authContext";
-import {useToast} from "../components/ToastContext";
-import FooterMenuItemDialog from "../components/FooterMenuItemDialog";
-import ConfirmDialog from "../components/ConfirmDialog";
+import {useToast} from "../components/layout/ToastContext";
+import FooterMenuItemDialog from "../components/modals/FooterMenuItemDialog";
+import ConfirmDialog from "../components/modals/ConfirmDialog";
 
 export default function MenuPage() {
     const API_URL = process.env.REACT_APP_API_URL || "/api";

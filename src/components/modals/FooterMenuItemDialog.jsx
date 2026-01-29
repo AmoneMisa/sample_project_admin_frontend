@@ -1,8 +1,8 @@
 import {useEffect, useState} from "react";
 import Modal from "./Modal";
-import LabeledInput from "./LabeledInput";
-import {useAuth} from "../hooks/authContext";
-import {useToast} from "./ToastContext";
+import LabeledInput from "../controls/LabeledInput";
+import {useAuth} from "../../hooks/authContext";
+import {useToast} from "../layout/ToastContext";
 
 export default function FooterMenuItemDialog({initial, index, mode, blockId, onClose}) {
     const API_URL = process.env.REACT_APP_API_URL || "/api";

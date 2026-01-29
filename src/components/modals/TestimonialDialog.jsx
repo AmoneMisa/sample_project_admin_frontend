@@ -1,20 +1,31 @@
 import {useState} from "react";
 import Modal from "./Modal";
-import LabeledInput from "./LabeledInput";
-import Checkbox from "./Checkbox";
+import LabeledInput from "../controls/LabeledInput";
+import Checkbox from "../controls/Checkbox";
 
 export default function TestimonialDialog({title, initial, onSave, onClose}) {
-    const [name, setName] = useState(initial?.name || "");
-    const [role, setRole] = useState(initial?.role || "");
-    const [quote, setQuote] = useState(initial?.quote || "");
-    const [rating, setRating] = useState(initial?.rating || 5);
-    const [avatar, setAvatar] = useState(initial?.avatar || "");
-    const [logo, setLogo] = useState(initial?.logo || "");
-    const [isVisible, setIsVisible] = useState(initial?.isVisible ?? true);
+    const [form, setForm] = useState({
+        name: initial?.name || "",
+        role: initial?.role || "",
+        quote: initial?.quote || "",
+        rating: initial?.rating ?? 5,
+        avatar: initial?.avatar || "",
+        logo: initial?.logo || "",
+        isVisible: initial?.isVisible ?? true,
+    });
 
     const [errors, setErrors] = useState({});
 
+    // -----------------------------
+    // Helpers
+    // -----------------------------
+    function updateField(field, value) {
+        setForm(prev => ({...prev, [field]: value}));
+        setErrors(prev => ({...prev, [field]: ""}));
+    }
+
     function isValidUrl(str) {
+        if (!str) return true; // пустое поле — ок
         try {
             new URL(str);
             return true;
@@ -23,22 +34,25 @@ export default function TestimonialDialog({title, initial, onSave, onClose}) {
         }
     }
 
+    // -----------------------------
+    // Validation
+    // -----------------------------
     function validate() {
         const next = {};
 
-        if (!name.trim()) next.name = "Введите имя";
-        if (!role.trim()) next.role = "Введите роль";
-        if (!quote.trim()) next.quote = "Введите текст отзыва";
+        if (!form.name.trim()) next.name = "Введите имя";
+        if (!form.role.trim()) next.role = "Введите роль";
+        if (!form.quote.trim()) next.quote = "Введите текст отзыва";
 
-        if (!rating || rating < 1 || rating > 5) {
+        if (!form.rating || form.rating < 1 || form.rating > 5) {
             next.rating = "Рейтинг должен быть от 1 до 5";
         }
 
-        if (avatar && !isValidUrl(avatar)) {
+        if (!isValidUrl(form.avatar)) {
             next.avatar = "Некорректный URL";
         }
 
-        if (logo && !isValidUrl(logo)) {
+        if (!isValidUrl(form.logo)) {
             next.logo = "Некорректный URL";
         }
 
@@ -48,30 +62,26 @@ export default function TestimonialDialog({title, initial, onSave, onClose}) {
 
     function handleSave() {
         if (!validate()) return;
-
-        onSave({name, role, quote, rating, avatar, logo, isVisible});
+        onSave(form);
         onClose();
     }
 
+    // -----------------------------
+    // Render
+    // -----------------------------
     return (
         <Modal open={true} title={title} onClose={onClose} width={500}>
             <LabeledInput
                 label="Имя"
-                value={name}
-                onChange={(v) => {
-                    setName(v);
-                    setErrors((e) => ({...e, name: ""}));
-                }}
+                value={form.name}
+                onChange={(v) => updateField("name", v)}
                 error={errors.name}
             />
 
             <LabeledInput
                 label="Роль"
-                value={role}
-                onChange={(v) => {
-                    setRole(v);
-                    setErrors((e) => ({...e, role: ""}));
-                }}
+                value={form.role}
+                onChange={(v) => updateField("role", v)}
                 error={errors.role}
             />
 
@@ -83,11 +93,8 @@ export default function TestimonialDialog({title, initial, onSave, onClose}) {
                         (errors.quote ? " field-holder__input_error" : "")
                     }
                     style={{padding: 6, minHeight: 80}}
-                    value={quote}
-                    onChange={(e) => {
-                        setQuote(e.target.value);
-                        setErrors((e2) => ({...e2, quote: ""}));
-                    }}
+                    value={form.quote}
+                    onChange={(e) => updateField("quote", e.target.value)}
                 />
                 {errors.quote && (
                     <div className="field-holder__error">{errors.quote}</div>
@@ -97,40 +104,31 @@ export default function TestimonialDialog({title, initial, onSave, onClose}) {
             <LabeledInput
                 label="Рейтинг"
                 type="number"
-                value={rating}
+                value={form.rating}
                 max={5}
                 min={1}
-                onChange={(v) => {
-                    setRating(Number(v));
-                    setErrors((e) => ({...e, rating: ""}));
-                }}
+                onChange={(v) => updateField("rating", Number(v))}
                 error={errors.rating}
             />
 
             <LabeledInput
                 label="Аватар URL"
-                value={avatar}
-                onChange={(v) => {
-                    setAvatar(v);
-                    setErrors((e) => ({...e, avatar: ""}));
-                }}
+                value={form.avatar}
+                onChange={(v) => updateField("avatar", v)}
                 error={errors.avatar}
             />
 
             <LabeledInput
                 label="Лого URL"
-                value={logo}
-                onChange={(v) => {
-                    setLogo(v);
-                    setErrors((e) => ({...e, logo: ""}));
-                }}
+                value={form.logo}
+                onChange={(v) => updateField("logo", v)}
                 error={errors.logo}
             />
 
             <Checkbox
                 label="Показывать"
-                checked={isVisible}
-                onChange={() => setIsVisible(!isVisible)}
+                checked={form.isVisible}
+                onChange={() => updateField("isVisible", !form.isVisible)}
             />
 
             <button className="button button_accept" onClick={handleSave}>

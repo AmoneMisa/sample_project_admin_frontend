@@ -1,8 +1,8 @@
 import {useState} from "react";
 import Modal from "./Modal";
-import LabeledInput from "./LabeledInput";
+import LabeledInput from "../controls/LabeledInput";
 import {FiSmile} from "react-icons/fi";
-import EmojiPickerPopup from "./EmojiPicker";
+import EmojiPickerPopup from "../customElems/EmojiPicker";
 
 export default function TranslationDialog({
                                               open,

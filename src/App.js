@@ -1,14 +1,14 @@
 import {BrowserRouter, Route, Routes} from "react-router-dom";
 import Index from "./pages";
 import Testimonials from "./pages/testimonials";
-import {ToastProvider} from "./components/ToastContext";
-import AdminLayout from "./components/AdminLayout";
+import {ToastProvider} from "./components/layout/ToastContext";
+import AdminLayout from "./components/layout/AdminLayout";
 import HeaderMenu from "./pages/headerMenu";
 import LoginPage from "./pages/loginPage";
 import RegisterPage from "./pages/registerPage";
 import UsersPage from "./pages/usersPage";
 import {AuthProvider} from "./hooks/authContext";
-import PrivateRoute from "./components/PrivateRoute";
+import PrivateRoute from "./components/layout/PrivateRoute";
 import AdminPage from "./pages/adminPage";
 import FeatureCardsPage from "./pages/featureCardsPage";
 import ContactsPage from "./pages/contactsPage";

@@ -1,5 +1,5 @@
-import LabeledInput from "./LabeledInput";
-import LabeledSelect from "./LabeledSelect";
+import LabeledInput from "../controls/LabeledInput";
+import LabeledSelect from "../controls/LabeledSelect";
 
 export default function FiltersPanel({
                                          search,

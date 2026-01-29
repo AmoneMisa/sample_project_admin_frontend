@@ -1,10 +1,10 @@
 import {useState, useEffect, useCallback} from "react";
 import {useAuth} from "../hooks/authContext";
-import {useToast} from "../components/ToastContext";
-import CustomTable from "../components/CustomTable";
-import Checkbox from "../components/Checkbox";
-import LabeledFileInput from "../components/LabeledFileInput";
-import LabeledInput from "../components/LabeledInput";
+import {useToast} from "../components/layout/ToastContext";
+import CustomTable from "../components/customElems/CustomTable";
+import Checkbox from "../components/controls/Checkbox";
+import LabeledFileInput from "../components/controls/LabeledFileInput";
+import LabeledInput from "../components/controls/LabeledInput";
 
 // ISO 639-1 словарь
 const ISO_LANGUAGES = {

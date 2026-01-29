@@ -1,11 +1,11 @@
-import ConfirmDialog from "../components/ConfirmDialog";
-import TestimonialDialog from "../components/TestimonialDialog";
+import ConfirmDialog from "../components/modals/ConfirmDialog";
+import TestimonialDialog from "../components/modals/TestimonialDialog";
 import {FiCopy, FiEdit, FiRotateCcw, FiTrash} from "react-icons/fi";
-import Checkbox from "../components/Checkbox";
-import CustomTable from "../components/CustomTable";
-import {useEffect, useState} from "react";
+import Checkbox from "../components/controls/Checkbox";
+import CustomTable from "../components/customElems/CustomTable";
+import {useEffect, useState, useMemo} from "react";
 import {useAuditLogList} from "../hooks/useAuditLogList";
-import {useToast} from "../components/ToastContext";
+import {useToast} from "../components/layout/ToastContext";
 import {useAuth} from "../hooks/authContext";
 
 export default function Testimonials() {
@@ -20,7 +20,36 @@ export default function Testimonials() {
     const {accessToken, user} = useAuth();
     const canEdit = user && (user.role === "moderator" || user.role === "admin");
 
+    // -----------------------------
+    // ФИЛЬТРЫ
+    // -----------------------------
+    const [filters, setFilters] = useState({
+        name: "",
+        role: "",
+        visible: "all", // all | visible | hidden
+        rating: "",
+        search: "",
+    });
+
+    // -----------------------------
+    // СОРТИРОВКА
+    // -----------------------------
+    const [sort, setSort] = useState({
+        field: "id",
+        direction: "asc",
+    });
+
+    function handleSort(field) {
+        setSort(prev =>
+            prev.field === field
+                ? {field, direction: prev.direction === "asc" ? "desc" : "asc"}
+                : {field, direction: "asc"}
+        );
+    }
+
+    // -----------------------------
     // LOAD
+    // -----------------------------
     useEffect(() => {
         async function load() {
             if (!accessToken) return;
@@ -35,7 +64,9 @@ export default function Testimonials() {
         load();
     }, [accessToken, API_URL, setState]);
 
-    // CREATE
+    // -----------------------------
+    // CRUD
+    // -----------------------------
     async function createItem(payload) {
         const res = await fetch(`${API_URL}/testimonials`, {
             method: "POST",
@@ -54,7 +85,6 @@ export default function Testimonials() {
         showToast("Отзыв создан");
     }
 
-    // UPDATE
     async function updateItem(id, payload) {
         const res = await fetch(`${API_URL}/testimonials/${id}`, {
             method: "PATCH",
@@ -73,7 +103,6 @@ export default function Testimonials() {
         showToast("Отзыв обновлён");
     }
 
-    // DELETE
     async function deleteItem(id) {
         await fetch(`${API_URL}/testimonials/${id}`, {
             method: "DELETE",
@@ -87,7 +116,6 @@ export default function Testimonials() {
         showToast("Отзыв удалён");
     }
 
-    // DUPLICATE
     async function duplicateItem(item) {
         const {id, ...rest} = item;
         const duplicated = {...rest, name: `${item.name} (копия)`};
@@ -108,6 +136,127 @@ export default function Testimonials() {
         setState(next);
         showToast("Отзыв продублирован");
     }
+
+    // -----------------------------
+    // FILTER + SORT
+    // -----------------------------
+    const filtered = useMemo(() => {
+        return items.filter(item => {
+            if (filters.name && !item.name.toLowerCase().includes(filters.name.toLowerCase()))
+                return false;
+
+            if (filters.role && !item.role.toLowerCase().includes(filters.role.toLowerCase()))
+                return false;
+
+            if (filters.visible === "visible" && !item.isVisible)
+                return false;
+
+            if (filters.visible === "hidden" && item.isVisible)
+                return false;
+
+            if (filters.rating && Number(item.rating) !== Number(filters.rating))
+                return false;
+
+            if (filters.search && !item.quote.toLowerCase().includes(filters.search.toLowerCase()))
+                return false;
+
+            return true;
+        });
+    }, [items, filters]);
+
+    const sorted = useMemo(() => {
+        const arr = [...filtered];
+        const {field, direction} = sort;
+
+        arr.sort((a, b) => {
+            const dir = direction === "asc" ? 1 : -1;
+            if (a[field] < b[field]) return -1 * dir;
+            if (a[field] > b[field]) return 1 * dir;
+            return 0;
+        });
+
+        return arr;
+    }, [filtered, sort]);
+
+    // -----------------------------
+    // COLUMNS
+    // -----------------------------
+    const columns = [
+        {
+            key: "id",
+            title: (
+                <span onClick={() => handleSort("id")} className="sortable">
+                    ID {sort.field === "id" ? (sort.direction === "asc" ? "↑" : "↓") : ""}
+                </span>
+            ),
+        },
+        {
+            key: "name",
+            title: (
+                <span onClick={() => handleSort("name")} className="sortable">
+                    Имя {sort.field === "name" ? (sort.direction === "asc" ? "↑" : "↓") : ""}
+                </span>
+            ),
+        },
+        {
+            key: "role",
+            title: (
+                <span onClick={() => handleSort("role")} className="sortable">
+                    Роль {sort.field === "role" ? (sort.direction === "asc" ? "↑" : "↓") : ""}
+                </span>
+            ),
+        },
+        {
+            key: "quote",
+            title: (
+                <span onClick={() => handleSort("quote")} className="sortable">
+                    Отзыв {sort.field === "quote" ? (sort.direction === "asc" ? "↑" : "↓") : ""}
+                </span>
+            ),
+        },
+        {
+            key: "rating",
+            width: "100px",
+            title: (
+                <span onClick={() => handleSort("rating")} className="sortable">
+                    Рейтинг {sort.field === "rating" ? (sort.direction === "asc" ? "↑" : "↓") : ""}
+                </span>
+            ),
+        },
+        {
+            key: "isVisible",
+            title: "Отображать",
+            width: "120px",
+            render: (value, row) =>
+                canEdit ? (
+                    <Checkbox
+                        checked={value}
+                        onChange={() => updateItem(row.id, {isVisible: !value})}
+                    />
+                ) : (
+                    <Checkbox checked={value} disabled/>
+                ),
+        },
+        {
+            key: "actions",
+            title: "Действия",
+            width: "180px",
+            render: (_, row) =>
+                canEdit && (
+                    <div style={{display: "flex", justifyContent: "space-between"}}>
+                        <button className="button button_icon button_reject" onClick={() => setEditing(row)}>
+                            <FiEdit size={16}/>
+                        </button>
+                        <button className="button button_icon button_reject" onClick={() => setDeleteTarget(row.id)}>
+                            <FiTrash size={16}/>
+                        </button>
+                        <button className="button button_icon button_reject" onClick={() => duplicateItem(row)}>
+                            <FiCopy size={16}/>
+                        </button>
+                    </div>
+                ),
+        },
+    ];
 
     return (
         <div className="page" style={{padding: 24}}>
@@ -132,49 +281,51 @@ export default function Testimonials() {
                 )}
             </div>
 
-            <CustomTable
-                columns={[
-                    {key: "id", title: "ID"},
-                    {key: "name", title: "Имя"},
-                    {key: "role", title: "Роль"},
-                    {key: "quote", title: "Отзыв"},
-                    {key: "rating", title: "Рейтинг", width: "100px"},
-                    {
-                        key: "isVisible",
-                        title: "Отображать",
-                        width: "120px",
-                        render: (value, row) =>
-                            canEdit ? (
-                                <Checkbox
-                                    checked={value}
-                                    onChange={() => updateItem(row.id, {isVisible: !value})}
-                                />
-                            ) : (
-                                <Checkbox checked={value} disabled/>
-                            ),
-                    },
-                    {
-                        key: "actions",
-                        title: "Действия",
-                        width: "180px",
-                        render: (_, row) =>
-                            canEdit && (
-                                <div style={{display: "flex", justifyContent: "space-between"}}>
-                                    <button className="button button_icon button_reject" onClick={() => setEditing(row)}>
-                                        <FiEdit size={16}/>
-                                    </button>
-                                    <button className="button button_icon button_reject" onClick={() => setDeleteTarget(row.id)}>
-                                        <FiTrash size={16}/>
-                                    </button>
-                                    <button className="button button_icon button_reject" onClick={() => duplicateItem(row)}>
-                                        <FiCopy size={16}/>
-                                    </button>
-                                </div>
-                            ),
-                    },
-                ]}
-                data={items}
-            />
+            {/* ФИЛЬТРЫ */}
+            <div style={{display: "flex", gap: 12, marginBottom: 16}}>
+                <input
+                    className="field"
+                    placeholder="Имя"
+                    value={filters.name}
+                    onChange={(e) => setFilters({...filters, name: e.target.value})}
+                />
+
+                <input
+                    className="field"
+                    placeholder="Роль"
+                    value={filters.role}
+                    onChange={(e) => setFilters({...filters, role: e.target.value})}
+                />
+
+                <select
+                    className="field"
+                    value={filters.visible}
+                    onChange={(e) => setFilters({...filters, visible: e.target.value})}
+                >
+                    <option value="all">Все</option>
+                    <option value="visible">Только видимые</option>
+                    <option value="hidden">Только скрытые</option>
+                </select>
+
+                <input
+                    className="field"
+                    placeholder="Рейтинг"
+                    type="number"
+                    value={filters.rating}
+                    onChange={(e) => setFilters({...filters, rating: e.target.value})}
+                    style={{width: 100}}
+                />
+
+                <input
+                    className="field"
+                    placeholder="Поиск по тексту"
+                    value={filters.search}
+                    onChange={(e) => setFilters({...filters, search: e.target.value})}
+                    style={{flex: 1}}
+                />
+            </div>
+
+            <CustomTable columns={columns} data={sorted}/>
 
             {creating && canEdit && (
                 <TestimonialDialog

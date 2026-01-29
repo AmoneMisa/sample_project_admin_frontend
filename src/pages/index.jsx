@@ -1,14 +1,14 @@
 import {useCallback, useEffect, useState} from "react";
 import {useAuditLog} from "../hooks/useAuditLog";
-import ConfirmDialog from "../components/ConfirmDialog";
-import AddKeyBar from "../components/AddKeyBar";
-import FiltersBar from "../components/FiltersBar";
-import HistoryDialog from "../components/HistoryDialog";
-import {useToast} from "../components/ToastContext";
+import ConfirmDialog from "../components/modals/ConfirmDialog";
+import AddKeyBar from "../components/customElems/AddKeyBar";
+import FiltersBar from "../components/customElems/FiltersBar";
+import HistoryDialog from "../components/modals/HistoryDialog";
+import {useToast} from "../components/layout/ToastContext";
 import {FiClock, FiEdit, FiRotateCcw, FiSave, FiTrash} from "react-icons/fi";
 import {useAuth} from "../hooks/authContext";
-import CustomTable from "../components/CustomTable";
-import TranslationDialog from "../components/TranslationDialog";
+import CustomTable from "../components/customElems/CustomTable";
+import TranslationDialog from "../components/modals/TranslationDialog";
 
 export default function Index() {
     const API_URL = process.env.REACT_APP_API_URL || "/api";

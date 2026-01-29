@@ -1,8 +1,8 @@
 import {useEffect, useState} from "react";
 import Modal from "./Modal";
-import LabeledInput from "./LabeledInput";
-import {useAuth} from "../hooks/authContext";
-import {useToast} from "./ToastContext";
+import LabeledInput from "../controls/LabeledInput";
+import {useAuth} from "../../hooks/authContext";
+import {useToast} from "../layout/ToastContext";
 import {v4 as uuid} from "uuid";
 
 export default function FooterBlockDialog({initial, index, mode, onClose}) {

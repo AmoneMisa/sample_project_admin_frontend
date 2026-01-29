@@ -1,16 +1,16 @@
 import {useEffect, useState} from "react";
-import {useToast} from "../components/ToastContext";
+import {useToast} from "../components/layout/ToastContext";
 import {useAuditLog} from "../hooks/useAuditLog";
-import MenuItemDialog from "../components/MenuItemDialog";
+import MenuItemDialog from "../components/modals/MenuItemDialog";
 import {useAuth} from "../hooks/authContext";
 import {FiEdit, FiTrash} from "react-icons/fi";
-import CustomTable from "../components/CustomTable";
-import Checkbox from "../components/Checkbox";
+import CustomTable from "../components/customElems/CustomTable";
+import Checkbox from "../components/controls/Checkbox";
 
 export default function HeaderMenu() {
     const API_URL = process.env.REACT_APP_API_URL || "/api";
     const [menu, setMenu] = useState([]);
-    const [editingIndex, setEditingIndex] = useState(null);
+    const [editingItem, setEditingItem] = useState(null);
     const [creating, setCreating] = useState(false);
     const [translations, setTranslations] = useState({});
 
@@ -28,9 +28,23 @@ export default function HeaderMenu() {
             const res = await fetch(`${API_URL}/header-menu`, {
                 headers: {Authorization: `Bearer ${accessToken}`},
             });
-            if (res.ok) {
-                setMenu(await res.json());
-            }
+            if (!res.ok) return;
+
+            const data = await res.json();
+
+            const normalized = data.map((item, index) => {
+                const id = item.id ?? index + 1;
+                const labelKey = item.labelKey || item.label || null;
+
+                return {
+                    ...item,
+                    id,
+                    labelKey,
+                };
+            });
+
+            setMenu(normalized);
+            pushSnapshot(normalized, null, "Меню загружено");
         }
 
         loadMenu();
@@ -61,47 +75,149 @@ export default function HeaderMenu() {
                 headers: {Authorization: `Bearer ${accessToken}`},
             });
 
-            if (res.ok) {
-                setTranslations(await res.json());
-            }
+            if (!res.ok) return;
+
+            // ожидаем объект вида { key: { ru, en, ... } }
+            setTranslations(await res.json());
         }
 
         loadTranslations();
     }, [accessToken, API_URL]);
 
     // DELETE ITEM
-    async function deleteItem(index) {
-        const next = menu.filter((_, i) => i !== index);
+    async function deleteItem(id) {
+        const next = menu.filter((item) => item.id !== id);
         await saveMenu(next);
     }
 
     // TOGGLE VISIBLE
-    async function toggleVisible(index) {
-        const next = [...menu];
-        next[index].visible = !next[index].visible;
+    async function toggleVisible(id) {
+        const next = menu.map((item) =>
+            item.id === id ? {...item, visible: item.visible === false ? true : !item.visible} : item
+        );
         await saveMenu(next);
     }
 
     // MOVE ITEM
-    async function moveItem(from, to) {
-        const next = [...menu];
-        const item = next.splice(from, 1)[0];
-        next.splice(to, 0, item);
-        await saveMenu(next);
+    async function moveItem(fromId, toId) {
+        const current = [...menu];
+        const fromIndex = current.findIndex((i) => i.id === fromId);
+        const toIndex = current.findIndex((i) => i.id === toId);
+        if (fromIndex === -1 || toIndex === -1) return;
+
+        const item = current.splice(fromIndex, 1)[0];
+        current.splice(toIndex, 0, item);
+        await saveMenu(current);
     }
 
     // SAVE FROM POPUP
-    async function handleSaveFromDialog(item, index = null) {
-        const next = [...menu];
+    async function handleSaveFromDialog(item) {
+        let next;
 
-        if (index === null) {
-            next.push(item);
+        if (!item.id) {
+            const maxId = menu.reduce((m, it) => Math.max(m, it.id || 0), 0);
+            const withId = {...item, id: maxId + 1};
+            next = [...menu, withId];
         } else {
-            next[index] = item;
+            next = menu.map((it) => (it.id === item.id ? item : it));
         }
 
         await saveMenu(next);
     }
+
+    const columns = [
+        {key: "type", title: "Тип", width: "120px"},
+
+        {
+            key: "visible",
+            title: "Отображать",
+            width: "120px",
+            render: (_, item) => (
+                <Checkbox
+                    checked={item.visible !== false}
+                    onChange={() => canEdit && toggleVisible(item.id)}
+                    disabled={!canEdit}
+                />
+            ),
+        },
+
+        {
+            key: "labelKey",
+            title: "Название (ru)",
+            render: (value) => {
+                if (!value) return <span className="table__cell-text">(нет ключа)</span>;
+
+                const t = translations[value];
+                const ru = t?.ru || t || "(нет перевода)";
+
+                return (
+                    <a
+                        href={`/admin/?key=${value}`}
+                        className="table__cell-text"
+                        style={{color: "var(--color-link)"}}
+                    >
+                        {ru}
+                    </a>
+                );
+            },
+        },
+
+        {
+            key: "order",
+            title: "Порядок",
+            width: "140px",
+            render: (_, item, index) => (
+                <div style={{display: "flex", gap: 6}}>
+                    <button
+                        className="button button_icon"
+                        disabled={index === 0 || !canEdit}
+                        onClick={() =>
+                            moveItem(item.id, menu[index - 1]?.id)
+                        }
+                        title="Переместить вверх"
+                    >
+                        ↑
+                    </button>
+
+                    <button
+                        className="button button_icon"
+                        disabled={index === menu.length - 1 || !canEdit}
+                        onClick={() =>
+                            moveItem(item.id, menu[index + 1]?.id)
+                        }
+                        title="Переместить вниз"
+                    >
+                        ↓
+                    </button>
+                </div>
+            ),
+        },
+
+        {
+            key: "actions",
+            title: "Действия",
+            width: "150px",
+            render: (_, item) =>
+                canEdit && (
+                    <span style={{display: "flex", gap: 8}}>
+                        <button
+                            className="button button_icon"
+                            onClick={() => setEditingItem(item)}
+                            title="Редактировать пункт"
+                        >
+                            <FiEdit size={16}/>
+                        </button>
+                        <button
+                            className="button button_icon button_reject"
+                            onClick={() => deleteItem(item.id)}
+                            title="Удалить пункт"
+                        >
+                            <FiTrash size={16}/>
+                        </button>
+                    </span>
+                ),
+        },
+    ];
 
     return (
         <div className="page" style={{padding: 24}}>
@@ -118,100 +234,29 @@ export default function HeaderMenu() {
                 )}
             </div>
 
-            <CustomTable
-                columns={[
-                    {key: "type", title: "Тип"},
-
-                    {
-                        key: "visible",
-                        title: "Отображать",
-                        render: (_, item, index) => (
-                            <Checkbox
-                                checked={item.visible !== false}
-                                onChange={() => toggleVisible(index)}
-                            />
-                        )
-                    },
-                    {
-                        key: "label",
-                        title: "Ключ",
-                        render: (value) => {
-                            const ru = translations[value]?.ru || "(нет перевода)";
-                            return (
-                                <a
-                                    href={`/admin/?key=${value}`}
-                                    className="table__cell-text"
-                                    style={{color: "var(--color-link)"}}
-                                >
-                                    {ru}
-                                </a>
-                            );
-                        },
-                    },
-                    {
-                        key: "order",
-                        title: "Порядок",
-                        render: (_, item, index) => (
-                            <div style={{display: "flex", gap: 6}}>
-                                <button
-                                    className="button button_icon"
-                                    disabled={index === 0}
-                                    onClick={() => moveItem(index, index - 1)}
-                                    title="Переместить вверх"
-                                >
-                                    ↑
-                                </button>
-
-                                <button
-                                    className="button button_icon"
-                                    disabled={index === menu.length - 1}
-                                    onClick={() => moveItem(index, index + 1)}
-                                    title="Переместить вниз"
-                                >
-                                    ↓
-                                </button>
-                            </div>
-                        )
-                    },
-
-                    {
-                        key: "actions",
-                        title: "Действия",
-                        render: (_, item, index) =>
-                            canEdit && (
-                                <span style={{display: "flex", gap: 8}}>
-                                    <button
-                                        className="button button_icon button_reject"
-                                        onClick={() => setEditingIndex(index)}
-                                        title="Редактировать меню"
-                                    >
-                                        <FiEdit size={16}/>
-                                    </button>
-                                    <button
-                                        className="button button_icon button_reject"
-                                        onClick={() => deleteItem(index)}
-                                        title="Удалить меню"
-                                    >
-                                        <FiTrash size={16}/>
-                                    </button>
-                                </span>
-                            ),
-                    },
-                ]}
-                data={menu}
-            />
+            <CustomTable columns={columns} data={menu}/>
 
             {creating && (
-                <MenuItemDialog title="Создать пункт меню" initialItem={null}
-                                onSave={(item) => handleSaveFromDialog(item, null)}
-                                onClose={() => setCreating(false)}
+                <MenuItemDialog
+                    title="Создать пункт меню"
+                    initialItem={null}
+                    onSave={(item) => {
+                        handleSaveFromDialog(item);
+                        setCreating(false);
+                    }}
+                    onClose={() => setCreating(false)}
                 />
             )}
 
-            {editingIndex !== null && (
-                <MenuItemDialog title="Редактировать пункт меню" initialItem={menu[editingIndex]}
-                                onSave={(item) => handleSaveFromDialog(item, editingIndex)}
-                                onClose={() => setEditingIndex(null)}
+            {editingItem && (
+                <MenuItemDialog
+                    title="Редактировать пункт меню"
+                    initialItem={editingItem}
+                    onSave={(item) => {
+                        handleSaveFromDialog(item);
+                        setEditingItem(null);
+                    }}
+                    onClose={() => setEditingItem(null)}
                 />
             )}
         </div>

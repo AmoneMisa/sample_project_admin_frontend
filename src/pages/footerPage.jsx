@@ -1,9 +1,9 @@
 import {useEffect, useState} from "react";
 import {useAuth} from "../hooks/authContext";
-import {useToast} from "../components/ToastContext";
-import FooterBlockDialog from "../components/FooterBlockDialog";
-import ConfirmDialog from "../components/ConfirmDialog";
-import Checkbox from "../components/Checkbox";
+import {useToast} from "../components/layout/ToastContext";
+import FooterBlockDialog from "../components/modals/FooterBlockDialog";
+import ConfirmDialog from "../components/modals/ConfirmDialog";
+import Checkbox from "../components/controls/Checkbox";
 
 export default function FooterPage() {
     const API_URL = process.env.REACT_APP_API_URL || "/api";

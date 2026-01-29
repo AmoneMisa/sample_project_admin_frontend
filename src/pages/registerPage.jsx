@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../hooks/authContext";
-import LabeledInput from "../components/LabeledInput";
+import LabeledInput from "../components/controls/LabeledInput";
 
 export default function RegisterPage() {
     const API_URL = process.env.REACT_APP_API_URL || "/api";

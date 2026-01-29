@@ -154,7 +154,7 @@ export default function FeatureCardDialog({initial, index, mode, onClose}) {
 
     if (loading) {
         return (
-            <Modal onClose={onClose}>
+            <Modal open={true} onClose={onClose}>
                 <div className="dialog__window">
                     <h2>Загрузка…</h2>
                 </div>
@@ -163,7 +163,7 @@ export default function FeatureCardDialog({initial, index, mode, onClose}) {
     }
 
     return (
-        <Modal onClose={onClose}>
+        <Modal open={true} onClose={onClose}>
             <div className="dialog__window">
                 <h2>{mode === "edit" ? "Редактировать карточку" : "Создать карточку"}</h2>
 

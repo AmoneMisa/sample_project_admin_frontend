@@ -4,14 +4,15 @@ import LabeledInput from "./LabeledInput";
 import {useAuth} from "../hooks/authContext";
 import {useToast} from "./ToastContext";
 
-export default function FooterMenuItemDialog({initial, index, mode, onClose}) {
+export default function FooterMenuItemDialog({initial, index, mode, blockId, onClose}) {
     const API_URL = process.env.REACT_APP_API_URL || "/api";
     const {accessToken} = useAuth();
     const {showToast} = useToast();
 
     const [form, setForm] = useState(
         initial || {
-            labelKey: `menu.${index}.label`,
+            type: "link",
+            labelKey: `footer.menu.${index}.label`,
             href: "",
             order: index,
             isVisible: true,
@@ -35,7 +36,7 @@ export default function FooterMenuItemDialog({initial, index, mode, onClose}) {
     }
 
     async function loadTranslations(key, langs) {
-        const res = await fetch(`${API_URL}/translations?key=${key}`, {
+        const res = await fetch(`${API_URL}/translations?key=${encodeURIComponent(key)}`, {
             headers: {Authorization: `Bearer ${accessToken}`}
         });
         const data = await res.json();
@@ -62,17 +63,14 @@ export default function FooterMenuItemDialog({initial, index, mode, onClose}) {
     function validate() {
         const e = {};
 
-        // href
         if (!form.href.trim()) {
             e.href = "Обязательное поле";
         }
 
-        // order
         if (form.order < 0 || form.order === "" || isNaN(form.order)) {
             e.order = "Введите число ≥ 0";
         }
 
-        // translations
         languages.forEach(lang => {
             if (!labelTranslations[lang]?.trim()) {
                 if (!e.labelTranslations) e.labelTranslations = {};
@@ -99,20 +97,27 @@ export default function FooterMenuItemDialog({initial, index, mode, onClose}) {
     }
 
     async function saveItem() {
-        const method = mode === "edit" ? "PATCH" : "POST";
-        const url =
-            mode === "edit"
-                ? `${API_URL}/menu/${form.id}`
-                : `${API_URL}/menu`;
-
-        await fetch(url, {
-            method,
-            headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${accessToken}`}
-            ,
-            body: JSON.stringify(form)
-        });
+        if (mode === "edit") {
+            // PATCH /footer/items/{id}
+            await fetch(`${API_URL}/footer/items/${form.id}`, {
+                method: "PATCH",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${accessToken}`
+                },
+                body: JSON.stringify(form)
+            });
+        } else {
+            // POST /footer/{blockId}/items
+            await fetch(`${API_URL}/footer/${blockId}/items`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${accessToken}`
+                },
+                body: JSON.stringify(form)
+            });
+        }
     }
 
     async function save() {
@@ -127,7 +132,7 @@ export default function FooterMenuItemDialog({initial, index, mode, onClose}) {
 
     if (loading) {
         return (
-            <Modal onClose={onClose}>
+            <Modal open={true} onClose={onClose}>
                 <div className="dialog__window">
                     <h2>Загрузка…</h2>
                 </div>
@@ -136,7 +141,7 @@ export default function FooterMenuItemDialog({initial, index, mode, onClose}) {
     }
 
     return (
-        <Modal onClose={onClose}>
+        <Modal open={true} onClose={onClose}>
             <div className="dialog__window">
                 <h2>{mode === "edit" ? "Редактировать пункт" : "Создать пункт"}</h2>
 

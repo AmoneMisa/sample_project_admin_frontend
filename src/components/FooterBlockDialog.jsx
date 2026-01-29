@@ -3,32 +3,42 @@ import Modal from "./Modal";
 import LabeledInput from "./LabeledInput";
 import {useAuth} from "../hooks/authContext";
 import {useToast} from "./ToastContext";
+import {v4 as uuid} from "uuid";
 
 export default function FooterBlockDialog({initial, index, mode, onClose}) {
     const API_URL = process.env.REACT_APP_API_URL || "/api";
     const {accessToken} = useAuth();
     const {showToast} = useToast();
+
     const [errors, setErrors] = useState({});
+    const [languages, setLanguages] = useState([]);
+    const [loading, setLoading] = useState(true);
+
+    // -----------------------------
+    // INITIAL FORM
+    // -----------------------------
+    const tempId = uuid();
 
     const [form, setForm] = useState(
         initial || {
             type: "menu",
-            titleKey: `footer.${index}.title`,
-            descriptionKey: `footer.${index}.description`,
+            titleKey: `temp.footer.block.${tempId}.title`,
+            descriptionKey: `temp.footer.block.${tempId}.description`,
             order: index,
             isVisible: true,
         }
     );
 
-    const [languages, setLanguages] = useState([]);
     const [titleTranslations, setTitleTranslations] = useState({});
     const [descriptionTranslations, setDescriptionTranslations] = useState({});
-    const [loading, setLoading] = useState(true);
 
     function updateField(key, value) {
         setForm({...form, [key]: value});
     }
 
+    // -----------------------------
+    // LOAD LANGUAGES + TRANSLATIONS
+    // -----------------------------
     async function loadLanguages() {
         const res = await fetch(`${API_URL}/languages`, {
             headers: {Authorization: `Bearer ${accessToken}`}
@@ -37,7 +47,7 @@ export default function FooterBlockDialog({initial, index, mode, onClose}) {
     }
 
     async function loadTranslations(key, langs, setter) {
-        const res = await fetch(`${API_URL}/translations?key=${key}`, {
+        const res = await fetch(`${API_URL}/translations?key=${encodeURIComponent(key)}`, {
             headers: {Authorization: `Bearer ${accessToken}`}
         });
         const data = await res.json();
@@ -59,34 +69,9 @@ export default function FooterBlockDialog({initial, index, mode, onClose}) {
         })();
     }, []);
 
-    async function saveTranslations(key, translations) {
-        await fetch(`${API_URL}/translations`, {
-            method: "PATCH",
-            headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${accessToken}`
-            },
-            body: JSON.stringify({key, translations})
-        });
-    }
-
-    async function saveBlock() {
-        const method = mode === "edit" ? "PATCH" : "POST";
-        const url =
-            mode === "edit"
-                ? `${API_URL}/footer/${form.id}`
-                : `${API_URL}/footer`;
-
-        await fetch(url, {
-            method,
-            headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${accessToken}`
-            },
-            body: JSON.stringify(form)
-        });
-    }
-
+    // -----------------------------
+    // VALIDATION
+    // -----------------------------
     function validate() {
         const e = {};
 
@@ -113,20 +98,88 @@ export default function FooterBlockDialog({initial, index, mode, onClose}) {
         return Object.keys(e).length === 0;
     }
 
+    // -----------------------------
+    // SAVE TRANSLATIONS
+    // -----------------------------
+    async function saveTranslations(key, translations) {
+        await fetch(`${API_URL}/translations`, {
+            method: "PATCH",
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${accessToken}`
+            },
+            body: JSON.stringify({key, translations})
+        });
+    }
+
+    // -----------------------------
+    // SAVE BLOCK
+    // -----------------------------
+    async function saveBlock() {
+        if (mode === "edit") {
+            await fetch(`${API_URL}/footer/${form.id}`, {
+                method: "PATCH",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${accessToken}`
+                },
+                body: JSON.stringify(form)
+            });
+            return form.id;
+        }
+
+        const res = await fetch(`${API_URL}/footer`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${accessToken}`
+            },
+            body: JSON.stringify(form)
+        });
+
+        const block = await res.json();
+        return block.id;
+    }
+
+    // -----------------------------
+    // MAIN SAVE
+    // -----------------------------
     async function save() {
         if (!validate()) return;
 
-        await saveBlock();
-        await saveTranslations(form.titleKey, titleTranslations);
-        await saveTranslations(form.descriptionKey, descriptionTranslations);
+        const id = await saveBlock();
+
+        // Генерируем финальные ключи
+        const finalTitleKey = `footer.block.${id}.title`;
+        const finalDescriptionKey = `footer.block.${id}.description`;
+
+        // Переносим переводы
+        await saveTranslations(finalTitleKey, titleTranslations);
+        await saveTranslations(finalDescriptionKey, descriptionTranslations);
+
+        // Обновляем блок с финальными ключами
+        await fetch(`${API_URL}/footer/${id}`, {
+            method: "PATCH",
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${accessToken}`
+            },
+            body: JSON.stringify({
+                titleKey: finalTitleKey,
+                descriptionKey: finalDescriptionKey
+            })
+        });
 
         showToast("Блок сохранён");
         onClose();
     }
 
+    // -----------------------------
+    // RENDER
+    // -----------------------------
     if (loading) {
         return (
-            <Modal onClose={onClose}>
+            <Modal open={true} onClose={onClose}>
                 <div className="dialog__window">
                     <h2>Загрузка…</h2>
                 </div>
@@ -135,7 +188,7 @@ export default function FooterBlockDialog({initial, index, mode, onClose}) {
     }
 
     return (
-        <Modal onClose={onClose}>
+        <Modal open={true} onClose={onClose}>
             <div className="dialog__window">
                 <h2>{mode === "edit" ? "Редактировать блок" : "Создать блок"}</h2>
 

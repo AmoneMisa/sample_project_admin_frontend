@@ -67,7 +67,6 @@ export default function Index() {
             await saveValue(newKey, lang.code, "");
         }
 
-        // meta
         setMeta(prev => ({
             ...prev,
             [newKey]: {allowEmpty: false}
@@ -106,21 +105,10 @@ export default function Index() {
                             <button
                                 className="button button_icon button_border"
                                 style={{color: "var(--color-error)"}}
-                                disabled={!canUndo}
-                                onClick={() => {
-                                    const metaSnapshot = undo();
-                                    if (metaSnapshot) setMeta(metaSnapshot);
-                                }}
+                                disabled={!audit.canUndo}
+                                onClick={() => audit.undo()}
                             >
                                 <FiRotateCcw size={16}/>
-                            </button>
-
-                            <button
-                                className="button button_icon button_border"
-                                onClick={saveAll}
-                                style={{color: "var(--color-accept)"}}
-                            >
-                                <FiSave size={16}/> Сохранить
                             </button>
 
                             <button
@@ -132,20 +120,8 @@ export default function Index() {
 
                             <HistoryDialog
                                 open={historyOpen}
-                                history={getHistory()}
-                                onRestore={(i) => {
-                                    const item = getHistory()[i];
-                                    if (!item) return;
-
-                                    setTranslations(structuredClone(item.state));
-                                    setMeta(() => {
-                                        const next = structuredClone(item.meta);
-                                        for (const key of Object.keys(item.state)) {
-                                            if (!next[key]) next[key] = {};
-                                        }
-                                        return next;
-                                    });
-                                }}
+                                history={audit.getHistory()}
+                                onRestore={(i) => audit.restore(i)}
                                 onClose={() => setHistoryOpen(false)}
                             />
                         </>
@@ -190,8 +166,8 @@ export default function Index() {
                                     setSortAsc(prev => !prev);
                                 }}
                             >
-                                Ключ {sortAsc ? "▲" : "▼"}
-                            </span>
+                            Ключ {sortAsc ? "▲" : "▼"}
+                        </span>
                         ),
                         render: (value) => <span>{value}</span>,
                     },
@@ -229,34 +205,33 @@ export default function Index() {
                         render: (_, row) =>
                             canEdit && (
                                 <span style={{display: "flex", gap: 8}}>
-                                    <button
-                                        title="Редактировать"
-                                        className="button button_icon button_reject"
-                                        onClick={() =>
-                                            setEditingCell({
-                                                key: row.key,
-                                                values: {...row.values}
-                                            })
-                                        }
-                                    >
-                                        <FiEdit size={16}/>
-                                    </button>
+                                <button
+                                    title="Редактировать"
+                                    className="button button_icon button_reject"
+                                    onClick={() =>
+                                        setEditingCell({
+                                            key: row.key,
+                                            values: {...row.values}
+                                        })
+                                    }
+                                >
+                                    <FiEdit size={16}/>
+                                </button>
 
-                                    <button
-                                        title="Удалить"
-                                        className="button button_icon button_reject"
-                                        onClick={() => requestDeleteKey(row.key)}
-                                    >
-                                        <FiTrash size={16}/>
-                                    </button>
-                                </span>
+                                <button
+                                    title="Удалить"
+                                    className="button button_icon button_reject"
+                                    onClick={() => requestDeleteKey(row.key)}
+                                >
+                                    <FiTrash size={16}/>
+                                </button>
+                            </span>
                             ),
                     },
                 ]}
                 data={sorted.map(([key, values]) => ({key, values}))}
             />
 
-            {/* DELETE CONFIRM */}
             {canEdit && (
                 <ConfirmDialog
                     open={!!deleteTarget}
@@ -267,6 +242,7 @@ export default function Index() {
                 />
             )}
 
+            {/* EDIT DIALOG */}
             {editingCell && (
                 <TranslationDialog
                     open={true}
@@ -280,7 +256,6 @@ export default function Index() {
                             await handleAddKey(key);
                         }
 
-                        // сохраняем все языки
                         for (const lang of languages) {
                             await saveValue(
                                 key,
@@ -293,7 +268,6 @@ export default function Index() {
                     }}
                 />
             )}
-
         </div>
     );
 }

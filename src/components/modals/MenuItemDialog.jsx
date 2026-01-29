@@ -1,5 +1,4 @@
 import {useEffect, useState} from "react";
-import Modal from "../layout/Modal";
 import LabeledInput from "../controls/LabeledInput";
 import LabeledSelect from "../controls/LabeledSelect";
 import {useAuth} from "../../hooks/authContext";
@@ -7,10 +6,11 @@ import {useToast} from "../layout/ToastContext";
 import {useTranslations} from "../../hooks/useTranslations";
 import {useAuditLog} from "../../hooks/useAuditLog";
 import {v4 as uuid} from "uuid";
+import MenuItemSimple from "../menuCreateComponents/MenuItemSimple";
+import MenuItemDropdown from "../menuCreateComponents/MenuItemDropdown";
+import MenuItemDropdownMega from "../menuCreateComponents/MenuItemDropdownMega";
+import Modal from "./Modal";
 
-import MenuItemSimple from "./MenuItemSimple";
-import MenuItemDropdown from "./MenuItemDropdown";
-import MenuItemDropdownMega from "./MenuItemDropdownMega";
 
 // -----------------------------------------------------
 // Collect all translation keys

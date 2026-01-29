@@ -1,9 +1,9 @@
 import {useEffect, useState} from "react";
 import Modal from "./Modal";
-import LabeledInput from "./LabeledInput";
-import {useAuth} from "../hooks/authContext";
-import {useToast} from "./ToastContext";
 import {v4 as uuid} from "uuid";
+import {useAuth} from "../../hooks/authContext";
+import {useToast} from "../layout/ToastContext";
+import LabeledInput from "../controls/LabeledInput";
 
 export default function FeatureCardDialog({initial, mode, onClose}) {
     const API_URL = process.env.REACT_APP_API_URL || "/api";

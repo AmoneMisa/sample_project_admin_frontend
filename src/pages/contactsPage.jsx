@@ -9,7 +9,6 @@ import {FiSave, FiTrash} from "react-icons/fi";
 import {useAuth} from "../hooks/authContext";
 import {useToast} from "../components/layout/ToastContext";
 
-
 export default function ContactsPage() {
     const API_URL = process.env.REACT_APP_API_URL || "/api";
     const {accessToken} = useAuth();
@@ -17,7 +16,6 @@ export default function ContactsPage() {
     const [contacts, setContacts] = useState([]);
     const [errors, setErrors] = useState({});
     const [loading, setLoading] = useState(true);
-    const [geoCountry, setGeoCountry] = useState("RO");
     const FIXED_SOCIALS = ["facebook", "instagram", "telegram", "whatsapp", "linkedin", "youtube", "pinterest", "github", "headhunter"];
     const {translations, setTranslations, meta, setMeta, pushSnapshot, markDeleted} = useAuditLog();
     const {languages, loadAllTranslations, saveValue, deleteKeys} = useTranslations({
@@ -65,18 +63,17 @@ export default function ContactsPage() {
 
     useEffect(() => {
         if (!accessToken) return;
+
         (async () => {
             setLoading(true);
-            try {
-                const geoRes = await fetch("https://ipapi.co/json/");
-                const geo = await geoRes.json();
-                if (geo?.country_code) setGeoCountry(geo.country_code);
-            } catch {
-            }
+
             await loadAllTranslations();
+
             let loaded = await loadContacts();
             if (loaded.length === 0) loaded = createDefaultContacts();
+
             setContacts(loaded);
+
             const next = {};
             for (const c of loaded) {
                 next[c.id] = {
@@ -84,6 +81,7 @@ export default function ContactsPage() {
                     value: Object.fromEntries(languages.map(l => [l.code, ""]))
                 };
             }
+
             setTranslations(prev => ({...next, ...prev}));
             setLoading(false);
         })();

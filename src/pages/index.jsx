@@ -16,7 +16,7 @@ export default function Index() {
     const [languages, setLanguages] = useState([]);
     const [search, setSearch] = useState("");
     const [sortAsc, setSortAsc] = useState(true);
-    const [dirty, setDirty] = useState(false);
+    const [, setDirty] = useState(false);
     const [filterStatus, setFilterStatus] = useState("all");
     const [filterErrorLevel, setFilterErrorLevel] = useState("all");
     const [deleteTarget, setDeleteTarget] = useState(null);

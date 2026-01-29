@@ -69,16 +69,6 @@ export default function HeaderMenu() {
         loadTranslations();
     }, [accessToken, API_URL]);
 
-    // ADD ITEM
-    function addItem() {
-        setCreating(true);
-    }
-
-    // EDIT ITEM
-    function editItem(index) {
-        setEditingIndex(index);
-    }
-
     // DELETE ITEM
     async function deleteItem(index) {
         const next = menu.filter((_, i) => i !== index);

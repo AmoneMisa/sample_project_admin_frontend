@@ -140,6 +140,7 @@ export default function FeatureCardsPage() {
             {creating && (
                 <FeatureCardDialog
                     mode="create"
+                    index={items.length}
                     onClose={() => {
                         setCreating(false);
                         load();

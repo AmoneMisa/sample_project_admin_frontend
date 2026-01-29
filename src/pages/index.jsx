@@ -73,7 +73,7 @@ export default function Index() {
     if (!translations || !languages) {
         return (
             <div className="page" style={{padding: 24}}>
-                <h2>Загрузка переводов…</h2>
+                <h2>Загрузка переводов</h2>
             </div>
         );
     }

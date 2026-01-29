@@ -79,7 +79,7 @@ export default function Index() {
     // -----------------------------
     // FILTER + SORT
     // -----------------------------
-    const filtered = Object.entries(translations).filter(([key, values]) => {
+    const filtered = Object.entries(translations || {}).filter(([key, values]) => {
         const s = search.toLowerCase();
         if (!s) return true;
 
@@ -93,6 +93,14 @@ export default function Index() {
     const sorted = [...filtered].sort(([a], [b]) =>
         sortAsc ? a.localeCompare(b) : b.localeCompare(a)
     );
+
+    if (!translations || !languages) {
+        return (
+            <div className="page" style={{padding: 24}}>
+                <h2>Загрузка переводов…</h2>
+            </div>
+        );
+    }
 
     return (
         <div className="page" style={{padding: 24}}>

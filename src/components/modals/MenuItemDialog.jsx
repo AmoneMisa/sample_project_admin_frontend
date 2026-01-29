@@ -298,7 +298,7 @@ export default function MenuItemDialog({initialItem, onSave, onClose, title}) {
                     position: current.image?.position || "right"
                 };
                 delete current.items;
-                return;
+
             }
         });
     }
@@ -417,6 +417,8 @@ export default function MenuItemDialog({initialItem, onSave, onClose, title}) {
     // Render translation inputs
     // -----------------------------------------------------
     function renderTranslationInputs(key, label) {
+        const fe = fieldErrors || {};
+
         return (
             <div className="translation-block">
                 {label && <div className="translation-label">{label}</div>}
@@ -425,8 +427,8 @@ export default function MenuItemDialog({initialItem, onSave, onClose, title}) {
                         key={lang.code}
                         label={lang.code.toUpperCase()}
                         value={translations[key]?.[lang.code] ?? ""}
-                        onChange={v => updateTranslation(key, lang.code, v)}
-                        error={fieldErrors[key]?.[lang.code] ?? ""}
+                        onChange={(v) => updateTranslation(key, lang.code, v)}
+                        error={fe[key]?.[lang.code] ?? ""}
                     />
                 ))}
             </div>

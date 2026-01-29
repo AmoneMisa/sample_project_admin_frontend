@@ -7,6 +7,7 @@ import Modal from "./Modal";
 import MenuItemSimple from "../menuCreateComponents/MenuItemSimple";
 import LabeledSelect from "../controls/LabeledSelect";
 import MenuItemDropdownMega from "../menuCreateComponents/MenuItemDropdownMega";
+import MenuItemDropdown from "../menuCreateComponents/MenuItemDropdown";
 
 // -----------------------------------------------------
 // Collect all translation keys
@@ -78,31 +79,6 @@ function collectVisibleKeys(item) {
 
     return Array.from(new Set(keys));
 }
-
-// -----------------------------------------------------
-// Component
-function MenuItemDropdownSimple(props: {
-    item: {
-        id: *,
-        type: string,
-        visible: boolean,
-        href: string,
-        labelKey: string,
-        badgeKey: null,
-        showBadge: boolean
-    } | (* & { labelKey: * }) | *,
-    toggleVisible: toggleVisible,
-    renderTranslationInputs: function
-    (*, *): *,
-    updateHref: updateHref,
-    toggleBadge: toggleBadge,
-    removeSimpleItem: removeSimpleItem,
-    addSimpleItem: addSimpleItem,
-    fieldErrors: {}
-}) {
-    return null;
-}
-
 // -----------------------------------------------------
 export default function MenuItemDialog({
                                            title,
@@ -610,7 +586,7 @@ export default function MenuItemDialog({
             )}
 
             {item.type === "dropdown-simple" && (
-                <MenuItemDropdownSimple
+                <MenuItemDropdown
                     item={item}
                     toggleVisible={toggleVisible}
                     renderTranslationInputs={renderTranslationInputs}

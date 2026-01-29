@@ -5,7 +5,7 @@ import AddKeyBar from "../components/customElems/AddKeyBar";
 import FiltersBar from "../components/customElems/FiltersBar";
 import HistoryDialog from "../components/modals/HistoryDialog";
 import {useToast} from "../components/layout/ToastContext";
-import {FiClock, FiEdit, FiRotateCcw, FiSave, FiTrash} from "react-icons/fi";
+import {FiClock, FiEdit, FiRotateCcw, FiTrash} from "react-icons/fi";
 import {useAuth} from "../hooks/authContext";
 import CustomTable from "../components/customElems/CustomTable";
 import TranslationDialog from "../components/modals/TranslationDialog";
@@ -38,9 +38,6 @@ export default function Index() {
         if (accessToken) loadAllTranslations();
     }, [accessToken]);
 
-    // -----------------------------
-    // DELETE KEY
-    // -----------------------------
     function requestDeleteKey(key) {
         setDeleteTarget(key);
     }
@@ -55,9 +52,6 @@ export default function Index() {
         setDeleteTarget(null);
     }
 
-    // -----------------------------
-    // ADD KEY
-    // -----------------------------
     async function handleAddKey(newKey) {
         if (!accessToken) return;
         if (translations[newKey]) return;
@@ -76,9 +70,14 @@ export default function Index() {
         showToast("Ключ добавлен");
     }
 
-    // -----------------------------
-    // FILTER + SORT
-    // -----------------------------
+    if (!translations || !languages) {
+        return (
+            <div className="page" style={{padding: 24}}>
+                <h2>Загрузка переводов…</h2>
+            </div>
+        );
+    }
+
     const filtered = Object.entries(translations || {}).filter(([key, values]) => {
         const s = search.toLowerCase();
         if (!s) return true;
@@ -93,14 +92,6 @@ export default function Index() {
     const sorted = [...filtered].sort(([a], [b]) =>
         sortAsc ? a.localeCompare(b) : b.localeCompare(a)
     );
-
-    if (!translations || !languages) {
-        return (
-            <div className="page" style={{padding: 24}}>
-                <h2>Загрузка переводов…</h2>
-            </div>
-        );
-    }
 
     return (
         <div className="page" style={{padding: 24}}>

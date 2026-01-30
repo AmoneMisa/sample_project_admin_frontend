@@ -2,17 +2,11 @@ import {useEffect, useState} from "react";
 import {v4 as uuid} from "uuid";
 import {useAuth} from "../hooks/authContext";
 import {useToast} from "../components/layout/ToastContext";
-import {useAuditLog} from "../hooks/useAuditLog";
 import {useTranslations} from "../hooks/useTranslations";
-
-import Checkbox from "../components/controls/Checkbox";
 import LabeledInput from "../components/controls/LabeledInput";
 import MultilangInput from "../components/controls/MultilangInput";
-import PhoneInput from "react-phone-number-input";
-import LabeledSelect from "../components/controls/LabeledSelect";
+import Checkbox from "../components/controls/Checkbox";
 import {FiSave, FiTrash} from "react-icons/fi";
-
-import {validateContact} from "../utils/validators";
 
 export default function ContactsPage() {
     const API_URL = process.env.REACT_APP_API_URL || "/api";
@@ -29,43 +23,51 @@ export default function ContactsPage() {
     ];
 
     const {
-        translations,
-        setTranslations,
-        meta,
-        setMeta,
-        pushSnapshot,
-        markDeleted
-    } = useAuditLog();
-
-    const {
         languages,
+        translationMaps,
+        updateTranslation,
         loadAllTranslations,
-        saveValue,
+        createKeysBatch,
+        updateKeysBatch,
         deleteKeys
-    } = useTranslations({
-        translations,
-        setTranslations,
-        meta,
-        setMeta,
-        pushSnapshot,
-        markDeleted
-    });
+    } = useTranslations({});
 
-    // -----------------------------
-    // HELPERS
-    // -----------------------------
+    function makeLabelKey(type, id) {
+        return `contacts.${type}.${id}.label`;
+    }
+
     function createContact(type) {
         const id = uuid();
-        return { id, type, value: "", isVisible: true };
+        return {
+            id,
+            type,
+            value: "",
+            isVisible: true,
+            labelKey: makeLabelKey(type, id)
+        };
     }
 
     function createSocialContact() {
         const id = uuid();
-        return { id, type: "social", socialType: "instagram", value: "", isVisible: true };
+        return {
+            id,
+            type: "social",
+            socialType: "instagram",
+            value: "",
+            isVisible: true,
+            labelKey: makeLabelKey("social", id)
+        };
     }
 
     function createFooterInfo() {
-        return { id: "footer-info", type: "other", value: "", isVisible: true };
+        const id = uuid();
+        return {
+            id,
+            type: "other",
+            value: "",
+            isVisible: true,
+            labelKey: makeLabelKey("other", id)
+        };
     }
 
     async function loadContacts() {
@@ -75,9 +77,6 @@ export default function ContactsPage() {
         return await res.json();
     }
 
-    // -----------------------------
-    // INITIAL LOAD
-    // -----------------------------
     useEffect(() => {
         if (!accessToken) return;
 
@@ -88,53 +87,56 @@ export default function ContactsPage() {
 
             let loaded = await loadContacts();
 
-            // Ensure required blocks exist
-            if (!loaded.some(c => c.type === "phone")) {
-                loaded.push(createContact("phone"));
-            }
-            if (!loaded.some(c => c.type === "email")) {
-                loaded.push(createContact("email"));
-            }
-            if (!loaded.some(c => c.type === "address")) {
-                loaded.push(createContact("address"));
-            }
-            if (!loaded.some(c => c.type === "other")) {
-                loaded.push(createFooterInfo());
-            }
+            if (!loaded.some(c => c.type === "phone")) loaded.push(createContact("phone"));
+            if (!loaded.some(c => c.type === "email")) loaded.push(createContact("email"));
+            if (!loaded.some(c => c.type === "address")) loaded.push(createContact("address"));
+            if (!loaded.some(c => c.type === "other")) loaded.push(createFooterInfo());
+
+            loaded = loaded.map(c => ({
+                ...c,
+                labelKey: c.labelKey || makeLabelKey(c.type, c.id)
+            }));
 
             setContacts(loaded);
 
-            // Create translations
             const next = {};
             for (const c of loaded) {
-                next[c.id] = {
-                    label: Object.fromEntries(languages.map(l => [l.code, ""]))
-                };
+                const key = c.labelKey;
+                next[key] = translationMaps[key] || Object.fromEntries(
+                    languages.map(l => [l.code, ""])
+                );
             }
 
-            setTranslations(prev => ({...next, ...prev}));
+            for (const [key, map] of Object.entries(next)) {
+                updateTranslation(key, map);
+            }
+
             setLoading(false);
         })();
     }, [accessToken, loadAllTranslations]);
 
-    // -----------------------------
-    // ADD CONTACT
-    // -----------------------------
     function addContact(type) {
         const newC = type === "social" ? createSocialContact() : createContact(type);
-
         setContacts(prev => [...prev, newC]);
 
-        const empty = {
-            label: Object.fromEntries(languages.map(l => [l.code, ""]))
-        };
-
-        setTranslations(prev => ({...prev, [newC.id]: empty}));
+        const empty = Object.fromEntries(languages.map(l => [l.code, ""]));
+        updateTranslation(newC.labelKey, empty);
     }
 
-    // -----------------------------
-    // SAVE CONTACT
-    // -----------------------------
+    function validateContact(contact) {
+        const errs = {};
+
+        if (!contact.value || contact.value.trim() === "") {
+            errs.value = "Поле обязательно";
+        }
+
+        const labelMap = translationMaps[contact.labelKey] || {};
+        const empty = languages.some(l => !labelMap[l.code]?.trim());
+        if (empty) errs.label = "Заполните все языки";
+
+        return Object.keys(errs).length ? errs : null;
+    }
+
     async function saveContact(contact) {
         const isNew = !contact.persisted;
         const method = isNew ? "POST" : "PATCH";
@@ -152,22 +154,14 @@ export default function ContactsPage() {
             setContacts(prev =>
                 prev.map(c => (c.id === contact.id ? {...data, persisted: true} : c))
             );
-
-            setTranslations(prev => {
-                const t = prev[contact.id];
-                const next = {...prev};
-                delete next[contact.id];
-                next[data.id] = t;
-                return next;
-            });
         }
     }
 
     async function saveAll(contact) {
-        const err = validateContact(contact, translations, languages);
+        const err = validateContact(contact);
 
         if (err) {
-            setErrors(prev => ({ ...prev, [contact.id]: err }));
+            setErrors(prev => ({...prev, [contact.id]: err}));
             showToast("Исправьте ошибки");
             return;
         }
@@ -178,20 +172,24 @@ export default function ContactsPage() {
             return next;
         });
 
-        const t = translations[contact.id];
-        const labelKey = `contacts.${contact.id}.label`;
+        const labelKey = contact.labelKey;
+        const values = translationMaps[labelKey];
 
-        for (const [lang, value] of Object.entries(t.label)) {
-            await saveValue(labelKey, lang, value);
+        if (!contact.persisted) {
+            await createKeysBatch([{key: labelKey, values}]);
+        } else {
+            const batch = Object.entries(values).map(([lang, value]) => ({
+                key: labelKey,
+                lang,
+                value
+            }));
+            await updateKeysBatch(batch);
         }
 
         await saveContact(contact);
         showToast("Контакт сохранён");
     }
 
-    // -----------------------------
-    // DELETE CONTACT
-    // -----------------------------
     async function requestDelete(contact) {
         const group = grouped[contact.type];
 
@@ -200,22 +198,17 @@ export default function ContactsPage() {
             return;
         }
 
-        const labelKey = `contacts.${contact.id}.label`;
-
-        deleteKeys([labelKey]);
+        await deleteKeys([contact.labelKey]);
 
         await fetch(`${API_URL}/contacts/${contact.id}`, {
             method: "DELETE",
-            headers: { Authorization: `Bearer ${accessToken}` }
+            headers: {Authorization: `Bearer ${accessToken}`}
         });
 
         setContacts(prev => prev.filter(c => c.id !== contact.id));
         showToast("Контакт удалён");
     }
 
-    // -----------------------------
-    // GROUPING
-    // -----------------------------
     const grouped = {
         phone: contacts.filter(c => c.type === "phone"),
         email: contacts.filter(c => c.type === "email"),
@@ -226,132 +219,100 @@ export default function ContactsPage() {
 
     if (loading) return null;
 
-    // -----------------------------
-    // RENDER
-    // -----------------------------
     return (
-        <div className="page" style={{padding: 24}}>
-            <h1>Контакты</h1>
+        <div className="contacts-page">
 
-            <div style={{display: "flex", gap: 8, marginBottom: 24}}>
-                <button className="button" onClick={() => addContact("phone")}>Добавить телефон</button>
-                <button className="button" onClick={() => addContact("email")}>Добавить email</button>
-                <button className="button" onClick={() => addContact("address")}>Добавить адрес</button>
-                <button className="button" onClick={() => addContact("social")}>Добавить соцсеть</button>
-            </div>
+            {Object.entries(grouped).map(([type, list]) => (
+                <div key={type} className="contacts-group">
+                    <h3>{type}</h3>
 
-            {Object.entries(grouped).map(([groupName, list]) => (
-                <div key={groupName} style={{marginBottom: 32}}>
-                    <h2 style={{marginBottom: 16}}>
-                        {groupName === "phone" && "Телефоны"}
-                        {groupName === "email" && "Email"}
-                        {groupName === "address" && "Адреса"}
-                        {groupName === "social" && "Соцсети"}
-                        {groupName === "other" && "Прочее"}
-                    </h2>
+                    {list.map(contact => {
+                        const err = errors[contact.id] || {};
+                        const labelMap = translationMaps[contact.labelKey] || {};
 
-                    <div className="contacts-page__block">
-                        {list.map(contact => {
-                            const t = translations[contact.id] || {label: {}};
-                            const err = errors[contact.id] || {};
+                        return (
+                            <div key={contact.id} className="contact-item">
 
-                            return (
-                                <div key={contact.id} className="contacts-page__row">
+                                <MultilangInput
+                                    label="Заголовок"
+                                    languages={languages.map(l => l.code)}
+                                    valueMap={labelMap}
+                                    errors={err.label ? {all: err.label} : {}}
+                                    onChange={(m) => updateTranslation(contact.labelKey, m)}
+                                />
 
-                                    {contact.type !== "other" && (
-                                        <Checkbox
-                                            label="Отображать"
-                                            checked={contact.isVisible}
-                                            onChange={() => {
-                                                contact.isVisible = !contact.isVisible;
-                                                setContacts([...contacts]);
-                                            }}
-                                        />
-                                    )}
+                                <LabeledInput
+                                    label="Значение"
+                                    value={contact.value}
+                                    error={err.value}
+                                    onChange={(v) =>
+                                        setContacts(prev =>
+                                            prev.map(c =>
+                                                c.id === contact.id ? {...c, value: v} : c
+                                            )
+                                        )
+                                    }
+                                />
 
-                                    {contact.type === "phone" ? (
-                                        <>
-                                            <PhoneInput
-                                                international
-                                                withCountryCallingCode
-                                                value={contact.value}
-                                                className="contacts-page__field contacts-page__field_phone"
-                                                onChange={v => {
-                                                    contact.value = v || "";
-                                                    setContacts([...contacts]);
-                                                }}
-                                            />
-                                            {err.value && <div className="field-holder__error">{err.value}</div>}
-                                        </>
-                                    ) : contact.type === "social" ? (
-                                        <>
-                                            <LabeledSelect
-                                                label="Тип соцсети"
-                                                value={contact.socialType}
-                                                options={SOCIAL_TYPES.map(s => ({value: s, label: s}))}
-                                                onChange={v => {
-                                                    contact.socialType = v;
-                                                    setContacts([...contacts]);
-                                                }}
-                                            />
-                                            {err.socialType && <div className="field-holder__error">{err.socialType}</div>}
-
-                                            <LabeledInput
-                                                label="Ссылка"
-                                                value={contact.value}
-                                                error={err.value}
-                                                onChange={v => {
-                                                    contact.value = v;
-                                                    setContacts([...contacts]);
-                                                }}
-                                            />
-                                        </>
-                                    ) : (
-                                        <LabeledInput
-                                            label="Значение"
-                                            value={contact.value}
-                                            error={err.value}
-                                            onChange={v => {
-                                                contact.value = v;
-                                                setContacts([...contacts]);
-                                            }}
-                                        />
-                                    )}
-
-                                    <MultilangInput
-                                        label="Label"
-                                        languages={languages.map(l => l.code)}
-                                        valueMap={t.label}
-                                        errors={err.label}
-                                        onChange={next =>
-                                            setTranslations(prev => ({
-                                                ...prev,
-                                                [contact.id]: {
-                                                    ...prev[contact.id],
-                                                    label: next
-                                                }
-                                            }))
+                                {contact.type === "social" && (
+                                    <select
+                                        value={contact.socialType}
+                                        onChange={(e) =>
+                                            setContacts(prev =>
+                                                prev.map(c =>
+                                                    c.id === contact.id
+                                                        ? {...c, socialType: e.target.value}
+                                                        : c
+                                                )
+                                            )
                                         }
-                                    />
+                                    >
+                                        {SOCIAL_TYPES.map(t => (
+                                            <option key={t} value={t}>{t}</option>
+                                        ))}
+                                    </select>
+                                )}
 
-                                    <div style={{display: "flex", justifyContent: "flex-end", gap: 8}}>
-                                        <button className="button button_icon" onClick={() => saveAll(contact)}>
-                                            <FiSave size={16}/>
-                                        </button>
+                                <Checkbox
+                                    label="Отображать"
+                                    checked={contact.isVisible}
+                                    onChange={() =>
+                                        setContacts(prev =>
+                                            prev.map(c =>
+                                                c.id === contact.id
+                                                    ? {...c, isVisible: !c.isVisible}
+                                                    : c
+                                            )
+                                        )
+                                    }
+                                />
 
-                                        <button
-                                            className="button button_icon"
-                                            onClick={() => requestDelete(contact)}
-                                        >
-                                            <FiTrash size={16}/>
-                                        </button>
-                                    </div>
-                                </div>
-                            );
-                        })}
-                    </div>
+                                <button
+                                    className="button button_icon"
+                                    onClick={() => saveAll(contact)}
+                                >
+                                    <FiSave size={16}/>
+                                </button>
+
+                                <button
+                                    className="button button_icon"
+                                    onClick={() => requestDelete(contact)}
+                                >
+                                    <FiTrash size={16}/>
+                                </button>
+                            </div>
+                        );
+                    })}
+
+                    <button
+                        className="button button_secondary"
+                        onClick={() => addContact(type)}
+                    >
+                        Добавить
+                    </button>
                 </div>
             ))}
+
         </div>
     );
 }

@@ -21,12 +21,10 @@ export default function MenuItemSimple({
         return result;
     };
 
-    const labelErrors = extractErrors("label");
     const badgeErrors = extractErrors("badge");
 
     return (
         <div className="menu-modal__row">
-
             <div className="menu-modal__row-item">
                 <Checkbox
                     label="Отображать пункт меню"
@@ -36,14 +34,6 @@ export default function MenuItemSimple({
                             n.visible = n.visible === false ? true : !n.visible;
                         })
                     }
-                />
-
-                <MultilangInput
-                    label="Заголовок"
-                    languages={languages}
-                    valueMap={translationMaps[item.labelKey] || {}}
-                    errors={labelErrors}
-                    onChange={(next) => updateTranslation(item.labelKey, next)}
                 />
             </div>
 
@@ -58,9 +48,10 @@ export default function MenuItemSimple({
                     }
                     error={fieldErrors["href"] ?? ""}
                 />
-
+            </div>
+            <div className="menu-modal__row-item">
                 <Checkbox
-                    label="Показывать бейдж"
+                    label="Бейдж"
                     checked={item.showBadge === true}
                     onChange={() =>
                         updateItem(n => {

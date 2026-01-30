@@ -65,13 +65,23 @@
 .menu-modal__row,
 .menu-modal__sub-item {
     display: flex;
+    align-items: center;
     flex-direction: column;
     gap: 10px;
+    width: -webkit-fill-available;
 }
+
+.menu-modal__row_col,
+.menu-modal__sub-item_col {
+    flex-direction: column;
+}
+
 .menu-modal__sub-item-row,
 .menu-modal__row-item {
     display: flex;
     gap: 10px;
+    width: -webkit-fill-available;
+    align-items: center;
 }
 
 .modal__header {

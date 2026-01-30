@@ -136,9 +136,6 @@ export default function HeaderMenu() {
         await saveMenu(next);
     }
 
-    // -----------------------------
-    // TABLE COLUMNS
-    // -----------------------------
     const columns = [
         {key: "type", title: "Тип", width: "120px"},
 
@@ -234,9 +231,11 @@ export default function HeaderMenu() {
                 <h1>Хедер‑меню</h1>
 
                 {canEdit && (
-                    <button className="button" onClick={() => setCreating(true)}>
-                        Добавить
-                    </button>
+                    <div>
+                        <button className="button" onClick={() => setCreating(true)}>
+                            Добавить
+                        </button>
+                    </div>
                 )}
             </div>
 

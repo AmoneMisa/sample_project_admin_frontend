@@ -111,7 +111,7 @@ export default function TestimonialDialog({title, initial, onSave, onClose}) {
             />
 
             <Checkbox
-                label="Показывать"
+                label="Отображать"
                 checked={form.isVisible}
                 onChange={() => updateField("isVisible", !form.isVisible)}
             />

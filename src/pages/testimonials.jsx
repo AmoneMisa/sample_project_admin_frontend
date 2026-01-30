@@ -203,7 +203,7 @@ export default function Testimonials() {
                 <h1>Отзывы</h1>
 
                 {canEdit && (
-                    <div style={{display: "flex", gap: 12}}>
+                    <div>
                         <button className="button" onClick={() => setCreating(true)}>
                             Создать
                         </button>

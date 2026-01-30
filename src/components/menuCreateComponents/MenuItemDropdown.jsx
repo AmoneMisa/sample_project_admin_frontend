@@ -34,24 +34,15 @@ export default function MenuItemDropdown({
                             })
                         }
                     />
-
-                    <MultilangInput
-                        label="Заголовок меню"
-                        languages={languages}
-                        valueMap={translationMaps[item.labelKey] || {}}
-                        errors={extractErrors("label")}
-                        onChange={(next) => updateTranslation(item.labelKey, next)}
-                    />
                 </div>
 
-                <div className="menu-modal__row-item">
+                <div className="menu-modal__row-item menu-modal__sub-item_col">
                     {item.items.map((sub, i) => {
                         const labelErrors = extractErrors(`items.${i}.label`);
                         const badgeErrors = extractErrors(`items.${i}.badge`);
 
                         return (
-                            <div key={i} className="menu-modal__sub-item-wrapper">
-
+                            <>
                                 <div className="menu-modal__sub-item">
                                     <div className="menu-modal__sub-item-row">
                                         <Checkbox
@@ -106,7 +97,7 @@ export default function MenuItemDropdown({
 
                                 <div className="menu-modal__sub-item">
                                     <Checkbox
-                                        label="Показывать бейдж"
+                                        label="Бейдж"
                                         checked={sub.showBadge === true}
                                         onChange={() =>
                                             updateItem(n => {
@@ -134,8 +125,7 @@ export default function MenuItemDropdown({
                                         />
                                     )}
                                 </div>
-
-                            </div>
+                            </>
                         );
                     })}
                 </div>

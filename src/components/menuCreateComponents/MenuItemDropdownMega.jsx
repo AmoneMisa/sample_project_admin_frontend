@@ -35,21 +35,12 @@ export default function MenuItemDropdownMega({
                             })
                         }
                     />
-
-                    <MultilangInput
-                        label="Заголовок меню"
-                        languages={languages}
-                        valueMap={translationMaps[item.labelKey] || {}}
-                        errors={extractErrors("label")}
-                        onChange={(next) => updateTranslation(item.labelKey, next)}
-                    />
                 </div>
             </div>
 
             {item.columns.map((col, c) => (
                 <div key={c} className="menu-modal__row">
-                    <div className="menu-modal__row-item">
-
+                    <div className="menu-modal__row-item menu-modal__row_col">
                         <MultilangInput
                             label={`Список ${c + 1}`}
                             languages={languages}
@@ -73,8 +64,7 @@ export default function MenuItemDropdownMega({
                             const badgeErrors = extractErrors(`columns.${c}.items.${s}.badge`);
 
                             return (
-                                <div key={s} className="menu-modal__sub-item">
-
+                                <div key={s} className="menu-modal__sub-item menu-modal__sub-item_col">
                                     <div className="menu-modal__sub-item-row">
                                         <Checkbox
                                             label={`Отображать пункт ${s + 1}`}
@@ -112,7 +102,7 @@ export default function MenuItemDropdownMega({
                                         />
                                     </div>
 
-                                    <div className="menu-modal__sub-item-row">
+                                    <div className="menu-modal__sub-item-row ">
                                         <LabeledInput
                                             label="Ссылка"
                                             value={sub.href}
@@ -125,7 +115,7 @@ export default function MenuItemDropdownMega({
                                         />
                                     </div>
 
-                                    <div className="menu-modal__sub-item-row">
+                                    <div className="menu-modal__sub-item-row menu-modal__sub-item_col">
                                         <Checkbox
                                             label="Бейдж"
                                             checked={sub.showBadge === true}

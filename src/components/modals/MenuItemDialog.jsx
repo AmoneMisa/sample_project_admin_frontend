@@ -1,9 +1,7 @@
 import {useEffect, useState} from "react";
 import Modal from "./Modal";
-import LabeledInput from "../controls/LabeledInput";
 import MultilangInput from "../controls/MultilangInput";
 import LabeledSelect from "../controls/LabeledSelect";
-import Checkbox from "../controls/Checkbox";
 import {useAuth} from "../../hooks/authContext";
 import {useToast} from "../layout/ToastContext";
 import {v4 as uuid} from "uuid";
@@ -19,8 +17,9 @@ export default function MenuItemDialog({initialItem, onSave, onClose, title}) {
 
     const {
         languages,
-        translations,
+        loadLanguages,
         loadAllTranslations,
+        translationMaps,
         createKeysBatch,
         updateKeysBatch
     } = useTranslations({});
@@ -45,35 +44,37 @@ export default function MenuItemDialog({initialItem, onSave, onClose, title}) {
         return structuredClone(initialItem);
     });
 
-    const [translationMaps, setTranslationMaps] = useState({});
+    const [localMaps, setLocalMaps] = useState({});
+    useEffect(() => {
+        loadLanguages();
+        loadAllTranslations();
+    }, []);
 
     useEffect(() => {
-        (async () => {
-            await loadAllTranslations();
+        if (!Object.keys(translationMaps).length) return;
 
-            const maps = {};
-            const collect = (key) => {
-                maps[key] = {...(translations[key] || {})};
-            };
+        const maps = {};
+        const collect = (key) => {
+            maps[key] = {...(translationMaps[key] || {})};
+        };
 
-            const walk = (node) => {
-                if (!node) return;
-                if (node.labelKey) collect(node.labelKey);
-                if (node.badgeKey) collect(node.badgeKey);
-                if (node.items) node.items.forEach(walk);
-                if (node.columns) {
-                    node.columns.forEach(col => {
-                        collect(col.titleKey);
-                        col.items.forEach(walk);
-                    });
-                }
-            };
+        const walk = (node) => {
+            if (!node) return;
+            if (node.labelKey) collect(node.labelKey);
+            if (node.badgeKey) collect(node.badgeKey);
+            if (node.items) node.items.forEach(walk);
+            if (node.columns) {
+                node.columns.forEach(col => {
+                    collect(col.titleKey);
+                    col.items.forEach(walk);
+                });
+            }
+        };
 
-            walk(item);
-            setTranslationMaps(maps);
-            setLoading(false);
-        })();
-    }, [loadAllTranslations]);
+        walk(item);
+        setLocalMaps(maps);
+        setLoading(false);
+    }, [translationMaps, item]);
 
     const updateItem = (fn) => {
         setItem(prev => {
@@ -84,7 +85,7 @@ export default function MenuItemDialog({initialItem, onSave, onClose, title}) {
     };
 
     const updateTranslation = (key, nextMap) => {
-        setTranslationMaps(prev => ({
+        setLocalMaps(prev => ({
             ...prev,
             [key]: nextMap
         }));
@@ -162,7 +163,7 @@ export default function MenuItemDialog({initialItem, onSave, onClose, title}) {
         const result = [];
 
         const add = (key) => {
-            const values = translationMaps[key] || {};
+            const values = localMaps[key] || {};
             result.push({
                 key,
                 values: Object.fromEntries(
@@ -238,15 +239,6 @@ export default function MenuItemDialog({initialItem, onSave, onClose, title}) {
         onSave(item);
         onClose();
     };
-
-    if (loading || !languages.length) {
-        return (
-            <Modal open={true} onClose={onClose}>
-                <h2>Загрузка…</h2>
-            </Modal>
-        );
-    }
-
     return (
         <Modal open={true} onClose={onClose} width={800}>
             <h2>{title}</h2>
@@ -312,7 +304,7 @@ export default function MenuItemDialog({initialItem, onSave, onClose, title}) {
             <MultilangInput
                 label="Название"
                 languages={languages.map(l => l.code)}
-                valueMap={translationMaps[item.labelKey]}
+                valueMap={localMaps[item.labelKey] || {}}
                 onChange={(m) => updateTranslation(item.labelKey, m)}
             />
 
@@ -320,7 +312,7 @@ export default function MenuItemDialog({initialItem, onSave, onClose, title}) {
                 <MenuItemSimple
                     item={item}
                     updateItem={updateItem}
-                    translationMaps={translationMaps}
+                    translationMaps={localMaps}
                     updateTranslation={updateTranslation}
                     languages={languages.map(l => l.code)}
                     fieldErrors={fieldErrors}
@@ -331,7 +323,7 @@ export default function MenuItemDialog({initialItem, onSave, onClose, title}) {
                 <MenuItemDropdown
                     item={item}
                     updateItem={updateItem}
-                    translationMaps={translationMaps}
+                    translationMaps={localMaps}
                     updateTranslation={updateTranslation}
                     languages={languages.map(l => l.code)}
                     fieldErrors={fieldErrors}
@@ -342,7 +334,7 @@ export default function MenuItemDialog({initialItem, onSave, onClose, title}) {
                 <MenuItemDropdownMega
                     item={item}
                     updateItem={updateItem}
-                    translationMaps={translationMaps}
+                    translationMaps={localMaps}
                     updateTranslation={updateTranslation}
                     languages={languages.map(l => l.code)}
                     fieldErrors={fieldErrors}

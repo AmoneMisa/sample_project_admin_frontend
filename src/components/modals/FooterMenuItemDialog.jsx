@@ -14,6 +14,8 @@ export default function FooterMenuItemDialog({initial, mode, blockId, onClose}) 
 
     const {
         languages,
+        loadLanguages,
+        translationMaps,
         loadAllTranslations,
         createKeysBatch,
         updateKeysBatch
@@ -43,16 +45,13 @@ export default function FooterMenuItemDialog({initial, mode, blockId, onClose}) 
         setErrors(prev => ({...prev, [key]: ""}));
     };
 
-    // -----------------------------
-    // INITIAL LOAD
-    // -----------------------------
     useEffect(() => {
         (async () => {
+            await loadLanguages();
             await loadAllTranslations();
 
             if (mode === "edit") {
-                const all = window.__translations;
-                setLabelTranslations({...all[form.labelKey]});
+                setLabelTranslations({...translationMaps[form.labelKey]});
             } else {
                 const empty = Object.fromEntries(
                     languages.map(l => [l.code, ""])
@@ -64,9 +63,6 @@ export default function FooterMenuItemDialog({initial, mode, blockId, onClose}) 
         })();
     }, [languages.length]);
 
-    // -----------------------------
-    // VALIDATION
-    // -----------------------------
     const validate = () => {
         const e = {};
 
@@ -86,9 +82,6 @@ export default function FooterMenuItemDialog({initial, mode, blockId, onClose}) 
         return Object.keys(e).length === 0;
     };
 
-    // -----------------------------
-    // SAVE ITEM
-    // -----------------------------
     const saveItem = async () => {
         if (mode === "edit") {
             await fetch(`${API_URL}/footer/items/${form.id}`, {
@@ -115,16 +108,11 @@ export default function FooterMenuItemDialog({initial, mode, blockId, onClose}) 
         return item.id;
     };
 
-    // -----------------------------
-    // SAVE ALL
-    // -----------------------------
     const handleSave = async () => {
         if (!validate()) return;
 
         const id = await saveItem();
-
         const finalLabelKey = `footer.menu.${id}.label`;
-
         const payload = [
             {
                 key: finalLabelKey,

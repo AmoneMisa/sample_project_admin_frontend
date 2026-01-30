@@ -26,6 +26,7 @@ export default function ContactsPage() {
 
     const {
         languages,
+        loadLanguages,
         translationMaps,
         updateTranslation,
         loadAllTranslations,
@@ -86,7 +87,7 @@ export default function ContactsPage() {
             setLoading(true);
 
             await loadAllTranslations();
-
+            await loadLanguages();
             let loaded = await loadContacts();
 
             if (!loaded.some(c => c.type === "phone")) loaded.push(createContact("phone"));
@@ -222,10 +223,10 @@ export default function ContactsPage() {
     if (loading) return null;
 
     return (
-        <div className="page" style={{padding: 24}}>
-            <h1>Контакты</h1>
+        <div className="page contacts-page">
+            <h1 className="page__header">Контакты</h1>
 
-            <div style={{display: "flex", gap: 8, marginBottom: 24}}>
+            <div className={"page__block page__block_actions"}>
                 <button className="button" onClick={() => addContact("phone")}>Добавить телефон</button>
                 <button className="button" onClick={() => addContact("email")}>Добавить email</button>
                 <button className="button" onClick={() => addContact("address")}>Добавить адрес</button>
@@ -233,7 +234,7 @@ export default function ContactsPage() {
             </div>
 
             {Object.entries(grouped).map(([groupName, list]) => (
-                <div key={groupName} style={{marginBottom: 32}}>
+                <div key={groupName} className={"page__block"}>
                     <h2 style={{marginBottom: 16}}>
                         {groupName === "phone" && "Телефоны"}
                         {groupName === "email" && "Email"}
@@ -249,16 +250,29 @@ export default function ContactsPage() {
 
                             return (
                                 <div key={contact.id} className="contacts-page__row">
-
                                     {contact.type !== "other" && (
-                                        <Checkbox
-                                            label="Отображать"
-                                            checked={contact.isVisible}
-                                            onChange={() => {
-                                                contact.isVisible = !contact.isVisible;
-                                                setContacts([...contacts]);
-                                            }}
-                                        />
+                                        <div style={{display: "flex", justifyContent: "space-between", gap: 8}}>
+                                            <Checkbox
+                                                label="Отображать"
+                                                checked={contact.isVisible}
+                                                onChange={() => {
+                                                    contact.isVisible = !contact.isVisible;
+                                                    setContacts([...contacts]);
+                                                }}
+                                            />
+                                            <div style={{display: "flex"}}>
+                                                <button className="button button_icon" onClick={() => saveAll(contact)}>
+                                                    <FiSave size={16}/>
+                                                </button>
+
+                                                <button
+                                                    className="button button_icon"
+                                                    onClick={() => requestDelete(contact)}
+                                                >
+                                                    <FiTrash size={16}/>
+                                                </button>
+                                            </div>
+                                        </div>
                                     )}
 
                                     {contact.type === "phone" ? (
@@ -286,7 +300,8 @@ export default function ContactsPage() {
                                                     setContacts([...contacts]);
                                                 }}
                                             />
-                                            {err.socialType && <div className="field-holder__error">{err.socialType}</div>}
+                                            {err.socialType &&
+                                                <div className="field-holder__error">{err.socialType}</div>}
 
                                             <LabeledInput
                                                 label="Ссылка"
@@ -319,19 +334,6 @@ export default function ContactsPage() {
                                             updateTranslation(contact.labelKey, next)
                                         }
                                     />
-
-                                    <div style={{display: "flex", justifyContent: "flex-end", gap: 8}}>
-                                        <button className="button button_icon" onClick={() => saveAll(contact)}>
-                                            <FiSave size={16}/>
-                                        </button>
-
-                                        <button
-                                            className="button button_icon"
-                                            onClick={() => requestDelete(contact)}
-                                        >
-                                            <FiTrash size={16}/>
-                                        </button>
-                                    </div>
                                 </div>
                             );
                         })}

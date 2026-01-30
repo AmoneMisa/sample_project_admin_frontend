@@ -8,6 +8,7 @@
 @import "css/customElems.css";
 @import "css/controls.css";
 @import "css/editor.css";
+@import "css/contacts.css";
 
 :root {
     --color-primary: #805AF5;

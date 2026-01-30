@@ -16,72 +16,57 @@ export default function TestimonialDialog({title, initial, onSave, onClose}) {
 
     const [errors, setErrors] = useState({});
 
-    // -----------------------------
-    // Helpers
-    // -----------------------------
-    function updateField(field, value) {
+    const updateField = (field, value) => {
         setForm(prev => ({...prev, [field]: value}));
         setErrors(prev => ({...prev, [field]: ""}));
-    }
+    };
 
-    function isValidUrl(str) {
-        if (!str) return true; // пустое поле — ок
+    const isValidUrl = (str) => {
+        if (!str) return true;
         try {
             new URL(str);
             return true;
         } catch {
             return false;
         }
-    }
+    };
 
-    // -----------------------------
-    // Validation
-    // -----------------------------
-    function validate() {
+    const validate = () => {
         const next = {};
 
         if (!form.name.trim()) next.name = "Введите имя";
         if (!form.role.trim()) next.role = "Введите роль";
         if (!form.quote.trim()) next.quote = "Введите текст отзыва";
 
-        if (!form.rating || form.rating < 1 || form.rating > 5) {
+        if (!form.rating || form.rating < 1 || form.rating > 5)
             next.rating = "Рейтинг должен быть от 1 до 5";
-        }
 
-        if (!isValidUrl(form.avatar)) {
-            next.avatar = "Некорректный URL";
-        }
-
-        if (!isValidUrl(form.logo)) {
-            next.logo = "Некорректный URL";
-        }
+        if (!isValidUrl(form.avatar)) next.avatar = "Некорректный URL";
+        if (!isValidUrl(form.logo)) next.logo = "Некорректный URL";
 
         setErrors(next);
         return Object.keys(next).length === 0;
-    }
+    };
 
-    function handleSave() {
+    const handleSave = () => {
         if (!validate()) return;
         onSave(form);
         onClose();
-    }
+    };
 
-    // -----------------------------
-    // Render
-    // -----------------------------
     return (
         <Modal open={true} title={title} onClose={onClose} width={500}>
             <LabeledInput
                 label="Имя"
                 value={form.name}
-                onChange={(v) => updateField("name", v)}
+                onChange={v => updateField("name", v)}
                 error={errors.name}
             />
 
             <LabeledInput
                 label="Роль"
                 value={form.role}
-                onChange={(v) => updateField("role", v)}
+                onChange={v => updateField("role", v)}
                 error={errors.role}
             />
 
@@ -94,7 +79,7 @@ export default function TestimonialDialog({title, initial, onSave, onClose}) {
                     }
                     style={{padding: 6, minHeight: 80}}
                     value={form.quote}
-                    onChange={(e) => updateField("quote", e.target.value)}
+                    onChange={e => updateField("quote", e.target.value)}
                 />
                 {errors.quote && (
                     <div className="field-holder__error">{errors.quote}</div>
@@ -107,21 +92,21 @@ export default function TestimonialDialog({title, initial, onSave, onClose}) {
                 value={form.rating}
                 max={5}
                 min={1}
-                onChange={(v) => updateField("rating", Number(v))}
+                onChange={v => updateField("rating", Number(v))}
                 error={errors.rating}
             />
 
             <LabeledInput
                 label="Аватар URL"
                 value={form.avatar}
-                onChange={(v) => updateField("avatar", v)}
+                onChange={v => updateField("avatar", v)}
                 error={errors.avatar}
             />
 
             <LabeledInput
                 label="Лого URL"
                 value={form.logo}
-                onChange={(v) => updateField("logo", v)}
+                onChange={v => updateField("logo", v)}
                 error={errors.logo}
             />
 

@@ -1,29 +1,17 @@
 import {useEffect, useState} from "react";
 import Modal from "./Modal";
 import LabeledInput from "../controls/LabeledInput";
+import MultilangInput from "../controls/MultilangInput";
 import {useAuth} from "../../hooks/authContext";
 import {useToast} from "../layout/ToastContext";
 import {useAuditLog} from "../../hooks/useAuditLog";
 import {useTranslations} from "../../hooks/useTranslations";
-import {FiSave, FiTrash} from "react-icons/fi";
+import {v4 as uuid} from "uuid";
 
-export default function FooterMenuItemDialog({initial, index, mode, blockId, onClose}) {
+export default function FooterMenuItemDialog({initial, mode, blockId, onClose}) {
     const API_URL = process.env.REACT_APP_API_URL || "/api";
     const {accessToken} = useAuth();
     const {showToast} = useToast();
-
-    const [form, setForm] = useState(
-        initial || {
-            type: "link",
-            labelKey: `footer.menu.${index}.label`,
-            href: "",
-            order: index,
-            isVisible: true
-        }
-    );
-
-    const [errors, setErrors] = useState({});
-    const [loading, setLoading] = useState(true);
 
     const {
         translations,
@@ -47,41 +35,69 @@ export default function FooterMenuItemDialog({initial, index, mode, blockId, onC
         markDeleted
     });
 
+    const [loading, setLoading] = useState(true);
+    const [errors, setErrors] = useState({});
+
+    const [form, setForm] = useState(() => {
+        if (initial) return structuredClone(initial);
+
+        const itemId = uuid();
+        return {
+            id: itemId,
+            type: "link",
+            labelKey: null, // создадим позже
+            href: "",
+            order: 0,
+            isVisible: true
+        };
+    });
+
     useEffect(() => {
         if (!accessToken) return;
         (async () => {
             await loadAllTranslations();
+
+            if (!form.labelKey) {
+                const key = `footer.block.${blockId}.item.${form.id}.label`;
+                setForm(prev => ({...prev, labelKey: key}));
+
+                setTranslations(prev => ({
+                    ...prev,
+                    [key]: Object.fromEntries(languages.map(l => [l.code, ""]))
+                }));
+            }
+
             setLoading(false);
         })();
     }, [accessToken, loadAllTranslations]);
 
-    function updateField(key, value) {
-        setForm({...form, [key]: value});
-    }
+    const updateField = (key, value) => {
+        setForm(prev => ({...prev, [key]: value}));
+        setErrors(prev => ({...prev, [key]: ""}));
+    };
 
-    function validate() {
+    const validate = () => {
         const e = {};
 
         if (!form.href.trim()) e.href = "Обязательное поле";
-        if (form.order < 0 || form.order === "" || isNaN(form.order)) e.order = "Введите число ≥ 0";
+        if (form.order < 0 || form.order === "" || isNaN(form.order))
+            e.order = "Введите число ≥ 0";
 
         const t = translations[form.labelKey] || {};
-        const labelMap = t || {};
-
-        languages.forEach(lang => {
-            if (!labelMap[lang.code]?.trim()) {
-                if (!e.labelTranslations) e.labelTranslations = {};
-                e.labelTranslations[lang.code] = "Обязательное поле";
+        for (const lang of languages) {
+            if (!t[lang.code]?.trim()) {
+                if (!e.label) e.label = {};
+                e.label[lang.code] = "Обязательное поле";
             }
-        });
+        }
 
         setErrors(e);
         return Object.keys(e).length === 0;
-    }
+    };
 
-    async function saveItem() {
+    const saveItem = async () => {
         if (mode === "edit") {
-            await fetch(`${API_URL}/footer/items/${form.id}`, {
+            const res = await fetch(`${API_URL}/footer/items/${form.id}`, {
                 method: "PATCH",
                 headers: {
                     "Content-Type": "application/json",
@@ -89,33 +105,46 @@ export default function FooterMenuItemDialog({initial, index, mode, blockId, onC
                 },
                 body: JSON.stringify(form)
             });
-        } else {
-            await fetch(`${API_URL}/footer/${blockId}/items`, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    Authorization: `Bearer ${accessToken}`
-                },
-                body: JSON.stringify(form)
-            });
+            return (await res.json()).id;
         }
-    }
 
-    async function save() {
+        const res = await fetch(`${API_URL}/footer/${blockId}/items`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${accessToken}`
+            },
+            body: JSON.stringify(form)
+        });
+
+        const created = await res.json();
+        return created.id;
+    };
+
+    const save = async () => {
         if (!validate()) return;
 
+        const id = await saveItem();
+
+        const finalKey = `footer.block.${blockId}.item.${id}.label`;
         const t = translations[form.labelKey] || {};
 
         for (const lang of languages) {
-            const value = t[lang.code] || "";
-            await saveValue(form.labelKey, lang.code, value);
+            await saveValue(finalKey, lang.code, t[lang.code] || "");
         }
 
-        await saveItem();
+        await fetch(`${API_URL}/footer/items/${id}`, {
+            method: "PATCH",
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${accessToken}`
+            },
+            body: JSON.stringify({labelKey: finalKey})
+        });
 
         showToast("Пункт меню сохранён");
         onClose();
-    }
+    };
 
     if (loading) {
         return (
@@ -133,25 +162,18 @@ export default function FooterMenuItemDialog({initial, index, mode, blockId, onC
                 {mode === "edit" ? "Редактировать пункт" : "Создать пункт"}
             </h2>
 
-            <LabeledInput label="Ключ" value={form.labelKey} disabled />
-
-            {languages.map(lang => (
-                <LabeledInput
-                    key={lang.code}
-                    label={`Label (${lang.code})`}
-                    value={t[lang.code] || ""}
-                    error={errors.labelTranslations?.[lang.code]}
-                    onChange={v =>
-                        setTranslations(prev => ({
-                            ...prev,
-                            [form.labelKey]: {
-                                ...(prev[form.labelKey] || {}),
-                                [lang.code]: v
-                            }
-                        }))
-                    }
-                />
-            ))}
+            <MultilangInput
+                label="Название"
+                languages={languages.map(l => l.code)}
+                valueMap={t}
+                errors={errors.label}
+                onChange={next =>
+                    setTranslations(prev => ({
+                        ...prev,
+                        [form.labelKey]: next
+                    }))
+                }
+            />
 
             <LabeledInput
                 label="Ссылка"
@@ -169,8 +191,12 @@ export default function FooterMenuItemDialog({initial, index, mode, blockId, onC
             />
 
             <div className="modal__actions">
-                <button className="button button_icon" onClick={save}><FiSave size={16} /> </button>
-                <button className="button button_icon" onClick={onClose}><FiTrash size={16} /></button>
+                <button className="button button_accept" onClick={save}>
+                    Сохранить
+                </button>
+                <button className="button button_reject" onClick={onClose}>
+                    Отменить
+                </button>
             </div>
         </Modal>
     );

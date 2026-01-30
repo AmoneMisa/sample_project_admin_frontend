@@ -26,7 +26,7 @@ export default function FooterMenuPage() {
     } = useTranslations(useAuditLog());
 
     // -----------------------------
-    // LOAD FOOTER BLOCKS + TRANSLATIONS
+    // LOAD FOOTER BLOCK + ITEMS
     // -----------------------------
     async function load() {
         const res = await fetch(`${API_URL}/footer?all=true`, {
@@ -34,7 +34,6 @@ export default function FooterMenuPage() {
         });
 
         const blocks = await res.json();
-
         let block = blocks.find(b => b.type === "menu");
 
         if (!block) {
@@ -83,7 +82,7 @@ export default function FooterMenuPage() {
             headers: {Authorization: `Bearer ${accessToken}`}
         });
 
-        setItems(items.filter(i => i.id !== id));
+        setItems(prev => prev.filter(i => i.id !== id));
         showToast("Пункт удалён");
     }
 
@@ -105,17 +104,17 @@ export default function FooterMenuPage() {
     }
 
     // -----------------------------
-    // COLUMNS FOR CustomTable
+    // TABLE COLUMNS
     // -----------------------------
     const columns = [
-        { key: "id", title: "ID", width: "80px" },
+        {key: "id", title: "ID", width: "80px"},
 
         {
             key: "labelKey",
             title: "Название (ru)",
             render: (_, row) => {
-                const ru = translations[row.labelKey]?.ru || "(нет перевода)";
-                return ru;
+                const ru = translations[row.labelKey]?.ru;
+                return ru?.trim() ? ru : "(нет перевода)";
             }
         },
 
@@ -137,7 +136,7 @@ export default function FooterMenuPage() {
             title: "Отображать",
             width: "120px",
             render: (value, row) => (
-                <Checkbox checked={value} onChange={() => toggleVisible(row)} />
+                <Checkbox checked={value} onChange={() => toggleVisible(row)}/>
             )
         },
 
@@ -152,7 +151,7 @@ export default function FooterMenuPage() {
                         onClick={() => setEditing(row)}
                         title="Редактировать"
                     >
-                        <FiEdit size={16} />
+                        <FiEdit size={16}/>
                     </button>
 
                     <button
@@ -160,23 +159,16 @@ export default function FooterMenuPage() {
                         onClick={() => setDeleteTarget(row.id)}
                         title="Удалить"
                     >
-                        <FiTrash size={16} />
+                        <FiTrash size={16}/>
                     </button>
                 </div>
             )
         }
     ];
 
-    // -----------------------------
-    // RENDER
-    // -----------------------------
-    if (!menuBlock) {
-        return <div className="page" style={{padding: 24}}><h2>Загрузка…</h2></div>;
-    }
-
     return (
         <div className="page" style={{padding: 24}}>
-            <h1>Меню футера</h1>
+            <h1 className={"page__header"}>Меню футера</h1>
 
             <div style={{marginBottom: 12}}>
                 <button className="button" onClick={() => setCreating(true)}>
@@ -184,13 +176,12 @@ export default function FooterMenuPage() {
                 </button>
             </div>
 
-            <CustomTable columns={columns} data={items} />
+            <CustomTable columns={columns} data={items}/>
 
             {creating && (
                 <FooterMenuItemDialog
                     mode="create"
                     blockId={menuBlock.id}
-                    index={items.length}
                     onClose={() => {
                         setCreating(false);
                         load();
@@ -203,7 +194,6 @@ export default function FooterMenuPage() {
                     mode="edit"
                     initial={editing}
                     blockId={menuBlock.id}
-                    index={editing.order}
                     onClose={() => {
                         setEditing(null);
                         load();

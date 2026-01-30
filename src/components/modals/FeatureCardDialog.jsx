@@ -4,6 +4,7 @@ import {v4 as uuid} from "uuid";
 import {useAuth} from "../../hooks/authContext";
 import {useToast} from "../layout/ToastContext";
 import LabeledInput from "../controls/LabeledInput";
+import MultilangInput from "../controls/MultilangInput";
 
 export default function FeatureCardDialog({initial, mode, onClose}) {
     const API_URL = process.env.REACT_APP_API_URL || "/api";
@@ -87,13 +88,13 @@ export default function FeatureCardDialog({initial, mode, onClose}) {
             const code = lang.code;
 
             if (!titleTranslations[code]?.trim()) {
-                if (!e.titleTranslations) e.titleTranslations = {};
-                e.titleTranslations[code] = "Обязательное поле";
+                if (!e.title) e.title = {};
+                e.title[code] = "Обязательное поле";
             }
 
             if (!descriptionTranslations[code]?.trim()) {
-                if (!e.descriptionTranslations) e.descriptionTranslations = {};
-                e.descriptionTranslations[code] = "Обязательное поле";
+                if (!e.description) e.description = {};
+                e.description[code] = "Обязательное поле";
             }
         });
 
@@ -207,29 +208,21 @@ export default function FeatureCardDialog({initial, mode, onClose}) {
                 onChange={(v) => updateField("image", v)}
             />
 
-            {languages.map(lang => (
-                <LabeledInput
-                    key={lang.code}
-                    label={`Заголовок (${lang.code})`}
-                    value={titleTranslations[lang.code]}
-                    error={errors.titleTranslations?.[lang.code]}
-                    onChange={(v) =>
-                        setTitleTranslations({...titleTranslations, [lang.code]: v})
-                    }
-                />
-            ))}
+            <MultilangInput
+                label="Заголовок"
+                languages={languages.map(l => l.code)}
+                valueMap={titleTranslations}
+                errors={errors.title}
+                onChange={(next) => setTitleTranslations(next)}
+            />
 
-            {languages.map(lang => (
-                <LabeledInput
-                    key={lang.code}
-                    label={`Описание (${lang.code})`}
-                    value={descriptionTranslations[lang.code]}
-                    error={errors.descriptionTranslations?.[lang.code]}
-                    onChange={(v) =>
-                        setDescriptionTranslations({...descriptionTranslations, [lang.code]: v})
-                    }
-                />
-            ))}
+            <MultilangInput
+                label="Описание"
+                languages={languages.map(l => l.code)}
+                valueMap={descriptionTranslations}
+                errors={errors.description}
+                onChange={(next) => setDescriptionTranslations(next)}
+            />
 
             <div className="modal__actions">
                 <button className="button" onClick={save}>Сохранить</button>

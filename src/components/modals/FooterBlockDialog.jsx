@@ -1,10 +1,11 @@
 import {useEffect, useState} from "react";
 import Modal from "./Modal";
 import LabeledInput from "../controls/LabeledInput";
+import LabeledSelect from "../controls/LabeledSelect";
+import MultilangInput from "../controls/MultilangInput";
 import {useAuth} from "../../hooks/authContext";
 import {useToast} from "../layout/ToastContext";
 import {v4 as uuid} from "uuid";
-import {FiSave, FiTrash} from "react-icons/fi";
 import {useAuditLog} from "../../hooks/useAuditLog";
 import {useTranslations} from "../../hooks/useTranslations";
 
@@ -15,18 +16,6 @@ export default function FooterBlockDialog({initial, index, mode, onClose}) {
 
     const [errors, setErrors] = useState({});
     const [loading, setLoading] = useState(true);
-
-    const tempId = uuid();
-
-    const [form, setForm] = useState(
-        initial || {
-            type: "menu",
-            titleKey: `temp.footer.block.${tempId}.title`,
-            descriptionKey: `temp.footer.block.${tempId}.description`,
-            order: index,
-            isVisible: true
-        }
-    );
 
     const {
         translations,
@@ -40,8 +29,7 @@ export default function FooterBlockDialog({initial, index, mode, onClose}) {
     const {
         languages,
         loadAllTranslations,
-        saveValue,
-        deleteKeys
+        saveValue
     } = useTranslations({
         translations,
         setTranslations,
@@ -49,6 +37,20 @@ export default function FooterBlockDialog({initial, index, mode, onClose}) {
         setMeta,
         pushSnapshot,
         markDeleted
+    });
+
+    const [form, setForm] = useState(() => {
+        if (initial) return structuredClone(initial);
+
+        const id = uuid();
+        return {
+            id,
+            type: "menu",
+            titleKey: `footer.block.${id}.menu.title`,
+            descriptionKey: `footer.block.${id}.menu.description`,
+            order: index,
+            isVisible: true
+        };
     });
 
     useEffect(() => {
@@ -59,20 +61,29 @@ export default function FooterBlockDialog({initial, index, mode, onClose}) {
         })();
     }, [accessToken, loadAllTranslations]);
 
-    function updateField(key, value) {
-        setForm({...form, [key]: value});
-    }
+    const updateField = (key, value) => {
+        setForm(prev => ({...prev, [key]: value}));
+        setErrors(prev => ({...prev, [key]: ""}));
+    };
 
-    function validate() {
+    const updateTranslation = (key, nextMap) => {
+        for (const lang of languages) {
+            const v = nextMap[lang.code] ?? "";
+            saveValue(key, lang.code, v);
+        }
+    };
+
+    const validate = () => {
         const e = {};
 
         if (!form.type.trim()) e.type = "Обязательное поле";
-        if (form.order < 0 || form.order === "" || isNaN(form.order)) e.order = "Введите число ≥ 0";
+        if (form.order < 0 || form.order === "" || isNaN(form.order))
+            e.order = "Введите число ≥ 0";
 
         const titleMap = translations[form.titleKey] || {};
         const descMap = translations[form.descriptionKey] || {};
 
-        languages.forEach(lang => {
+        for (const lang of languages) {
             if (!titleMap[lang.code]?.trim()) {
                 if (!e.titleTranslations) e.titleTranslations = {};
                 e.titleTranslations[lang.code] = "Обязательное поле";
@@ -81,13 +92,13 @@ export default function FooterBlockDialog({initial, index, mode, onClose}) {
                 if (!e.descriptionTranslations) e.descriptionTranslations = {};
                 e.descriptionTranslations[lang.code] = "Обязательное поле";
             }
-        });
+        }
 
         setErrors(e);
         return Object.keys(e).length === 0;
-    }
+    };
 
-    async function saveBlock() {
+    const saveBlock = async () => {
         if (mode === "edit") {
             await fetch(`${API_URL}/footer/${form.id}`, {
                 method: "PATCH",
@@ -111,15 +122,15 @@ export default function FooterBlockDialog({initial, index, mode, onClose}) {
 
         const block = await res.json();
         return block.id;
-    }
+    };
 
-    async function save() {
+    const handleSave = async () => {
         if (!validate()) return;
 
         const id = await saveBlock();
 
-        const finalTitleKey = `footer.block.${id}.title`;
-        const finalDescriptionKey = `footer.block.${id}.description`;
+        const finalTitleKey = `footer.block.${id}.${form.type}.title`;
+        const finalDescriptionKey = `footer.block.${id}.${form.type}.description`;
 
         const titleMap = translations[form.titleKey] || {};
         const descMap = translations[form.descriptionKey] || {};
@@ -143,7 +154,7 @@ export default function FooterBlockDialog({initial, index, mode, onClose}) {
 
         showToast("Блок сохранён");
         onClose();
-    }
+    };
 
     if (loading) {
         return (
@@ -157,73 +168,54 @@ export default function FooterBlockDialog({initial, index, mode, onClose}) {
     const descMap = translations[form.descriptionKey] || {};
 
     return (
-        <Modal open={true} onClose={onClose}>
-            <div className="dialog__window">
-                <h2>{mode === "edit" ? "Редактировать блок" : "Создать блок"}</h2>
+        <Modal open={true} onClose={onClose} width={600}>
+            <h2>{mode === "edit" ? "Редактировать блок" : "Создать блок"}</h2>
 
-                <LabeledInput
-                    label="Тип"
-                    value={form.type}
-                    error={errors.type}
-                    onChange={v => updateField("type", v)}
-                />
+            <LabeledSelect
+                label="Тип блока"
+                value={form.type}
+                error={errors.type}
+                onChange={v => updateField("type", v)}
+                options={[
+                    {value: "menu", label: "Меню"},
+                    {value: "newsletter", label: "Подписка"},
+                    {value: "logos", label: "Логотипы"},
+                    {value: "contacts", label: "Контакты"},
+                    {value: "footerInfo", label: "Информация"}
+                ]}
+            />
 
-                <LabeledInput label="Ключ заголовка" value={form.titleKey} disabled />
+            <MultilangInput
+                label="Заголовок"
+                languages={languages.map(l => l.code)}
+                valueMap={titleMap}
+                errors={errors.titleTranslations}
+                onChange={next => updateTranslation(form.titleKey, next)}
+            />
 
-                {languages.map(lang => (
-                    <LabeledInput
-                        key={lang.code}
-                        label={`Заголовок (${lang.code})`}
-                        value={titleMap[lang.code] || ""}
-                        error={errors.titleTranslations?.[lang.code]}
-                        onChange={v =>
-                            setTranslations(prev => ({
-                                ...prev,
-                                [form.titleKey]: {
-                                    ...(prev[form.titleKey] || {}),
-                                    [lang.code]: v
-                                }
-                            }))
-                        }
-                    />
-                ))}
+            <MultilangInput
+                label="Описание"
+                languages={languages.map(l => l.code)}
+                valueMap={descMap}
+                errors={errors.descriptionTranslations}
+                onChange={next => updateTranslation(form.descriptionKey, next)}
+            />
 
-                <LabeledInput label="Ключ описания" value={form.descriptionKey} disabled />
+            <LabeledInput
+                label="Порядок"
+                type="number"
+                value={form.order}
+                error={errors.order}
+                onChange={v => updateField("order", Number(v))}
+            />
 
-                {languages.map(lang => (
-                    <LabeledInput
-                        key={lang.code}
-                        label={`Описание (${lang.code})`}
-                        value={descMap[lang.code] || ""}
-                        error={errors.descriptionTranslations?.[lang.code]}
-                        onChange={v =>
-                            setTranslations(prev => ({
-                                ...prev,
-                                [form.descriptionKey]: {
-                                    ...(prev[form.descriptionKey] || {}),
-                                    [lang.code]: v
-                                }
-                            }))
-                        }
-                    />
-                ))}
-
-                <LabeledInput
-                    label="Порядок"
-                    type="number"
-                    value={form.order}
-                    error={errors.order}
-                    onChange={v => updateField("order", Number(v))}
-                />
-
-                <div className="modal__actions">
-                    <button className="button button_icon" onClick={save}>
-                        <FiSave size={16} />
-                    </button>
-                    <button className="button button_icon" onClick={onClose}>
-                        <FiTrash size={16} />
-                    </button>
-                </div>
+            <div className="modal__actions">
+                <button className="button button_accept" onClick={handleSave}>
+                    Сохранить
+                </button>
+                <button className="button button_reject" onClick={onClose}>
+                    Отменить
+                </button>
             </div>
         </Modal>
     );

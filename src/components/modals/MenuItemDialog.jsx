@@ -11,10 +11,6 @@ import MenuItemDropdown from "../menuCreateComponents/MenuItemDropdown";
 import MenuItemDropdownMega from "../menuCreateComponents/MenuItemDropdownMega";
 import Modal from "./Modal";
 
-
-// -----------------------------------------------------
-// Collect all translation keys
-// -----------------------------------------------------
 function collectAllKeys(item) {
     const keys = [];
 
@@ -38,9 +34,6 @@ function collectAllKeys(item) {
     return keys;
 }
 
-// -----------------------------------------------------
-// Collect only visible keys
-// -----------------------------------------------------
 function collectVisibleKeys(item) {
     const keys = [];
 
@@ -65,7 +58,6 @@ function collectVisibleKeys(item) {
 }
 
 export default function MenuItemDialog({initialItem, onSave, onClose, title}) {
-    const {accessToken} = useAuth();
     const {showToast} = useToast();
 
     const {
@@ -80,9 +72,6 @@ export default function MenuItemDialog({initialItem, onSave, onClose, title}) {
     const [fieldErrors, setFieldErrors] = useState({});
     const [error, setError] = useState("");
 
-    // -----------------------------------------------------
-    // Normalize initial item
-    // -----------------------------------------------------
     const [item, setItem] = useState(() => {
         if (!initialItem) {
             const id = uuid();
@@ -104,19 +93,28 @@ export default function MenuItemDialog({initialItem, onSave, onClose, title}) {
         return structuredClone(initialItem);
     });
 
-    // -----------------------------------------------------
-    // Load translations
-    // -----------------------------------------------------
     useEffect(() => {
         (async () => {
             await loadAllTranslations();
             setLoading(false);
         })();
-    }, [accessToken]);
+    }, [loadAllTranslations]);
 
-    // -----------------------------------------------------
-    // Update helpers
-    // -----------------------------------------------------
+    useEffect(() => {
+        if (loading) return;
+        if (!languages.length) return;
+
+        const visibleKeys = collectVisibleKeys(item);
+
+        for (const key of visibleKeys) {
+            if (!translations[key]) {
+                for (const lang of languages) {
+                    saveValue(key, lang.code, "");
+                }
+            }
+        }
+    }, [loading, languages, item]);
+
     function updateItem(updater) {
         setItem(prev => {
             const next = structuredClone(prev);
@@ -170,9 +168,6 @@ export default function MenuItemDialog({initialItem, onSave, onClose, title}) {
         });
     }
 
-    // -----------------------------------------------------
-    // Add/remove items & columns
-    // -----------------------------------------------------
     function addSimpleItem() {
         if (item.type !== "dropdown-simple") return;
         updateItem(next => {
@@ -241,9 +236,6 @@ export default function MenuItemDialog({initialItem, onSave, onClose, title}) {
         });
     }
 
-    // -----------------------------------------------------
-    // Change type
-    // -----------------------------------------------------
     function updateType(newType) {
         updateItem(current => {
             const id = current.id;
@@ -303,15 +295,11 @@ export default function MenuItemDialog({initialItem, onSave, onClose, title}) {
         });
     }
 
-    // -----------------------------------------------------
-    // Validation
-    // -----------------------------------------------------
     function validate() {
         const visibleKeys = collectVisibleKeys(item);
         const newErrors = {};
         let hasError = false;
 
-        // translations
         for (const key of visibleKeys) {
             for (const lang of languages) {
                 const v = translations[key]?.[lang.code];
@@ -323,7 +311,6 @@ export default function MenuItemDialog({initialItem, onSave, onClose, title}) {
             }
         }
 
-        // href validation
         function isValidUrl(input) {
             if (!input || typeof input !== "string") return false;
             const url = input.trim();
@@ -331,7 +318,8 @@ export default function MenuItemDialog({initialItem, onSave, onClose, title}) {
             try {
                 new URL(url);
                 return true;
-            } catch {}
+            } catch {
+            }
 
             if (/^\/[A-Za-z0-9._~!$&'()*+,;=:@/%?-]*$/.test(url)) return true;
             if (/^[A-Za-z0-9._~!$&'()*+,;=:@/%?-]+$/.test(url)) return true;
@@ -385,16 +373,12 @@ export default function MenuItemDialog({initialItem, onSave, onClose, title}) {
         return true;
     }
 
-    // -----------------------------------------------------
-    // Save
-    // -----------------------------------------------------
     async function handleSave() {
         const allBefore = collectAllKeys(initialItem || {});
         const visibleNow = collectVisibleKeys(item);
 
         if (!validate()) return;
 
-        // save translations
         for (const key of visibleNow) {
             for (const lang of languages) {
                 const value = translations[key]?.[lang.code] || "";
@@ -402,7 +386,6 @@ export default function MenuItemDialog({initialItem, onSave, onClose, title}) {
             }
         }
 
-        // delete removed keys
         const removed = allBefore.filter(k => !visibleNow.includes(k));
         if (removed.length) {
             await deleteKeys(removed);
@@ -413,9 +396,6 @@ export default function MenuItemDialog({initialItem, onSave, onClose, title}) {
         onClose();
     }
 
-    // -----------------------------------------------------
-    // Render translation inputs
-    // -----------------------------------------------------
     function renderTranslationInputs(key, label) {
         const fe = fieldErrors || {};
 
@@ -435,9 +415,6 @@ export default function MenuItemDialog({initialItem, onSave, onClose, title}) {
         );
     }
 
-    // -----------------------------------------------------
-    // Render
-    // -----------------------------------------------------
     if (loading) {
         return (
             <Modal open={true} onClose={onClose}>

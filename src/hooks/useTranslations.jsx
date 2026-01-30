@@ -1,4 +1,4 @@
-import {useCallback, useEffect, useState} from "react";
+import {useCallback, useState} from "react";
 import {useAuth} from "./authContext";
 import {useToast} from "../components/layout/ToastContext";
 
@@ -8,11 +8,13 @@ export function useTranslations({translations, setTranslations, meta, setMeta, p
     const {showToast} = useToast();
 
     const [languages, setLanguages] = useState([]);
+    const [loaded, setLoaded] = useState(false);
 
-    // -----------------------------
-    // LOAD LANGUAGES
-    // -----------------------------
     const loadLanguages = useCallback(async () => {
+        if (languages.length > 0) {
+            return languages;
+        }
+
         const res = await fetch(`${API_URL}/languages/enabled`, {
             headers: {Authorization: `Bearer ${accessToken}`}
         });
@@ -21,14 +23,11 @@ export function useTranslations({translations, setTranslations, meta, setMeta, p
         return langs;
     }, [API_URL, accessToken]);
 
-    // -----------------------------
-    // LOAD ALL TRANSLATIONS
-    // -----------------------------
     const loadAllTranslations = useCallback(async () => {
         if (!accessToken) return;
+        if (loaded) return;
 
         const langs = await loadLanguages();
-
         const all = {};
         const nextMeta = {...meta};
 
@@ -63,11 +62,9 @@ export function useTranslations({translations, setTranslations, meta, setMeta, p
 
         setTranslations(all);
         setMeta(nextMeta);
-    }, [accessToken, loadLanguages, meta, setTranslations, setMeta]);
+        setLoaded(true);
+    }, [accessToken, loadLanguages]);
 
-    // -----------------------------
-    // SAVE ALL KEYS
-    // -----------------------------
     const saveAll = useCallback(async () => {
         if (!accessToken) return;
 
@@ -96,9 +93,6 @@ export function useTranslations({translations, setTranslations, meta, setMeta, p
         showToast("Переводы сохранены");
     }, [translations, languages, meta, accessToken, API_URL, showToast]);
 
-    // -----------------------------
-    // SAVE SINGLE VALUE
-    // -----------------------------
     const saveValue = useCallback(async (key, lang, newValue) => {
         if (!accessToken) return;
 
@@ -134,9 +128,6 @@ export function useTranslations({translations, setTranslations, meta, setMeta, p
         showToast("Перевод сохранён");
     }, [translations, meta, pushSnapshot, setTranslations, accessToken, API_URL, showToast]);
 
-    // -----------------------------
-    // DELETE KEYS
-    // -----------------------------
     const deleteKeys = useCallback(async (keys) => {
         if (!accessToken) return;
 

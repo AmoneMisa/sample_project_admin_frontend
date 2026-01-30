@@ -85,7 +85,7 @@ export default function ContactsPage() {
             setTranslations(prev => ({...next, ...prev}));
             setLoading(false);
         })();
-    }, [accessToken, loadAllTranslations, languages, setTranslations]);
+    }, [accessToken, loadAllTranslations]);
 
     function addContact(type) {
         const newC = createContact(type);

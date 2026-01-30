@@ -58,6 +58,13 @@ export default function Testimonials() {
             headers: {"Content-Type": "application/json", Authorization: `Bearer ${accessToken}`,},
             body: JSON.stringify(payload),
         });
+
+        if (!res.ok) {
+            const err = await res.json();
+            showToast(err.detail || "Ошибка создания");
+            return;
+        }
+
         const newItem = await res.json();
         setItems(prev => [...prev, newItem]);
         showToast("Отзыв создан");
@@ -66,19 +73,36 @@ export default function Testimonials() {
     async function updateItem(id, payload) {
         const res = await fetch(`${API_URL}/testimonials/${id}`, {
             method: "PATCH",
-            headers: {"Content-Type": "application/json", Authorization: `Bearer ${accessToken}`,},
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${accessToken}`,
+            },
             body: JSON.stringify(payload),
         });
+
+        if (!res.ok) {
+            const err = await res.json();
+            showToast(err.detail || "Ошибка обновления");
+            return;
+        }
+
         const updated = await res.json();
         setItems(prev => prev.map(i => (i.id === id ? updated : i)));
         showToast("Отзыв обновлён");
     }
 
     async function deleteItem(id) {
-        await fetch(`${API_URL}/testimonials/${id}`, {
+        const res = await fetch(`${API_URL}/testimonials/${id}`, {
             method: "DELETE",
             headers: {Authorization: `Bearer ${accessToken}`},
         });
+
+        if (!res.ok) {
+            const err = await res.json();
+            showToast(err.detail || "Ошибка удаления");
+            return;
+        }
+
         setItems(prev => prev.filter(i => i.id !== id));
         showToast("Отзыв удалён");
     }
@@ -86,11 +110,22 @@ export default function Testimonials() {
     async function duplicateItem(item) {
         const {id, ...rest} = item;
         const duplicated = {...rest, name: `${item.name} (копия)`};
+
         const res = await fetch(`${API_URL}/testimonials`, {
             method: "POST",
-            headers: {"Content-Type": "application/json", Authorization: `Bearer ${accessToken}`,},
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${accessToken}`,
+            },
             body: JSON.stringify(duplicated),
         });
+
+        if (!res.ok) {
+            const err = await res.json();
+            showToast(err.detail || "Ошибка дублирования");
+            return;
+        }
+
         const newItem = await res.json();
         setItems(prev => [...prev, newItem]);
         showToast("Отзыв продублирован");

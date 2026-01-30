@@ -15,7 +15,6 @@ export default function Index() {
     const [search, setSearch] = useState("");
     const [sortAsc, setSortAsc] = useState(true);
     const [filterStatus, setFilterStatus] = useState("all");
-    const [filterErrorLevel, setFilterErrorLevel] = useState("all");
     const [deleteTarget, setDeleteTarget] = useState(null);
     const [historyOpen, setHistoryOpen] = useState(false);
 
@@ -29,7 +28,8 @@ export default function Index() {
         updateTranslation,
         loadAllTranslations,
         updateKeysBatch,
-        deleteKeys
+        deleteKeys,
+        loadLanguages
     } = useTranslations();
 
     const audit = useAuditLog({
@@ -56,6 +56,7 @@ export default function Index() {
 
     useEffect(() => {
         if (!loading && accessToken) {
+            loadLanguages();
             loadAllTranslations();
         }
     }, [loading, accessToken, loadAllTranslations]);
@@ -73,7 +74,6 @@ export default function Index() {
             return;
         }
 
-        // логируем батч удаления
         audit.logBatch([
             {
                 type: "delete",
@@ -126,16 +126,15 @@ export default function Index() {
                             <button
                                 className="button button_icon button_border"
                                 onClick={() => setHistoryOpen(true)}
+                                title={"Отменить изменения"}
                             >
-                                <FiClock size={16}/> Изменения
+                                <FiClock size={16}/>
                             </button>
 
                             <HistoryDialog
                                 open={historyOpen}
                                 history={audit.getHistory()}
                                 onRestore={async (i) => {
-                                    // откат к конкретному батчу — можно реализовать позже,
-                                    // сейчас оставим стандартный undo/redo
                                 }}
                                 onClose={() => setHistoryOpen(false)}
                             />
@@ -149,8 +148,6 @@ export default function Index() {
                         setSearch={setSearch}
                         filterStatus={filterStatus}
                         setFilterStatus={setFilterStatus}
-                        filterErrorLevel={filterErrorLevel}
-                        setFilterErrorLevel={setFilterErrorLevel}
                     />
                 </div>
             </div>

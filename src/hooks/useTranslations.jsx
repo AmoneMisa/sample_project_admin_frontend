@@ -15,21 +15,32 @@ export function useTranslations() {
         setTranslationMaps(prev => ({...prev, [key]: map}));
     }, []);
 
+    const loadLanguages = useCallback(async () => {
+        const res = await fetch(`${API_URL}/languages`, {
+            headers: { Authorization: `Bearer ${accessToken}` }
+        });
+
+        const langs = await res.json();
+        setLanguages(langs);
+    }, [accessToken]);
+
     const loadAllTranslations = useCallback(async () => {
         if (!accessToken || loaded) return;
-
-        const langsRes = await fetch(`${API_URL}/languages`, {
-            headers: {Authorization: `Bearer ${accessToken}`}
-        });
-        const langs = await langsRes.json();
-        setLanguages(langs);
 
         const res = await fetch(`${API_URL}/translations`, {
             headers: {Authorization: `Bearer ${accessToken}`}
         });
         const data = await res.json();
+        const merged = {};
 
-        setTranslationMaps(data);
+        for (const [lang, entries] of Object.entries(data)) {
+            for (const [key, value] of Object.entries(entries)) {
+                if (!merged[key]) merged[key] = {};
+                merged[key][lang] = value;
+            }
+        }
+
+        setTranslationMaps(merged);
         setLoaded(true);
     }, [accessToken, loaded]);
 
@@ -93,6 +104,7 @@ export function useTranslations() {
         translationMaps,
         updateTranslation,
         loadAllTranslations,
+        loadLanguages,
         createKeysBatch,
         updateKeysBatch,
         deleteKeys

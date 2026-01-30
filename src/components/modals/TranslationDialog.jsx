@@ -9,7 +9,7 @@ export default function TranslationDialog({
                                               languages,
                                               initialKey,
                                               initialValues,
-                                              existingKeys,
+                                              existingKeys = [],
                                               onSave,
                                               onClose
                                           }) {
@@ -22,7 +22,6 @@ export default function TranslationDialog({
     const [errors, setErrors] = useState({});
     const keyExists = existingKeys.includes(initialKey);
 
-    // ⭐ ВАЖНО: синхронизация при открытии нового ключа
     useEffect(() => {
         setState({
             key: initialKey,

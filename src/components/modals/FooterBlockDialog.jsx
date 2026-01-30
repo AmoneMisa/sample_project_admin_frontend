@@ -7,6 +7,7 @@ import {useAuth} from "../../hooks/authContext";
 import {useToast} from "../layout/ToastContext";
 import {v4 as uuid} from "uuid";
 import {useTranslations} from "../../hooks/useTranslations";
+import apiFetch from "../../utils/apiFetch";
 
 const TYPE_CONFIG = {
     menu: {fields: ["title", "description"]},
@@ -128,7 +129,7 @@ export default function FooterBlockDialog({initial, index, mode, onClose}) {
 
     const saveBlock = async () => {
         if (mode === "edit") {
-            const res = await fetch(`${API_URL}/footer/${form.id}`, {
+            await apiFetch(`${API_URL}/footer/${form.id}`, {
                 method: "PATCH",
                 headers: {
                     "Content-Type": "application/json",
@@ -137,14 +138,10 @@ export default function FooterBlockDialog({initial, index, mode, onClose}) {
                 body: JSON.stringify(form)
             });
 
-            if (!res.ok) {
-                throw new Error("Ошибка сохранения блока");
-            }
-
             return form.id;
         }
 
-        const res = await fetch(`${API_URL}/footer`, {
+        const res = await apiFetch(`${API_URL}/footer`, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
@@ -152,10 +149,6 @@ export default function FooterBlockDialog({initial, index, mode, onClose}) {
             },
             body: JSON.stringify(form)
         });
-
-        if (!res.ok) {
-            throw new Error("Ошибка создания блока");
-        }
 
         const block = await res.json();
         return block.id;
@@ -197,7 +190,7 @@ export default function FooterBlockDialog({initial, index, mode, onClose}) {
             }
         }
 
-        const res2 = await fetch(`${API_URL}/footer/${id}`, {
+        await apiFetch(`${API_URL}/footer/${id}`, {
             method: "PATCH",
             headers: {
                 "Content-Type": "application/json",
@@ -209,10 +202,6 @@ export default function FooterBlockDialog({initial, index, mode, onClose}) {
                 )
             )
         });
-
-        if (!res2.ok) {
-            throw new Error("Ошибка обновления ключей блока");
-        }
 
         showToast("Блок сохранён");
         onClose();
@@ -231,13 +220,9 @@ export default function FooterBlockDialog({initial, index, mode, onClose}) {
                 onChange={v =>
                     updateItem(n => {
                         n.type = v;
-
-                        // удалить старые ключи
                         Object.keys(n).forEach(k => {
                             if (k.endsWith("Key")) delete n[k];
                         });
-
-                        // создать новые ключи
                         const newFields = TYPE_CONFIG[v].fields;
                         newFields.forEach(f => {
                             n[`${f}Key`] = makeKey(n.id, v, f);

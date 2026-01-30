@@ -1,4 +1,5 @@
 import {createContext, useCallback, useContext, useEffect, useState} from "react";
+import apiFetch from "../utils/apiFetch";
 
 export const AuthContext = createContext(null);
 
@@ -10,16 +11,14 @@ export function AuthProvider({children}) {
     const [refreshToken, setRefreshToken] = useState(null);
     const [loading, setLoading] = useState(true);
 
-    // --------------------------
-    // LOGOUT
-    // --------------------------
     const logout = useCallback(async () => {
         try {
             await fetch(`${API_URL}/auth/logout`, {
                 method: "POST",
                 headers: {Authorization: `Bearer ${accessToken}`},
             });
-        } catch {}
+        } catch {
+        }
 
         localStorage.clear();
         sessionStorage.clear();
@@ -29,58 +28,45 @@ export function AuthProvider({children}) {
         setUser(null);
     }, [API_URL, accessToken]);
 
-    // --------------------------
-    // REFRESH TOKEN
-    // --------------------------
     const handleRefresh = useCallback(async () => {
         if (!refreshToken) return logout();
 
-        const res = await fetch(`${API_URL}/auth/refresh`, {
-            method: "POST",
-            headers: {"Content-Type": "application/json"},
-            body: JSON.stringify({refresh_token: refreshToken}),
-        });
-
-        const data = await res.json();
-
-        if (!res.ok) return logout();
-
-        // обновляем access_token
-        if (localStorage.getItem("refresh_token")) {
-            localStorage.setItem("access_token", data.access_token);
-        } else {
-            sessionStorage.setItem("access_token", data.access_token);
-        }
-
-        setAccessToken(data.access_token);
-
-        // загружаем пользователя с новым токеном
-        await fetchUser(data.access_token);
-
-        return data.access_token;
-    }, [API_URL, refreshToken, logout]);
-
-    // --------------------------
-    // FETCH USER
-    // --------------------------
-    const fetchUser = useCallback(async (token) => {
         try {
-            const res = await fetch(`${API_URL}/auth/me`, {
-                headers: {Authorization: `Bearer ${token}`},
+            const data = await apiFetch(`${API_URL}/auth/refresh`, {
+                method: "POST",
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify({refresh_token: refreshToken})
             });
 
-            if (!res.ok) throw new Error("Unauthorized");
+            // Обновляем access_token в нужном хранилище
+            if (localStorage.getItem("refresh_token")) {
+                localStorage.setItem("access_token", data.access_token);
+            } else {
+                sessionStorage.setItem("access_token", data.access_token);
+            }
 
-            const data = await res.json();
-            setUser(data);
+            setAccessToken(data.access_token);
+
+            await fetchUser(data.access_token);
+
+            return data.access_token;
         } catch {
+            await logout();
+        }
+    }, [API_URL, refreshToken, logout]);
+
+    const fetchUser = useCallback(async (token) => {
+        try {
+            const data = await apiFetch(`${API_URL}/auth/me`, {
+                headers: {Authorization: `Bearer ${token}`}
+            });
+
+            setUser(data);
+        } catch (err) {
             await handleRefresh();
         }
     }, [API_URL, handleRefresh]);
 
-    // --------------------------
-    // INITIAL LOAD
-    // --------------------------
     useEffect(() => {
         const storedAccess =
             localStorage.getItem("access_token") ||
@@ -100,9 +86,6 @@ export function AuthProvider({children}) {
         }
     }, [fetchUser]);
 
-    // --------------------------
-    // AUTO REFRESH EVERY 10 MIN
-    // --------------------------
     useEffect(() => {
         if (!refreshToken) return;
 
@@ -113,9 +96,6 @@ export function AuthProvider({children}) {
         return () => clearInterval(interval);
     }, [refreshToken, handleRefresh]);
 
-    // --------------------------
-    // PROVIDER
-    // --------------------------
     return (
         <AuthContext.Provider
             value={{

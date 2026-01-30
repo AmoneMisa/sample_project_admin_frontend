@@ -6,6 +6,7 @@ import MenuItemDialog from "../components/modals/MenuItemDialog";
 import Checkbox from "../components/controls/Checkbox";
 import {FiEdit, FiTrash} from "react-icons/fi";
 import {useTranslations} from "../hooks/useTranslations";
+import apiFetch from "../utils/apiFetch";
 
 export default function HeaderMenu() {
     const API_URL = process.env.REACT_APP_API_URL || "/api";
@@ -19,28 +20,19 @@ export default function HeaderMenu() {
     const [creating, setCreating] = useState(false);
 
     const {
-        languages,
         translationMaps,
         loadAllTranslations,
         deleteKeys
     } = useTranslations();
 
-    // -----------------------------
-    // LOAD MENU
-    // -----------------------------
     useEffect(() => {
         if (!accessToken) return;
-
         (async () => {
             await loadAllTranslations();
 
-            const res = await fetch(`${API_URL}/header-menu`, {
+            const data = await apiFetch(`${API_URL}/header-menu`, {
                 headers: {Authorization: `Bearer ${accessToken}`}
             });
-
-            if (!res.ok) return;
-
-            const data = await res.json();
 
             const normalized = data.map((item, index) => {
                 const id = item.id ?? index + 1;
@@ -57,11 +49,8 @@ export default function HeaderMenu() {
         })();
     }, [accessToken]);
 
-    // -----------------------------
-    // SAVE MENU
-    // -----------------------------
     async function saveMenu(next) {
-        await fetch(`${API_URL}/header-menu`, {
+        await apiFetch(`${API_URL}/header-menu`, {
             method: "PATCH",
             headers: {
                 "Content-Type": "application/json",
@@ -74,16 +63,12 @@ export default function HeaderMenu() {
         showToast("Меню сохранено");
     }
 
-    // -----------------------------
-    // DELETE ITEM + RELATED KEYS
-    // -----------------------------
     async function deleteItem(id) {
         const item = menu.find(i => i.id === id);
         if (!item) return;
 
         const next = menu.filter(i => i.id !== id);
 
-        // удаляем связанные ключи
         if (item.labelKey) {
             await deleteKeys([item.labelKey]);
         }
@@ -91,9 +76,6 @@ export default function HeaderMenu() {
         await saveMenu(next);
     }
 
-    // -----------------------------
-    // TOGGLE VISIBLE
-    // -----------------------------
     async function toggleVisible(id) {
         const next = menu.map(item =>
             item.id === id
@@ -104,9 +86,6 @@ export default function HeaderMenu() {
         await saveMenu(next);
     }
 
-    // -----------------------------
-    // MOVE ITEM
-    // -----------------------------
     async function moveItem(fromId, toId) {
         const current = [...menu];
         const fromIndex = current.findIndex(i => i.id === fromId);
@@ -119,9 +98,6 @@ export default function HeaderMenu() {
         await saveMenu(current);
     }
 
-    // -----------------------------
-    // SAVE FROM DIALOG
-    // -----------------------------
     async function handleSaveFromDialog(item) {
         let next;
 

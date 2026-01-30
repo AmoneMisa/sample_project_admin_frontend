@@ -1,8 +1,8 @@
 import {useCallback, useMemo, useState} from "react";
 
 export function useAuditLog({applyUpdate, applyDelete, applyRestoreMap}) {
-    const [history, setHistory] = useState([]); // [{ timestamp, items: [...] }]
-    const [index, setIndex] = useState(-1);     // указывает на последний применённый батч
+    const [history, setHistory] = useState([]);
+    const [index, setIndex] = useState(-1);
 
     const canUndo = index >= 0;
     const canRedo = index + 1 < history.length;
@@ -16,7 +16,7 @@ export function useAuditLog({applyUpdate, applyDelete, applyRestoreMap}) {
         };
 
         setHistory(prev => {
-            const trimmed = prev.slice(0, index + 1); // обрезаем хвост redo
+            const trimmed = prev.slice(0, index + 1);
             return [...trimmed, batch];
         });
         setIndex(prev => prev + 1);
@@ -26,8 +26,6 @@ export function useAuditLog({applyUpdate, applyDelete, applyRestoreMap}) {
         if (index < 0) return;
 
         const batch = history[index];
-
-        // откатываем в обратном порядке
         for (const item of [...batch.items].reverse()) {
             if (item.type === "update") {
                 await applyUpdate(item.key, item.lang, item.oldValue);
@@ -54,8 +52,6 @@ export function useAuditLog({applyUpdate, applyDelete, applyRestoreMap}) {
 
         setIndex(i => i + 1);
     }, [history, index, applyUpdate, applyDelete]);
-
-    const getHistory = useCallback(() => history, [history]);
 
     const groupedHistory = useMemo(
         () => history,

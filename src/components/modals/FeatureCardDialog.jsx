@@ -6,6 +6,7 @@ import {useToast} from "../layout/ToastContext";
 import LabeledInput from "../controls/LabeledInput";
 import MultilangInput from "../controls/MultilangInput";
 import {useTranslations} from "../../hooks/useTranslations";
+import apiFetch from "../../utils/apiFetch";
 
 export default function FeatureCardDialog({initial, mode, onClose}) {
     const API_URL = process.env.REACT_APP_API_URL || "/api";
@@ -42,9 +43,6 @@ export default function FeatureCardDialog({initial, mode, onClose}) {
         setForm(prev => ({...prev, [key]: value}));
     };
 
-    // -----------------------------
-    // INITIAL LOAD
-    // -----------------------------
     useEffect(() => {
         (async () => {
             await loadAllTranslations();
@@ -67,9 +65,6 @@ export default function FeatureCardDialog({initial, mode, onClose}) {
         })();
     }, [languages.length, translationMaps]);
 
-    // -----------------------------
-    // VALIDATION
-    // -----------------------------
     function validate() {
         const e = {};
 
@@ -93,12 +88,9 @@ export default function FeatureCardDialog({initial, mode, onClose}) {
         return Object.keys(e).length === 0;
     }
 
-    // -----------------------------
-    // SAVE CARD
-    // -----------------------------
     async function saveCard() {
         if (mode === "edit") {
-            await fetch(`${API_URL}/feature-cards/${form.id}`, {
+            await apiFetch(`${API_URL}/feature-cards/${form.id}`, {
                 method: "PATCH",
                 headers: {
                     "Content-Type": "application/json",
@@ -106,10 +98,11 @@ export default function FeatureCardDialog({initial, mode, onClose}) {
                 },
                 body: JSON.stringify(form)
             });
+
             return form.id;
         }
 
-        const res = await fetch(`${API_URL}/feature-cards`, {
+        const card = await apiFetch(`${API_URL}/feature-cards`, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
@@ -118,13 +111,9 @@ export default function FeatureCardDialog({initial, mode, onClose}) {
             body: JSON.stringify(form)
         });
 
-        const card = await res.json();
         return card.id;
     }
 
-    // -----------------------------
-    // SAVE ALL
-    // -----------------------------
     async function save() {
         if (!validate()) return;
 
@@ -162,7 +151,7 @@ export default function FeatureCardDialog({initial, mode, onClose}) {
             await createKeysBatch(payload);
         }
 
-        await fetch(`${API_URL}/feature-cards/${id}`, {
+        await apiFetch(`${API_URL}/feature-cards/${id}`, {
             method: "PATCH",
             headers: {
                 "Content-Type": "application/json",
@@ -176,17 +165,6 @@ export default function FeatureCardDialog({initial, mode, onClose}) {
 
         showToast("Карточка сохранена");
         onClose();
-    }
-
-    // -----------------------------
-    // RENDER
-    // -----------------------------
-    if (loading) {
-        return (
-            <Modal open={true} onClose={onClose}>
-                <h2 className="modal__header gradient-text">Загрузка…</h2>
-            </Modal>
-        );
     }
 
     return (

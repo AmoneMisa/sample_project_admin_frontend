@@ -9,6 +9,7 @@ import Checkbox from "../components/controls/Checkbox";
 import {FiSave, FiTrash} from "react-icons/fi";
 import PhoneInput from "react-phone-number-input";
 import LabeledSelect from "../components/controls/LabeledSelect";
+import apiFetch from "../utils/apiFetch";
 
 export default function ContactsPage() {
     const API_URL = process.env.REACT_APP_API_URL || "/api";
@@ -38,7 +39,6 @@ export default function ContactsPage() {
     function makeLabelKey(type, id) {
         return `contacts.${type}.${id}.label`;
     }
-
     function createContact(type) {
         const id = uuid();
         return {
@@ -49,7 +49,6 @@ export default function ContactsPage() {
             labelKey: makeLabelKey(type, id)
         };
     }
-
     function createSocialContact() {
         const id = uuid();
         return {
@@ -61,7 +60,6 @@ export default function ContactsPage() {
             labelKey: makeLabelKey("social", id)
         };
     }
-
     function createFooterInfo() {
         const id = uuid();
         return {
@@ -74,10 +72,9 @@ export default function ContactsPage() {
     }
 
     async function loadContacts() {
-        const res = await fetch(`${API_URL}/contacts?all=true`, {
+        return apiFetch(`${API_URL}/contacts?all=true`, {
             headers: {Authorization: `Bearer ${accessToken}`}
         });
-        return await res.json();
     }
 
     useEffect(() => {
@@ -145,17 +142,20 @@ export default function ContactsPage() {
         const method = isNew ? "POST" : "PATCH";
         const url = isNew ? `${API_URL}/contacts` : `${API_URL}/contacts/${contact.id}`;
 
-        const res = await fetch(url, {
+        const data = await apiFetch(url, {
             method,
-            headers: {"Content-Type": "application/json", Authorization: `Bearer ${accessToken}`},
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${accessToken}`
+            },
             body: JSON.stringify(contact)
         });
 
-        const data = await res.json();
-
         if (isNew && data.id) {
             setContacts(prev =>
-                prev.map(c => (c.id === contact.id ? {...data, persisted: true} : c))
+                prev.map(c =>
+                    c.id === contact.id ? { ...data, persisted: true } : c
+                )
             );
         }
     }
@@ -202,10 +202,9 @@ export default function ContactsPage() {
         }
 
         await deleteKeys([contact.labelKey]);
-
-        await fetch(`${API_URL}/contacts/${contact.id}`, {
+        await apiFetch(`${API_URL}/contacts/${contact.id}`, {
             method: "DELETE",
-            headers: {Authorization: `Bearer ${accessToken}`}
+            headers: { Authorization: `Bearer ${accessToken}` }
         });
 
         setContacts(prev => prev.filter(c => c.id !== contact.id));

@@ -7,6 +7,7 @@ import ConfirmDialog from "../components/modals/ConfirmDialog";
 import {useTranslations} from "../hooks/useTranslations";
 import Checkbox from "../components/controls/Checkbox";
 import {FiEdit, FiTrash} from "react-icons/fi";
+import apiFetch from "../utils/apiFetch";
 
 export default function FooterMenuPage() {
     const API_URL = process.env.REACT_APP_API_URL || "/api";
@@ -20,25 +21,20 @@ export default function FooterMenuPage() {
     const [deleteTarget, setDeleteTarget] = useState(null);
 
     const {
-        languages,
         translationMaps,
         loadAllTranslations,
         deleteKeys
     } = useTranslations();
 
-    // -----------------------------
-    // LOAD FOOTER BLOCK + ITEMS
-    // -----------------------------
     async function load() {
-        const res = await fetch(`${API_URL}/footer?all=true`, {
+        const blocks = await apiFetch(`${API_URL}/footer?all=true`, {
             headers: {Authorization: `Bearer ${accessToken}`}
         });
 
-        const blocks = await res.json();
         let block = blocks.find(b => b.type === "menu");
 
         if (!block) {
-            const createRes = await fetch(`${API_URL}/footer`, {
+            block = await apiFetch(`${API_URL}/footer`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -52,17 +48,15 @@ export default function FooterMenuPage() {
                     isVisible: true
                 })
             });
-
-            block = await createRes.json();
         }
 
         setMenuBlock(block);
 
-        const itemsRes = await fetch(`${API_URL}/footer/${block.id}/items`, {
+        const items = await apiFetch(`${API_URL}/footer/${block.id}/items`, {
             headers: {Authorization: `Bearer ${accessToken}`}
         });
 
-        setItems(await itemsRes.json());
+        setItems(items);
     }
 
     useEffect(() => {
@@ -74,35 +68,26 @@ export default function FooterMenuPage() {
         })();
     }, [accessToken]);
 
-    // -----------------------------
-    // DELETE ITEM + RELATED KEYS
-    // -----------------------------
     async function deleteItem(id) {
         const item = items.find(i => i.id === id);
         if (!item) return;
 
-        // 1. delete item
-        await fetch(`${API_URL}/footer/items/${id}`, {
+        await apiFetch(`${API_URL}/footer/items/${id}`, {
             method: "DELETE",
             headers: {Authorization: `Bearer ${accessToken}`}
         });
 
-        // 2. delete translation keys
         const keysToDelete = [item.labelKey];
         if (item.descriptionKey) keysToDelete.push(item.descriptionKey);
 
         await deleteKeys(keysToDelete);
 
-        // 3. update UI
         setItems(prev => prev.filter(i => i.id !== id));
         showToast("Пункт и связанные переводы удалены");
     }
 
-    // -----------------------------
-    // TOGGLE VISIBLE
-    // -----------------------------
     async function toggleVisible(item) {
-        const res = await fetch(`${API_URL}/footer/items/${item.id}`, {
+        const updated = await apiFetch(`${API_URL}/footer/items/${item.id}`, {
             method: "PATCH",
             headers: {
                 "Content-Type": "application/json",
@@ -111,13 +96,9 @@ export default function FooterMenuPage() {
             body: JSON.stringify({isVisible: !item.isVisible})
         });
 
-        const updated = await res.json();
         setItems(prev => prev.map(i => (i.id === updated.id ? updated : i)));
     }
 
-    // -----------------------------
-    // TABLE COLUMNS
-    // -----------------------------
     const columns = [
         {key: "id", title: "ID", width: "80px"},
 
@@ -129,20 +110,17 @@ export default function FooterMenuPage() {
                 return ru?.trim() ? ru : "(нет перевода)";
             }
         },
-
         {
             key: "href",
             title: "Ссылка",
             render: (value) => value || "-"
         },
-
         {
             key: "order",
             title: "Порядок",
             width: "120px",
             render: (value) => value ?? "-"
         },
-
         {
             key: "isVisible",
             title: "Отображать",
@@ -151,7 +129,6 @@ export default function FooterMenuPage() {
                 <Checkbox checked={value} onChange={() => toggleVisible(row)}/>
             )
         },
-
         {
             key: "actions",
             title: "Действия",
@@ -165,7 +142,6 @@ export default function FooterMenuPage() {
                     >
                         <FiEdit size={16}/>
                     </button>
-
                     <button
                         className="button button_icon button_reject"
                         onClick={() => setDeleteTarget(row.id)}

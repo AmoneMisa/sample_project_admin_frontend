@@ -6,6 +6,7 @@ import {useAuth} from "../../hooks/authContext";
 import {useToast} from "../layout/ToastContext";
 import {v4 as uuid} from "uuid";
 import {useTranslations} from "../../hooks/useTranslations";
+import apiFetch from "../../utils/apiFetch";
 
 export default function FooterMenuItemDialog({initial, mode, blockId, onClose}) {
     const API_URL = process.env.REACT_APP_API_URL || "/api";
@@ -84,7 +85,7 @@ export default function FooterMenuItemDialog({initial, mode, blockId, onClose}) 
 
     const saveItem = async () => {
         if (mode === "edit") {
-            await fetch(`${API_URL}/footer/items/${form.id}`, {
+            await apiFetch(`${API_URL}/footer/items/${form.id}`, {
                 method: "PATCH",
                 headers: {
                     "Content-Type": "application/json",
@@ -92,10 +93,11 @@ export default function FooterMenuItemDialog({initial, mode, blockId, onClose}) 
                 },
                 body: JSON.stringify(form)
             });
+
             return form.id;
         }
 
-        const res = await fetch(`${API_URL}/footer/items`, {
+        const item = await apiFetch(`${API_URL}/footer/items`, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
@@ -104,7 +106,6 @@ export default function FooterMenuItemDialog({initial, mode, blockId, onClose}) 
             body: JSON.stringify(form)
         });
 
-        const item = await res.json();
         return item.id;
     };
 
@@ -113,6 +114,7 @@ export default function FooterMenuItemDialog({initial, mode, blockId, onClose}) 
 
         const id = await saveItem();
         const finalLabelKey = `footer.menu.${id}.label`;
+
         const payload = [
             {
                 key: finalLabelKey,
@@ -136,7 +138,7 @@ export default function FooterMenuItemDialog({initial, mode, blockId, onClose}) 
             await createKeysBatch(payload);
         }
 
-        await fetch(`${API_URL}/footer/items/${id}`, {
+        await apiFetch(`${API_URL}/footer/items/${id}`, {
             method: "PATCH",
             headers: {
                 "Content-Type": "application/json",
@@ -150,17 +152,6 @@ export default function FooterMenuItemDialog({initial, mode, blockId, onClose}) 
         showToast("Пункт меню сохранён");
         onClose();
     };
-
-    // -----------------------------
-    // RENDER
-    // -----------------------------
-    if (loading) {
-        return (
-            <Modal open={true} onClose={onClose}>
-                <h2 className="modal__header">Загрузка…</h2>
-            </Modal>
-        );
-    }
 
     return (
         <Modal open={true} onClose={onClose} width={600}>

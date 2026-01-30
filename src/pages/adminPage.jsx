@@ -1,12 +1,12 @@
-import {useState, useEffect, useCallback} from "react";
+import {useEffect, useState} from "react";
 import {useAuth} from "../hooks/authContext";
 import {useToast} from "../components/layout/ToastContext";
 import CustomTable from "../components/customElems/CustomTable";
 import Checkbox from "../components/controls/Checkbox";
 import LabeledFileInput from "../components/controls/LabeledFileInput";
 import LabeledInput from "../components/controls/LabeledInput";
+import {useTranslations} from "../hooks/useTranslations";
 
-// ISO 639-1 словарь
 const ISO_LANGUAGES = {
     en: "English",
     ru: "Russian",
@@ -36,29 +36,25 @@ const ISO_LANGUAGES = {
 };
 
 export default function AdminPage() {
-    const API_URL = process.env.REACT_APP_API_URL || "/api";
-
-    const {user, accessToken} = useAuth();
+    const {user} = useAuth();
     const {showToast} = useToast();
 
-    const [languages, setLanguages] = useState([]);
+    const {
+        languages,
+        loadLanguages,
+        updateLanguage,
+        createLanguage,
+        importTranslations,
+        initLanguages
+    } = useTranslations();
+
     const [newCode, setNewCode] = useState("");
     const [newName, setNewName] = useState("");
     const [suggestions, setSuggestions] = useState([]);
 
-    const loadLanguages = useCallback(async () => {
-        const res = await fetch(`${API_URL}/languages`, {
-            headers: { Authorization: `Bearer ${accessToken}` },
-        });
-        if (res.ok) {
-            setLanguages(await res.json());
-        }
-    }, [API_URL, accessToken]);
-
-
     useEffect(() => {
-        if (accessToken) loadLanguages();
-    }, [accessToken, loadLanguages]);
+        loadLanguages();
+    }, [loadLanguages]);
 
     useEffect(() => {
         const code = newCode.trim().toLowerCase();
@@ -78,49 +74,26 @@ export default function AdminPage() {
                     ISO_LANGUAGES[c].toLowerCase().includes(code)
                 )
                 .slice(0, 3);
+
             setSuggestions(candidates);
             setNewName("");
         }
     }, [newCode]);
 
     async function toggleLanguage(code, enabled) {
-        await fetch(`${API_URL}/languages/${code}`, {
-            method: "PATCH",
-            headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${accessToken}`,
-            },
-            body: JSON.stringify({enabled}),
-        });
-        setLanguages(languages.map(l => l.code === code ? {...l, enabled} : l));
+        await updateLanguage(code, {enabled});
         showToast(`Язык ${code} ${enabled ? "включён" : "выключен"}`);
     }
 
     async function uploadFiles(files) {
-        const formData = new FormData();
-        for (const file of files) {
-            formData.append("files", file);
-        }
-        const res = await fetch(`${API_URL}/translations/import`, {
-            method: "POST",
-            headers: {Authorization: `Bearer ${accessToken}`},
-            body: formData,
-        });
-        if (res.ok) {
-            showToast("Файлы успешно загружены");
-        } else {
-            showToast("Ошибка загрузки файлов");
-        }
+        await importTranslations(files);
+        showToast("Файлы успешно загружены");
     }
 
-    async function initLanguages() {
-        const res = await fetch(`${API_URL}/languages/init`, {
-            headers: {Authorization: `Bearer ${accessToken}`},
-        });
-        if (res.ok) {
-            showToast("Языки инициализированы");
-            loadLanguages();
-        }
+    async function handleInitLanguages() {
+        await initLanguages();
+        showToast("Языки инициализированы");
+        await loadLanguages();
     }
 
     async function addLanguage() {
@@ -128,22 +101,17 @@ export default function AdminPage() {
             showToast("Некорректный код языка");
             return;
         }
-        const res = await fetch(`${API_URL}/languages`, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${accessToken}`,
-            },
-            body: JSON.stringify({code: newCode, name: newName, enabled: true}),
+
+        await createLanguage({
+            code: newCode,
+            name: newName,
+            enabled: true
         });
-        if (res.ok) {
-            showToast("Язык добавлен");
-            setNewCode("");
-            setNewName("");
-            loadLanguages();
-        } else {
-            showToast("Ошибка добавления языка");
-        }
+
+        showToast("Язык добавлен");
+        setNewCode("");
+        setNewName("");
+        await loadLanguages();
     }
 
     if (!user || !["admin", "moderator"].includes(user.role)) {
@@ -166,7 +134,7 @@ export default function AdminPage() {
                 {user.role === "admin" && languages.length === 0 && (
                     <button
                         className="button button_accept"
-                        onClick={initLanguages}
+                        onClick={handleInitLanguages}
                         style={{marginTop: 12, maxWidth: "300px"}}
                     >
                         Инициализировать языки
@@ -180,7 +148,7 @@ export default function AdminPage() {
                     {key: "code", title: "Код"},
                     {key: "name", title: "Название"},
                     {
-                        key: "isEnabled",
+                        key: "enabled",
                         title: "Enabled",
                         render: (value, row) => (
                             <Checkbox
@@ -196,18 +164,19 @@ export default function AdminPage() {
             {user.role === "admin" && (
                 <div style={{marginTop: 36}}>
                     <h3 style={{marginBottom: 20}}>Добавить язык</h3>
+
                     <div style={{display: "flex", gap: 12}}>
                         <LabeledInput
                             label="Код"
                             value={newCode}
                             onChange={setNewCode}
-                            placeholder={"en"}
+                            placeholder="en"
                         />
                         <LabeledInput
                             label="Название"
                             value={newName}
                             onChange={setNewName}
-                            placeholder={"English"}
+                            placeholder="English"
                         />
                     </div>
 

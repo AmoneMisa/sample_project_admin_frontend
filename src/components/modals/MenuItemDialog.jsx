@@ -9,6 +9,7 @@ import {useTranslations} from "../../hooks/useTranslations";
 import MenuItemDropdownMega from "../menuCreateComponents/MenuItemDropdownMega";
 import MenuItemDropdown from "../menuCreateComponents/MenuItemDropdown";
 import MenuItemSimple from "../menuCreateComponents/MenuItemSimple";
+import apiFetch from "../../utils/apiFetch";
 
 export default function MenuItemDialog({initialItem, onSave, onClose, title}) {
     const API_URL = process.env.REACT_APP_API_URL || "/api";
@@ -191,7 +192,7 @@ export default function MenuItemDialog({initialItem, onSave, onClose, title}) {
 
     const saveItem = async () => {
         if (initialItem) {
-            await fetch(`${API_URL}/menu/${item.id}`, {
+            await apiFetch(`${API_URL}/menu/${item.id}`, {
                 method: "PATCH",
                 headers: {
                     "Content-Type": "application/json",
@@ -199,10 +200,11 @@ export default function MenuItemDialog({initialItem, onSave, onClose, title}) {
                 },
                 body: JSON.stringify(item)
             });
+
             return item.id;
         }
 
-        const res = await fetch(`${API_URL}/menu`, {
+        const created = await apiFetch(`${API_URL}/menu`, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
@@ -211,14 +213,13 @@ export default function MenuItemDialog({initialItem, onSave, onClose, title}) {
             body: JSON.stringify(item)
         });
 
-        const created = await res.json();
         return created.id;
     };
 
     const handleSave = async () => {
         if (!validate()) return;
 
-        const id = await saveItem();
+        await saveItem();
         const payload = collectAllKeys();
 
         if (initialItem) {

@@ -6,6 +6,7 @@ import ConfirmDialog from "../components/modals/ConfirmDialog";
 import Checkbox from "../components/controls/Checkbox";
 import {FiEdit, FiTrash} from "react-icons/fi";
 import CustomTable from "../components/customElems/CustomTable";
+import apiFetch from "../utils/apiFetch";
 
 export default function FooterPage() {
     const API_URL = process.env.REACT_APP_API_URL || "/api";
@@ -18,10 +19,9 @@ export default function FooterPage() {
     const [deleteTarget, setDeleteTarget] = useState(null);
 
     async function load() {
-        const res = await fetch(`${API_URL}/footer?all=true`, {
-            headers: {Authorization: `Bearer ${accessToken}`}
+        const data = await apiFetch(`${API_URL}/footer?all=true`, {
+            headers: { Authorization: `Bearer ${accessToken}` }
         });
-        const data = await res.json();
         setBlocks(data);
     }
 
@@ -30,23 +30,22 @@ export default function FooterPage() {
     }, [accessToken]);
 
     async function toggleVisible(block) {
-        const res = await fetch(`${API_URL}/footer/${block.id}`, {
+        const updated = await apiFetch(`${API_URL}/footer/${block.id}`, {
             method: "PATCH",
             headers: {
                 "Content-Type": "application/json",
                 Authorization: `Bearer ${accessToken}`
             },
-            body: JSON.stringify({isVisible: !block.isVisible})
+            body: JSON.stringify({ isVisible: !block.isVisible })
         });
 
-        const updated = await res.json();
-        setBlocks(blocks.map(b => b.id === block.id ? updated : b));
+        setBlocks(blocks.map(b => (b.id === block.id ? updated : b)));
     }
 
     async function deleteBlock(id) {
-        await fetch(`${API_URL}/footer/${id}`, {
+        await apiFetch(`${API_URL}/footer/${id}`, {
             method: "DELETE",
-            headers: {Authorization: `Bearer ${accessToken}`}
+            headers: { Authorization: `Bearer ${accessToken}` }
         });
 
         setBlocks(blocks.filter(b => b.id !== id));

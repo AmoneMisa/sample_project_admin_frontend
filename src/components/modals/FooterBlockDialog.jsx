@@ -141,7 +141,7 @@ export default function FooterBlockDialog({initial, index, mode, onClose}) {
             return form.id;
         }
 
-        const res = await apiFetch(`${API_URL}/footer`, {
+        const block = await apiFetch(`${API_URL}/footer`, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
@@ -150,14 +150,11 @@ export default function FooterBlockDialog({initial, index, mode, onClose}) {
             body: JSON.stringify(form)
         });
 
-        const block = await res.json();
         return block.id;
     };
 
     const handleSave = async () => {
-        if (!validate()) {
-            return;
-        }
+        if (!validate()) return;
 
         const id = await saveBlock();
         const fields = TYPE_CONFIG[form.type].fields;

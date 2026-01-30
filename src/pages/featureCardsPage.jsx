@@ -7,6 +7,7 @@ import ConfirmDialog from "../components/modals/ConfirmDialog";
 import Checkbox from "../components/controls/Checkbox";
 import {FiEdit, FiTrash} from "react-icons/fi";
 import {useTranslations} from "../hooks/useTranslations";
+import apiFetch from "../utils/apiFetch";
 
 export default function FeatureCardsPage() {
     const API_URL = process.env.REACT_APP_API_URL || "/api";
@@ -21,20 +22,15 @@ export default function FeatureCardsPage() {
     const [deleteTarget, setDeleteTarget] = useState(null);
 
     const {
-        languages,
         translationMaps,
-        updateTranslation,
         loadAllTranslations,
-        updateKeysBatch,
         deleteKeys
     } = useTranslations();
 
     async function load() {
-        const res = await fetch(`${API_URL}/feature-cards?all=true`, {
+        const data = await apiFetch(`${API_URL}/feature-cards?all=true`, {
             headers: {Authorization: `Bearer ${accessToken}`}
         });
-
-        const data = await res.json();
         setItems(data);
     }
 
@@ -48,7 +44,7 @@ export default function FeatureCardsPage() {
     }, [accessToken]);
 
     async function toggleVisible(row) {
-        const res = await fetch(`${API_URL}/feature-cards/${row.id}`, {
+        const updated = await apiFetch(`${API_URL}/feature-cards/${row.id}`, {
             method: "PATCH",
             headers: {
                 "Content-Type": "application/json",
@@ -57,34 +53,29 @@ export default function FeatureCardsPage() {
             body: JSON.stringify({isVisible: !row.isVisible})
         });
 
-        const updated = await res.json();
-        const next = items.map(i => (i.id === row.id ? updated : i));
-
-        setItems(next);
+        setItems(items.map(i => (i.id === row.id ? updated : i)));
     }
 
     async function deleteItem(id) {
         const item = items.find(i => i.id === id);
         if (!item) return;
 
-        await fetch(`${API_URL}/footer/items/${id}`, {
+        await apiFetch(`${API_URL}/feature-cards/${id}`, {
             method: "DELETE",
             headers: {Authorization: `Bearer ${accessToken}`}
         });
 
-        const keysToDelete = [item.labelKey];
+        const keysToDelete = [item.titleKey];
         if (item.descriptionKey) keysToDelete.push(item.descriptionKey);
 
         await deleteKeys(keysToDelete);
 
         setItems(prev => prev.filter(i => i.id !== id));
-        showToast("Пункт и связанные переводы удалены");
+        showToast("Карточка и связанные переводы удалены");
     }
-
 
     const columns = [
         {key: "id", title: "ID", width: "60px"},
-
         {
             key: "image",
             title: "Изображение",
@@ -96,39 +87,31 @@ export default function FeatureCardsPage() {
                         alt=""
                         style={{width: 80, height: "auto", borderRadius: 6}}
                     />
-                ) : (
-                    "-"
-                )
+                ) : "-"
         },
-
         {
             key: "titleKey",
             title: "Заголовок (ru)",
             width: "250px",
-            render: (_, row) =>
-                translationMaps[row.titleKey]?.ru || ""
+            render: (_, row) => translationMaps[row.titleKey]?.ru || ""
         },
-
         {
             key: "descriptionKey",
             title: "Описание (ru)",
             width: "350px",
-            render: (_, row) =>
-                translationMaps[row.descriptionKey]?.ru || ""
+            render: (_, row) => translationMaps[row.descriptionKey]?.ru || ""
         },
-
         {
             key: "isVisible",
             title: "Отображать",
             width: "120px",
             render: (value, row) =>
                 canEdit ? (
-                    <Checkbox checked={value} onChange={() => toggleVisible(row)} />
+                    <Checkbox checked={value} onChange={() => toggleVisible(row)}/>
                 ) : (
-                    <Checkbox checked={value} disabled />
-                ),
+                    <Checkbox checked={value} disabled/>
+                )
         },
-
         {
             key: "actions",
             title: "Действия",
@@ -152,8 +135,8 @@ export default function FeatureCardsPage() {
                             <FiTrash size={16}/>
                         </button>
                     </div>
-                ),
-        },
+                )
+        }
     ];
 
     return (

@@ -3,6 +3,7 @@ import LabeledInput from "../components/controls/LabeledInput";
 import LabeledSelect from "../components/controls/LabeledSelect";
 import {useAuth} from "../hooks/authContext";
 import CustomTable from "../components/customElems/CustomTable";
+import apiFetch from "../utils/apiFetch";
 
 export default function UsersPage() {
     const API_URL = process.env.REACT_APP_API_URL || "/api";
@@ -37,30 +38,33 @@ export default function UsersPage() {
     }, [accessToken, roleFilter, search]);
 
     async function changeRole(id, role) {
-        await fetch(`${API_URL}/users/${id}/role`, {
+        await apiFetch(`${API_URL}/users/${id}/role`, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
-                Authorization: `Bearer ${accessToken}`,
+                Authorization: `Bearer ${accessToken}`
             },
-            body: JSON.stringify({role}),
+            body: JSON.stringify({role})
         });
+
         loadUsers();
     }
 
     async function deleteUser(id) {
-        await fetch(`${API_URL}/users/${id}/delete`, {
+        await apiFetch(`${API_URL}/users/${id}/delete`, {
             method: "POST",
-            headers: {Authorization: `Bearer ${accessToken}`},
+            headers: {Authorization: `Bearer ${accessToken}`}
         });
+
         loadUsers();
     }
 
     async function restoreUser(id) {
-        await fetch(`${API_URL}/users/${id}/restore`, {
+        await apiFetch(`${API_URL}/users/${id}/restore`, {
             method: "POST",
-            headers: {Authorization: `Bearer ${accessToken}`},
+            headers: {Authorization: `Bearer ${accessToken}`}
         });
+
         loadUsers();
     }
 

@@ -1,8 +1,9 @@
-import { useState, useEffect } from "react";
-import { useNavigate, Link } from "react-router-dom";
-import { useAuth } from "../hooks/authContext";
+import {useState, useEffect} from "react";
+import {useNavigate, Link} from "react-router-dom";
+import {useAuth} from "../hooks/authContext";
 import LabeledInput from "../components/controls/LabeledInput";
 import Checkbox from "../components/controls/Checkbox";
+import apiFetch from "../utils/apiFetch";
 
 export default function LoginPage() {
     const {
@@ -23,10 +24,9 @@ export default function LoginPage() {
 
     const API_URL = process.env.REACT_APP_API_URL || "/api";
 
-    // Если уже авторизован — редиректим
     useEffect(() => {
         if (!loading && user && accessToken) {
-            navigate("/", { replace: true });
+            navigate("/", {replace: true});
         }
     }, [user, accessToken, loading, navigate]);
 
@@ -35,9 +35,9 @@ export default function LoginPage() {
         setError("");
 
         try {
-            const res = await fetch(`${API_URL}/auth/login`, {
+            const data = await apiFetch(`${API_URL}/auth/login`, {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
+                headers: {"Content-Type": "application/json"},
                 body: JSON.stringify({
                     email,
                     password,
@@ -45,13 +45,6 @@ export default function LoginPage() {
                 })
             });
 
-            const data = await res.json();
-
-            if (!res.ok) {
-                throw new Error(data.detail || "Ошибка входа");
-            }
-
-            // Сохраняем токены
             if (rememberMe) {
                 localStorage.setItem("access_token", data.access_token);
                 localStorage.setItem("refresh_token", data.refresh_token);
@@ -60,7 +53,6 @@ export default function LoginPage() {
                 sessionStorage.setItem("refresh_token", data.refresh_token);
             }
 
-            // Обновляем контекст
             setAccessToken(data.access_token);
             setRefreshToken(data.refresh_token);
             setUser({
@@ -71,7 +63,7 @@ export default function LoginPage() {
                 permissions: data.permissions
             });
 
-            navigate("/", { replace: true });
+            navigate("/", {replace: true});
 
         } catch (err) {
             setError(err.message);
@@ -79,8 +71,8 @@ export default function LoginPage() {
     }
 
     return (
-        <div style={{ maxWidth: 400, margin: "80px auto" }}>
-            <h2 className="gradient-text" style={{ marginBottom: 24 }}>
+        <div style={{maxWidth: 400, margin: "80px auto"}}>
+            <h2 className="gradient-text" style={{marginBottom: 24}}>
                 Вход
             </h2>
 
@@ -106,17 +98,17 @@ export default function LoginPage() {
                 />
 
                 {error && (
-                    <div style={{ color: "var(--color-error)", marginTop: 8 }}>
+                    <div style={{color: "var(--color-error)", marginTop: 8}}>
                         {error}
                     </div>
                 )}
 
-                <button className="button" style={{ marginTop: 16 }}>
+                <button className="button" style={{marginTop: 16}}>
                     Войти
                 </button>
             </form>
 
-            <p style={{ marginTop: 16 }}>
+            <p style={{marginTop: 16}}>
                 Нет аккаунта? <Link to="/register">Зарегистрироваться</Link>
             </p>
         </div>

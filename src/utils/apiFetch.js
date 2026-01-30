@@ -3,16 +3,7 @@ export default async function(url, options = {}) {
         const res = await fetch(url, options);
 
         if (!res.ok) {
-            let message = `Ошибка запроса: ${res.status}`;
-
-            try {
-                const data = await res.json();
-                if (data?.message) message = data.message;
-            } catch (e) {
-                console.log("Error:", e);
-            }
-
-            throw new Error(message);
+            console.error(`Ошибка запроса: ${res.status}`);
         }
 
         try {

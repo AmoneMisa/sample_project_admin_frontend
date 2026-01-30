@@ -1,23 +1,29 @@
 import {useEffect, useState} from "react";
-import {v4 as uuid} from "uuid";
-import LabeledSelect from "../controls/LabeledSelect";
-import {useToast} from "../layout/ToastContext";
-import {useTranslations} from "../../hooks/useTranslations";
-import {useAuditLog} from "../../hooks/useAuditLog";
 import Modal from "./Modal";
-import MenuItemSimple from "../menuCreateComponents/MenuItemSimple";
-import MenuItemDropdown from "../menuCreateComponents/MenuItemDropdown";
+import LabeledInput from "../controls/LabeledInput";
+import MultilangInput from "../controls/MultilangInput";
+import LabeledSelect from "../controls/LabeledSelect";
+import Checkbox from "../controls/Checkbox";
+import {useAuth} from "../../hooks/authContext";
+import {useToast} from "../layout/ToastContext";
+import {v4 as uuid} from "uuid";
+import {useTranslations} from "../../hooks/useTranslations";
 import MenuItemDropdownMega from "../menuCreateComponents/MenuItemDropdownMega";
+import MenuItemDropdown from "../menuCreateComponents/MenuItemDropdown";
+import MenuItemSimple from "../menuCreateComponents/MenuItemSimple";
 
 export default function MenuItemDialog({initialItem, onSave, onClose, title}) {
+    const API_URL = process.env.REACT_APP_API_URL || "/api";
+    const {accessToken} = useAuth();
     const {showToast} = useToast();
 
     const {
-        translations,
         languages,
+        translations,
         loadAllTranslations,
-        saveValue
-    } = useTranslations(useAuditLog());
+        createKeysBatch,
+        updateKeysBatch
+    } = useTranslations({});
 
     const [loading, setLoading] = useState(true);
     const [fieldErrors, setFieldErrors] = useState({});
@@ -39,270 +45,109 @@ export default function MenuItemDialog({initialItem, onSave, onClose, title}) {
         return structuredClone(initialItem);
     });
 
+    const [translationMaps, setTranslationMaps] = useState({});
+
     useEffect(() => {
         (async () => {
             await loadAllTranslations();
+
+            const maps = {};
+            const collect = (key) => {
+                maps[key] = {...(translations[key] || {})};
+            };
+
+            const walk = (node) => {
+                if (!node) return;
+                if (node.labelKey) collect(node.labelKey);
+                if (node.badgeKey) collect(node.badgeKey);
+                if (node.items) node.items.forEach(walk);
+                if (node.columns) {
+                    node.columns.forEach(col => {
+                        collect(col.titleKey);
+                        col.items.forEach(walk);
+                    });
+                }
+            };
+
+            walk(item);
+            setTranslationMaps(maps);
             setLoading(false);
         })();
     }, [loadAllTranslations]);
 
-    function updateItem(updater) {
+    const updateItem = (fn) => {
         setItem(prev => {
             const next = structuredClone(prev);
-            updater(next);
+            fn(next);
             return next;
         });
-    }
+    };
 
-    function updateTranslation(labelKey, nextValueMap) {
-        for (const lang of languages) {
-            const v = nextValueMap[lang.code] ?? "";
-            saveValue(labelKey, lang.code, v);
-        }
-    }
+    const updateTranslation = (key, nextMap) => {
+        setTranslationMaps(prev => ({
+            ...prev,
+            [key]: nextMap
+        }));
+    };
 
-    function makeLabelKey(rootId, type) {
-        return `headerMenu.${rootId}.${type}.label`;
-    }
+    const makeLabelKey = (rootId, type) =>
+        `headerMenu.${rootId}.${type}.label`;
 
-    function makeSimpleItemKey(rootId, i) {
-        return `headerMenu.${rootId}.dropdown-simple.item.${i}.title`;
-    }
+    const makeSimpleItemKey = (rootId, i) =>
+        `headerMenu.${rootId}.dropdown-simple.item.${i}.title`;
+    const makeColumnTitleKey = (rootId, c) =>
+        `headerMenu.${rootId}.dropdown-mega.column.${c}.title`;
 
-    function makeSimpleBadgeKey(rootId, i) {
-        return `headerMenu.${rootId}.dropdown-simple.item.${i}.badge`;
-    }
-
-    function makeColumnTitleKey(rootId, c) {
-        return `headerMenu.${rootId}.dropdown-mega.column.${c}.title`;
-    }
-
-    function makeMegaItemKey(rootId, c, s) {
-        return `headerMenu.${rootId}.dropdown-mega.column.${c}.item.${s}.title`;
-    }
-
-    function makeMegaBadgeKey(rootId, c, s) {
-        return `headerMenu.${rootId}.dropdown-mega.column.${c}.item.${s}.badge`;
-    }
-
-    function updateHref(path, value) {
-        updateItem(next => {
-            let target = next;
-            for (const p of path) target = target[p];
-            target.href = value;
-        });
-    }
-
-    function toggleVisible(path) {
-        updateItem(next => {
-            let target = next;
-            for (const p of path) target = target[p];
-            target.visible = target.visible === false ? true : !target.visible;
-        });
-    }
-
-    function toggleBadge(path, type, itemIndex = null, colIndex = null) {
-        updateItem(next => {
-            let target = next;
-            for (const p of path) target = target[p];
-
-            const rootId = next.id;
-
-            if (!target.badgeKey) {
-                if (type === "simple") {
-                    target.badgeKey = `headerMenu.${rootId}.simple.badge`;
-                } else if (type === "dropdown-simple") {
-                    target.badgeKey = makeSimpleBadgeKey(rootId, itemIndex);
-                } else if (type === "dropdown-mega") {
-                    target.badgeKey = makeMegaBadgeKey(rootId, colIndex, itemIndex);
-                }
-                target.showBadge = true;
-                return;
-            }
-
-            target.showBadge = !target.showBadge;
-            if (!target.showBadge) target.badgeKey = null;
-        });
-    }
-
-    function addSimpleItem() {
-        if (item.type !== "dropdown-simple") return;
-        updateItem(next => {
-            const i = next.items.length;
-            next.items.push({
-                labelKey: makeSimpleItemKey(next.id, i),
-                href: "",
-                visible: true,
-                badgeKey: null,
-                showBadge: false
-            });
-        });
-    }
-
-    function removeSimpleItem(i) {
-        updateItem(next => next.items.splice(i, 1));
-    }
-
-    function addColumn() {
-        updateItem(next => {
-            const c = next.columns.length;
-            next.columns.push({
-                titleKey: makeColumnTitleKey(next.id, c),
-                items: [{
-                    labelKey: makeMegaItemKey(next.id, c, 0),
-                    href: "",
-                    visible: true,
-                    badgeKey: null,
-                    showBadge: false
-                }]
-            });
-        });
-    }
-
-    function removeColumn(c) {
-        updateItem(next => next.columns.splice(c, 1));
-    }
-
-    function addMegaItem(c) {
-        updateItem(next => {
-            const col = next.columns[c];
-            const s = col.items.length;
-            col.items.push({
-                labelKey: makeMegaItemKey(next.id, c, s),
-                href: "",
-                visible: true,
-                badgeKey: null,
-                showBadge: false
-            });
-        });
-    }
-
-    function removeMegaItem(c, s) {
-        updateItem(next => next.columns[c].items.splice(s, 1));
-    }
-
-    function updateImage(field, value) {
-        updateItem(next => {
-            if (!next.image) next.image = {};
-            next.image[field] = value;
-        });
-    }
-
-    function updateType(newType) {
-        updateItem(current => {
-            const rootId = current.id;
-
-            if (newType === "simple") {
-                Object.assign(current, {
-                    type: "simple",
-                    labelKey: makeLabelKey(rootId, "simple"),
-                    href: current.href || "",
-                    visible: current.visible !== false,
-                    badgeKey: current.badgeKey || null,
-                    showBadge: !!current.showBadge
-                });
-                delete current.items;
-                delete current.columns;
-                delete current.image;
-                return;
-            }
-
-            if (newType === "dropdown-simple") {
-                current.type = "dropdown-simple";
-                current.labelKey = makeLabelKey(rootId, "dropdown-simple");
-                current.items = current.items?.length
-                    ? current.items
-                    : [{
-                        labelKey: makeSimpleItemKey(rootId, 0),
-                        href: "",
-                        visible: true,
-                        badgeKey: null,
-                        showBadge: false
-                    }];
-                delete current.columns;
-                delete current.image;
-                return;
-            }
-
-            if (newType === "dropdown-mega") {
-                current.type = "dropdown-mega";
-                current.labelKey = makeLabelKey(rootId, "dropdown-mega");
-                current.columns = current.columns?.length
-                    ? current.columns
-                    : [{
-                        titleKey: makeColumnTitleKey(rootId, 0),
-                        items: [{
-                            labelKey: makeMegaItemKey(rootId, 0, 0),
-                            href: "",
-                            visible: true,
-                            badgeKey: null,
-                            showBadge: false
-                        }]
-                    }];
-                current.image = {
-                    src: current.image?.src || "",
-                    position: current.image?.position || "right"
-                };
-                delete current.items;
-            }
-        });
-    }
-
-    function validate() {
-        const newErrors = {};
+    const makeMegaItemKey = (rootId, c, s) =>
+        `headerMenu.${rootId}.dropdown-mega.column.${c}.item.${s}.title`;
+    const validate = () => {
+        const errs = {};
         let hasError = false;
 
-        function isValidUrl(input) {
+        const isValidUrl = (input) => {
             if (!input || typeof input !== "string") return false;
             const url = input.trim();
-
             try {
                 new URL(url);
                 return true;
-            } catch {}
-
+            } catch {
+            }
             if (/^\/[A-Za-z0-9._~!$&'()*+,;=:@/%?-]*$/.test(url)) return true;
             if (/^[A-Za-z0-9._~!$&'()*+,;=:@/%?-]+$/.test(url)) return true;
             if (/^\?[A-Za-z0-9._~!$&'()*+,;=:@/%?-]*$/.test(url)) return true;
             if (/^#[A-Za-z0-9._~!$&'()*+,;=:@/%?-]+$/.test(url)) return true;
-
             return false;
-        }
+        };
 
-        function validateHref(path, href) {
+        const validateHref = (path, href) => {
             const key = path.join(".");
             if (!href || href.trim() === "") {
-                newErrors[key] = "Поле обязательно";
+                errs[key] = "Поле обязательно";
                 hasError = true;
             } else if (!isValidUrl(href)) {
-                newErrors[key] = "Некорректная ссылка";
+                errs[key] = "Некорректная ссылка";
                 hasError = true;
             }
-        }
+        };
 
-        if (item.type === "simple") {
-            validateHref(["href"], item.href);
-        }
+        if (item.type === "simple") validateHref(["href"], item.href);
 
         if (item.type === "dropdown-simple") {
-            item.items.forEach((sub, i) => {
-                validateHref(["items", i, "href"], sub.href);
-            });
+            item.items.forEach((sub, i) =>
+                validateHref(["items", i, "href"], sub.href)
+            );
         }
 
         if (item.type === "dropdown-mega") {
             item.columns.forEach((col, c) => {
-                col.items.forEach((sub, s) => {
-                    validateHref(["columns", c, "items", s, "href"], sub.href);
-                });
+                col.items.forEach((sub, s) =>
+                    validateHref(["columns", c, "items", s, "href"], sub.href)
+                );
             });
-
-            if (item.image?.src) {
-                validateHref(["image", "src"], item.image.src);
-            }
+            if (item.image?.src) validateHref(["image", "src"], item.image.src);
         }
 
-        setFieldErrors(newErrors);
+        setFieldErrors(errs);
 
         if (hasError) {
             setError("Исправьте ошибки в форме");
@@ -311,51 +156,173 @@ export default function MenuItemDialog({initialItem, onSave, onClose, title}) {
 
         setError("");
         return true;
-    }
+    };
 
-    async function handleSave() {
+    const collectAllKeys = () => {
+        const result = [];
+
+        const add = (key) => {
+            const values = translationMaps[key] || {};
+            result.push({
+                key,
+                values: Object.fromEntries(
+                    languages.map(l => [l.code, values[l.code] || ""])
+                )
+            });
+        };
+
+        const walk = (node) => {
+            if (!node) return;
+            if (node.labelKey) add(node.labelKey);
+            if (node.badgeKey) add(node.badgeKey);
+            if (node.items) node.items.forEach(walk);
+            if (node.columns) {
+                node.columns.forEach(col => {
+                    add(col.titleKey);
+                    col.items.forEach(walk);
+                });
+            }
+        };
+
+        walk(item);
+        return result;
+    };
+
+    const saveItem = async () => {
+        if (initialItem) {
+            await fetch(`${API_URL}/menu/${item.id}`, {
+                method: "PATCH",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${accessToken}`
+                },
+                body: JSON.stringify(item)
+            });
+            return item.id;
+        }
+
+        const res = await fetch(`${API_URL}/menu`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${accessToken}`
+            },
+            body: JSON.stringify(item)
+        });
+
+        const created = await res.json();
+        return created.id;
+    };
+
+    const handleSave = async () => {
         if (!validate()) return;
 
-        onSave(item);
-        showToast("Пункт меню сохранён");
-        onClose();
-    }
+        const id = await saveItem();
+        const payload = collectAllKeys();
 
-    if (loading || !languages.length || !translations) {
+        if (initialItem) {
+            await updateKeysBatch(
+                payload.flatMap(item =>
+                    Object.entries(item.values).map(([lang, value]) => ({
+                        key: item.key,
+                        lang,
+                        value
+                    }))
+                )
+            );
+        } else {
+            await createKeysBatch(payload);
+        }
+
+        showToast("Пункт меню сохранён");
+        onSave(item);
+        onClose();
+    };
+
+    if (loading || !languages.length) {
         return (
             <Modal open={true} onClose={onClose}>
-                <div className="dialog__window">
-                    <h2>Загрузка…</h2>
-                </div>
+                <h2>Загрузка…</h2>
             </Modal>
         );
     }
 
     return (
-        <Modal open={true} title={title} onClose={onClose} width={800} className="menu-modal">
-            {error && <div className="field-error">{error}</div>}
+        <Modal open={true} onClose={onClose} width={800}>
+            <h2>{title}</h2>
+
+            {error && (
+                <div style={{color: "red", marginBottom: 12}}>
+                    {error}
+                </div>
+            )}
 
             <LabeledSelect
-                label="Тип меню"
+                label="Тип"
                 value={item.type}
-                onChange={updateType}
-                className="menu-modal__select"
+                onChange={(v) => updateItem(n => {
+                    const rootId = n.id;
+                    if (v === "simple") {
+                        n.type = "simple";
+                        n.labelKey = makeLabelKey(rootId, "simple");
+                        n.items = undefined;
+                        n.columns = undefined;
+                        n.image = undefined;
+                    }
+                    if (v === "dropdown-simple") {
+                        n.type = "dropdown-simple";
+                        n.labelKey = makeLabelKey(rootId, "dropdown-simple");
+                        n.items = n.items?.length ? n.items : [{
+                            labelKey: makeSimpleItemKey(rootId, 0),
+                            href: "",
+                            visible: true,
+                            badgeKey: null,
+                            showBadge: false
+                        }];
+                        n.columns = undefined;
+                        n.image = undefined;
+                    }
+                    if (v === "dropdown-mega") {
+                        n.type = "dropdown-mega";
+                        n.labelKey = makeLabelKey(rootId, "dropdown-mega");
+                        n.columns = n.columns?.length ? n.columns : [{
+                            titleKey: makeColumnTitleKey(rootId, 0),
+                            items: [{
+                                labelKey: makeMegaItemKey(rootId, 0, 0),
+                                href: "",
+                                visible: true,
+                                badgeKey: null,
+                                showBadge: false
+                            }]
+                        }];
+                        n.items = undefined;
+                        n.image = {
+                            src: n.image?.src || "",
+                            position: n.image?.position || "right"
+                        };
+                    }
+                })}
                 options={[
-                    {value: "simple", label: "Простое"},
-                    {value: "dropdown-simple", label: "Выпадающее меню"},
+                    {value: "simple", label: "Простой"},
+                    {value: "dropdown-simple", label: "Выпадающий простой"},
                     {value: "dropdown-mega", label: "Мега-меню"}
                 ]}
+            />
+
+            <MultilangInput
+                label="Название"
+                languages={languages.map(l => l.code)}
+                valueMap={translationMaps[item.labelKey]}
+                onChange={(m) => updateTranslation(item.labelKey, m)}
             />
 
             {item.type === "simple" && (
                 <MenuItemSimple
                     item={item}
-                    toggleVisible={toggleVisible}
-                    updateHref={updateHref}
-                    toggleBadge={toggleBadge}
-                    translations={translations}
-                    setTranslations={updateTranslation}
-                    languages={languages}
+                    updateItem={updateItem}
+                    translationMaps={translationMaps}
+                    updateTranslation={updateTranslation}
+                    languages={languages.map(l => l.code)}
                     fieldErrors={fieldErrors}
                 />
             )}
@@ -363,14 +330,10 @@ export default function MenuItemDialog({initialItem, onSave, onClose, title}) {
             {item.type === "dropdown-simple" && (
                 <MenuItemDropdown
                     item={item}
-                    toggleVisible={toggleVisible}
-                    updateHref={updateHref}
-                    toggleBadge={toggleBadge}
-                    removeSimpleItem={removeSimpleItem}
-                    addSimpleItem={addSimpleItem}
-                    translations={translations}
-                    setTranslations={updateTranslation}
-                    languages={languages}
+                    updateItem={updateItem}
+                    translationMaps={translationMaps}
+                    updateTranslation={updateTranslation}
+                    languages={languages.map(l => l.code)}
                     fieldErrors={fieldErrors}
                 />
             )}
@@ -378,24 +341,22 @@ export default function MenuItemDialog({initialItem, onSave, onClose, title}) {
             {item.type === "dropdown-mega" && (
                 <MenuItemDropdownMega
                     item={item}
-                    toggleVisible={toggleVisible}
-                    updateHref={updateHref}
-                    toggleBadge={toggleBadge}
-                    addColumn={addColumn}
-                    removeColumn={removeColumn}
-                    addMegaItem={addMegaItem}
-                    removeMegaItem={removeMegaItem}
-                    updateImage={updateImage}
-                    translations={translations}
-                    setTranslations={updateTranslation}
-                    languages={languages}
+                    updateItem={updateItem}
+                    translationMaps={translationMaps}
+                    updateTranslation={updateTranslation}
+                    languages={languages.map(l => l.code)}
                     fieldErrors={fieldErrors}
                 />
             )}
 
-            <button className="button button_accept" onClick={handleSave}>
-                Сохранить
-            </button>
+            <div className="modal__actions">
+                <button className="button button_accept" onClick={handleSave}>
+                    Сохранить
+                </button>
+                <button className="button button_reject" onClick={onClose}>
+                    Отменить
+                </button>
+            </div>
         </Modal>
     );
 }

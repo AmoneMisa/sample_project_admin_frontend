@@ -4,9 +4,8 @@ import LabeledInput from "../controls/LabeledInput";
 import MultilangInput from "../controls/MultilangInput";
 import {useAuth} from "../../hooks/authContext";
 import {useToast} from "../layout/ToastContext";
-import {useAuditLog} from "../../hooks/useAuditLog";
-import {useTranslations} from "../../hooks/useTranslations";
 import {v4 as uuid} from "uuid";
+import {useTranslations} from "../../hooks/useTranslations";
 
 export default function FooterMenuItemDialog({initial, mode, blockId, onClose}) {
     const API_URL = process.env.REACT_APP_API_URL || "/api";
@@ -14,26 +13,11 @@ export default function FooterMenuItemDialog({initial, mode, blockId, onClose}) 
     const {showToast} = useToast();
 
     const {
-        translations,
-        setTranslations,
-        meta,
-        setMeta,
-        pushSnapshot,
-        markDeleted
-    } = useAuditLog();
-
-    const {
         languages,
         loadAllTranslations,
-        saveValue
-    } = useTranslations({
-        translations,
-        setTranslations,
-        meta,
-        setMeta,
-        pushSnapshot,
-        markDeleted
-    });
+        createKeysBatch,
+        updateKeysBatch
+    } = useTranslations({});
 
     const [loading, setLoading] = useState(true);
     const [errors, setErrors] = useState({});
@@ -41,41 +25,48 @@ export default function FooterMenuItemDialog({initial, mode, blockId, onClose}) 
     const [form, setForm] = useState(() => {
         if (initial) return structuredClone(initial);
 
-        const itemId = uuid();
+        const id = uuid();
         return {
-            id: itemId,
-            type: "link",
-            labelKey: null, // создадим позже
+            id,
+            blockId,
             href: "",
             order: 0,
-            isVisible: true
+            isVisible: true,
+            labelKey: `footer.menu.${id}.label`
         };
     });
 
-    useEffect(() => {
-        if (!accessToken) return;
-        (async () => {
-            await loadAllTranslations();
-
-            if (!form.labelKey) {
-                const key = `footer.block.${blockId}.item.${form.id}.label`;
-                setForm(prev => ({...prev, labelKey: key}));
-
-                setTranslations(prev => ({
-                    ...prev,
-                    [key]: Object.fromEntries(languages.map(l => [l.code, ""]))
-                }));
-            }
-
-            setLoading(false);
-        })();
-    }, [accessToken, loadAllTranslations]);
+    const [labelTranslations, setLabelTranslations] = useState({});
 
     const updateField = (key, value) => {
         setForm(prev => ({...prev, [key]: value}));
         setErrors(prev => ({...prev, [key]: ""}));
     };
 
+    // -----------------------------
+    // INITIAL LOAD
+    // -----------------------------
+    useEffect(() => {
+        (async () => {
+            await loadAllTranslations();
+
+            if (mode === "edit") {
+                const all = window.__translations;
+                setLabelTranslations({...all[form.labelKey]});
+            } else {
+                const empty = Object.fromEntries(
+                    languages.map(l => [l.code, ""])
+                );
+                setLabelTranslations(empty);
+            }
+
+            setLoading(false);
+        })();
+    }, [languages.length]);
+
+    // -----------------------------
+    // VALIDATION
+    // -----------------------------
     const validate = () => {
         const e = {};
 
@@ -83,11 +74,11 @@ export default function FooterMenuItemDialog({initial, mode, blockId, onClose}) 
         if (form.order < 0 || form.order === "" || isNaN(form.order))
             e.order = "Введите число ≥ 0";
 
-        const t = translations[form.labelKey] || {};
         for (const lang of languages) {
-            if (!t[lang.code]?.trim()) {
+            const code = lang.code;
+            if (!labelTranslations[code]?.trim()) {
                 if (!e.label) e.label = {};
-                e.label[lang.code] = "Обязательное поле";
+                e.label[code] = "Обязательное поле";
             }
         }
 
@@ -95,9 +86,12 @@ export default function FooterMenuItemDialog({initial, mode, blockId, onClose}) 
         return Object.keys(e).length === 0;
     };
 
+    // -----------------------------
+    // SAVE ITEM
+    // -----------------------------
     const saveItem = async () => {
         if (mode === "edit") {
-            const res = await fetch(`${API_URL}/footer/items/${form.id}`, {
+            await fetch(`${API_URL}/footer/items/${form.id}`, {
                 method: "PATCH",
                 headers: {
                     "Content-Type": "application/json",
@@ -105,10 +99,10 @@ export default function FooterMenuItemDialog({initial, mode, blockId, onClose}) 
                 },
                 body: JSON.stringify(form)
             });
-            return (await res.json()).id;
+            return form.id;
         }
 
-        const res = await fetch(`${API_URL}/footer/${blockId}/items`, {
+        const res = await fetch(`${API_URL}/footer/items`, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
@@ -117,20 +111,41 @@ export default function FooterMenuItemDialog({initial, mode, blockId, onClose}) 
             body: JSON.stringify(form)
         });
 
-        const created = await res.json();
-        return created.id;
+        const item = await res.json();
+        return item.id;
     };
 
-    const save = async () => {
+    // -----------------------------
+    // SAVE ALL
+    // -----------------------------
+    const handleSave = async () => {
         if (!validate()) return;
 
         const id = await saveItem();
 
-        const finalKey = `footer.block.${blockId}.item.${id}.label`;
-        const t = translations[form.labelKey] || {};
+        const finalLabelKey = `footer.menu.${id}.label`;
 
-        for (const lang of languages) {
-            await saveValue(finalKey, lang.code, t[lang.code] || "");
+        const payload = [
+            {
+                key: finalLabelKey,
+                values: Object.fromEntries(
+                    languages.map(l => [l.code, labelTranslations[l.code] || ""])
+                )
+            }
+        ];
+
+        if (mode === "edit") {
+            await updateKeysBatch(
+                payload.flatMap(item =>
+                    Object.entries(item.values).map(([lang, value]) => ({
+                        key: item.key,
+                        lang,
+                        value
+                    }))
+                )
+            );
+        } else {
+            await createKeysBatch(payload);
         }
 
         await fetch(`${API_URL}/footer/items/${id}`, {
@@ -139,13 +154,18 @@ export default function FooterMenuItemDialog({initial, mode, blockId, onClose}) 
                 "Content-Type": "application/json",
                 Authorization: `Bearer ${accessToken}`
             },
-            body: JSON.stringify({labelKey: finalKey})
+            body: JSON.stringify({
+                labelKey: finalLabelKey
+            })
         });
 
         showToast("Пункт меню сохранён");
         onClose();
     };
 
+    // -----------------------------
+    // RENDER
+    // -----------------------------
     if (loading) {
         return (
             <Modal open={true} onClose={onClose}>
@@ -154,32 +174,23 @@ export default function FooterMenuItemDialog({initial, mode, blockId, onClose}) 
         );
     }
 
-    const t = translations[form.labelKey] || {};
-
     return (
-        <Modal open={true} onClose={onClose}>
-            <h2 className="modal__header">
-                {mode === "edit" ? "Редактировать пункт" : "Создать пункт"}
-            </h2>
-
-            <MultilangInput
-                label="Название"
-                languages={languages.map(l => l.code)}
-                valueMap={t}
-                errors={errors.label}
-                onChange={next =>
-                    setTranslations(prev => ({
-                        ...prev,
-                        [form.labelKey]: next
-                    }))
-                }
-            />
+        <Modal open={true} onClose={onClose} width={600}>
+            <h2>{mode === "edit" ? "Редактировать пункт" : "Создать пункт"}</h2>
 
             <LabeledInput
                 label="Ссылка"
                 value={form.href}
                 error={errors.href}
                 onChange={v => updateField("href", v)}
+            />
+
+            <MultilangInput
+                label="Название"
+                languages={languages.map(l => l.code)}
+                valueMap={labelTranslations}
+                errors={errors.label}
+                onChange={setLabelTranslations}
             />
 
             <LabeledInput
@@ -191,7 +202,7 @@ export default function FooterMenuItemDialog({initial, mode, blockId, onClose}) 
             />
 
             <div className="modal__actions">
-                <button className="button button_accept" onClick={save}>
+                <button className="button button_accept" onClick={handleSave}>
                     Сохранить
                 </button>
                 <button className="button button_reject" onClick={onClose}>

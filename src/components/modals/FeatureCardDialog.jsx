@@ -5,74 +5,66 @@ import {useAuth} from "../../hooks/authContext";
 import {useToast} from "../layout/ToastContext";
 import LabeledInput from "../controls/LabeledInput";
 import MultilangInput from "../controls/MultilangInput";
+import {useTranslations} from "../../hooks/useTranslations";
 
 export default function FeatureCardDialog({initial, mode, onClose}) {
     const API_URL = process.env.REACT_APP_API_URL || "/api";
     const {accessToken} = useAuth();
     const {showToast} = useToast();
 
-    const tempId = uuid();
+    const {
+        languages,
+        loadAllTranslations,
+        createKeysBatch,
+        updateKeysBatch
+    } = useTranslations({});
 
-    const [form, setForm] = useState(
-        initial || {
+    const [form, setForm] = useState(() => {
+        if (initial) return structuredClone(initial);
+
+        const id = uuid();
+        return {
+            id,
             image: "",
-            titleKey: `temp.featureCard.${tempId}.title`,
-            descriptionKey: `temp.featureCard.${tempId}.description`,
-            isVisible: true,
-        }
-    );
+            titleKey: `featureCard.${id}.title`,
+            descriptionKey: `featureCard.${id}.description`,
+            isVisible: true
+        };
+    });
 
-    const [languages, setLanguages] = useState([]);
     const [titleTranslations, setTitleTranslations] = useState({});
     const [descriptionTranslations, setDescriptionTranslations] = useState({});
     const [errors, setErrors] = useState({});
     const [loading, setLoading] = useState(true);
 
-    function updateField(key, value) {
+    const updateField = (key, value) => {
         setForm(prev => ({...prev, [key]: value}));
-    }
-
-    // -----------------------------
-    // LOAD LANGUAGES
-    // -----------------------------
-    async function loadLanguages() {
-        const res = await fetch(`${API_URL}/languages`, {
-            headers: {Authorization: `Bearer ${accessToken}`}
-        });
-        return await res.json();
-    }
-
-    // -----------------------------
-    // LOAD TRANSLATIONS
-    // -----------------------------
-    async function loadTranslations(key, langs, setter) {
-        const res = await fetch(`${API_URL}/translations?key=${encodeURIComponent(key)}`, {
-            headers: {Authorization: `Bearer ${accessToken}`}
-        });
-        const data = await res.json();
-
-        const map = {};
-        langs.forEach(lang => {
-            map[lang.code] = data[lang.code] || "";
-        });
-
-        setter(map);
-    }
+    };
 
     // -----------------------------
     // INITIAL LOAD
     // -----------------------------
     useEffect(() => {
         (async () => {
-            const langs = await loadLanguages();
-            setLanguages(langs);
+            await loadAllTranslations();
 
-            await loadTranslations(form.titleKey, langs, setTitleTranslations);
-            await loadTranslations(form.descriptionKey, langs, setDescriptionTranslations);
+            if (mode === "edit") {
+                const titleMap = window.__translations[form.titleKey] || {};
+                const descMap = window.__translations[form.descriptionKey] || {};
+
+                setTitleTranslations({...titleMap});
+                setDescriptionTranslations({...descMap});
+            } else {
+                const empty = Object.fromEntries(
+                    languages.map(l => [l.code, ""])
+                );
+                setTitleTranslations(empty);
+                setDescriptionTranslations(empty);
+            }
 
             setLoading(false);
         })();
-    }, []);
+    }, [languages.length]);
 
     // -----------------------------
     // VALIDATION
@@ -80,11 +72,9 @@ export default function FeatureCardDialog({initial, mode, onClose}) {
     function validate() {
         const e = {};
 
-        if (!form.image.trim()) {
-            e.image = "Обязательное поле";
-        }
+        if (!form.image.trim()) e.image = "Обязательное поле";
 
-        languages.forEach(lang => {
+        for (const lang of languages) {
             const code = lang.code;
 
             if (!titleTranslations[code]?.trim()) {
@@ -96,30 +86,10 @@ export default function FeatureCardDialog({initial, mode, onClose}) {
                 if (!e.description) e.description = {};
                 e.description[code] = "Обязательное поле";
             }
-        });
+        }
 
         setErrors(e);
         return Object.keys(e).length === 0;
-    }
-
-    // -----------------------------
-    // SAVE TRANSLATIONS (правильный формат!)
-    // -----------------------------
-    async function saveTranslations(key, translations) {
-        const items = Object.entries(translations).map(([lang, value]) => ({
-            key,
-            lang,
-            value
-        }));
-
-        await fetch(`${API_URL}/translations`, {
-            method: "PATCH",
-            headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${accessToken}`
-            },
-            body: JSON.stringify({items})
-        });
     }
 
     // -----------------------------
@@ -159,15 +129,38 @@ export default function FeatureCardDialog({initial, mode, onClose}) {
 
         const id = await saveCard();
 
-        // Генерируем финальные ключи
         const finalTitleKey = `featureCard.${id}.title`;
         const finalDescriptionKey = `featureCard.${id}.description`;
 
-        // Сохраняем переводы
-        await saveTranslations(finalTitleKey, titleTranslations);
-        await saveTranslations(finalDescriptionKey, descriptionTranslations);
+        const payload = [
+            {
+                key: finalTitleKey,
+                values: Object.fromEntries(
+                    languages.map(l => [l.code, titleTranslations[l.code] || ""])
+                )
+            },
+            {
+                key: finalDescriptionKey,
+                values: Object.fromEntries(
+                    languages.map(l => [l.code, descriptionTranslations[l.code] || ""])
+                )
+            }
+        ];
 
-        // Обновляем карточку с финальными ключами
+        if (mode === "edit") {
+            await updateKeysBatch(
+                payload.flatMap(item =>
+                    Object.entries(item.values).map(([lang, value]) => ({
+                        key: item.key,
+                        lang,
+                        value
+                    }))
+                )
+            );
+        } else {
+            await createKeysBatch(payload);
+        }
+
         await fetch(`${API_URL}/feature-cards/${id}`, {
             method: "PATCH",
             headers: {
@@ -213,7 +206,7 @@ export default function FeatureCardDialog({initial, mode, onClose}) {
                 languages={languages.map(l => l.code)}
                 valueMap={titleTranslations}
                 errors={errors.title}
-                onChange={(next) => setTitleTranslations(next)}
+                onChange={setTitleTranslations}
             />
 
             <MultilangInput
@@ -221,7 +214,7 @@ export default function FeatureCardDialog({initial, mode, onClose}) {
                 languages={languages.map(l => l.code)}
                 valueMap={descriptionTranslations}
                 errors={errors.description}
-                onChange={(next) => setDescriptionTranslations(next)}
+                onChange={setDescriptionTranslations}
             />
 
             <div className="modal__actions">

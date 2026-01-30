@@ -64,69 +64,35 @@ export function useTranslations({translations, setTranslations, meta, setMeta, p
         setLoaded(true);
     }, [accessToken, loaded, loadLanguages, meta, setMeta, setTranslations]);
 
-    const saveAll = useCallback(async () => {
-        if (!accessToken) return;
+    // -----------------------------
+    // CREATE MULTIPLE KEYS (POST)
+    // -----------------------------
+    const createKeysBatch = useCallback(async (items) => {
+        await fetch(`${API_URL}/translations`, {
+            method: "POST",
+            headers: {"Content-Type": "application/json", Authorization: `Bearer ${accessToken}`},
+            body: JSON.stringify(items)
+        });
 
-        const items = [];
+        showToast("Ключи созданы");
+    }, [API_URL, accessToken, showToast]);
 
-        for (const [key, values] of Object.entries(translations)) {
-            const metaForKey = meta[key] || {};
-            const isList = !!metaForKey.isList;
-
-            for (const lang of languages) {
-                const rawValue = values[lang.code];
-                const payloadValue = isList
-                    ? String(rawValue).split(";").map(s => s.trim()).filter(Boolean)
-                    : rawValue;
-
-                items.push({key, lang: lang.code, value: payloadValue});
-            }
-        }
-
+    // -----------------------------
+    // UPDATE MULTIPLE KEYS (PATCH)
+    // -----------------------------
+    const updateKeysBatch = useCallback(async (items) => {
         await fetch(`${API_URL}/translations`, {
             method: "PATCH",
             headers: {"Content-Type": "application/json", Authorization: `Bearer ${accessToken}`},
             body: JSON.stringify({items})
         });
 
-        showToast("Переводы сохранены");
-    }, [translations, languages, meta, accessToken, API_URL, showToast]);
+        showToast("Переводы обновлены");
+    }, [API_URL, accessToken, showToast]);
 
-    const saveValue = useCallback(async (key, lang, newValue) => {
-        if (!accessToken) return;
-
-        const prevTranslations = translations;
-        const prevMeta = meta;
-
-        const nextTranslations = {
-            ...prevTranslations,
-            [key]: {
-                ...prevTranslations[key],
-                [lang]: newValue
-            }
-        };
-
-        pushSnapshot(nextTranslations, prevMeta, `Изменён ${lang} перевод у ключа '${key}'`);
-        setTranslations(nextTranslations);
-
-        const metaForKey = meta[key] || {};
-        const isList = !!metaForKey.isList;
-
-        const payloadValue = isList
-            ? newValue.split(";").map(s => s.trim()).filter(Boolean)
-            : newValue;
-
-        const items = [{key, lang, value: payloadValue}];
-
-        await fetch(`${API_URL}/translations`, {
-            method: "PATCH",
-            headers: {"Content-Type": "application/json", Authorization: `Bearer ${accessToken}`},
-            body: JSON.stringify({items})
-        });
-
-        showToast("Перевод сохранён");
-    }, [translations, meta, pushSnapshot, setTranslations, accessToken, API_URL, showToast]);
-
+    // -----------------------------
+    // DELETE KEYS
+    // -----------------------------
     const deleteKeys = useCallback(async (keys) => {
         if (!accessToken) return;
 
@@ -159,8 +125,9 @@ export function useTranslations({translations, setTranslations, meta, setMeta, p
     return {
         languages,
         loadAllTranslations,
-        saveAll,
-        saveValue,
+
+        createKeysBatch,
+        updateKeysBatch,
         deleteKeys
     };
 }

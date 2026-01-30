@@ -6,7 +6,6 @@ import MultilangInput from "../controls/MultilangInput";
 import {useAuth} from "../../hooks/authContext";
 import {useToast} from "../layout/ToastContext";
 import {v4 as uuid} from "uuid";
-import {useAuditLog} from "../../hooks/useAuditLog";
 import {useTranslations} from "../../hooks/useTranslations";
 
 export default function FooterBlockDialog({initial, index, mode, onClose}) {
@@ -14,30 +13,15 @@ export default function FooterBlockDialog({initial, index, mode, onClose}) {
     const {accessToken} = useAuth();
     const {showToast} = useToast();
 
-    const [errors, setErrors] = useState({});
-    const [loading, setLoading] = useState(true);
-
-    const {
-        translations,
-        setTranslations,
-        meta,
-        setMeta,
-        pushSnapshot,
-        markDeleted
-    } = useAuditLog();
-
     const {
         languages,
         loadAllTranslations,
-        saveValue
-    } = useTranslations({
-        translations,
-        setTranslations,
-        meta,
-        setMeta,
-        pushSnapshot,
-        markDeleted
-    });
+        createKeysBatch,
+        updateKeysBatch
+    } = useTranslations({});
+
+    const [loading, setLoading] = useState(true);
+    const [errors, setErrors] = useState({});
 
     const [form, setForm] = useState(() => {
         if (initial) return structuredClone(initial);
@@ -53,26 +37,40 @@ export default function FooterBlockDialog({initial, index, mode, onClose}) {
         };
     });
 
-    useEffect(() => {
-        if (!accessToken) return;
-        (async () => {
-            await loadAllTranslations();
-            setLoading(false);
-        })();
-    }, [accessToken, loadAllTranslations]);
+    const [titleTranslations, setTitleTranslations] = useState({});
+    const [descriptionTranslations, setDescriptionTranslations] = useState({});
 
     const updateField = (key, value) => {
         setForm(prev => ({...prev, [key]: value}));
         setErrors(prev => ({...prev, [key]: ""}));
     };
 
-    const updateTranslation = (key, nextMap) => {
-        for (const lang of languages) {
-            const v = nextMap[lang.code] ?? "";
-            saveValue(key, lang.code, v);
-        }
-    };
+    // -----------------------------
+    // INITIAL LOAD
+    // -----------------------------
+    useEffect(() => {
+        (async () => {
+            await loadAllTranslations();
 
+            if (mode === "edit") {
+                const all = window.__translations; // useTranslations already loaded them globally
+                setTitleTranslations({...all[form.titleKey]});
+                setDescriptionTranslations({...all[form.descriptionKey]});
+            } else {
+                const empty = Object.fromEntries(
+                    languages.map(l => [l.code, ""])
+                );
+                setTitleTranslations(empty);
+                setDescriptionTranslations(empty);
+            }
+
+            setLoading(false);
+        })();
+    }, [languages.length]);
+
+    // -----------------------------
+    // VALIDATION
+    // -----------------------------
     const validate = () => {
         const e = {};
 
@@ -80,17 +78,17 @@ export default function FooterBlockDialog({initial, index, mode, onClose}) {
         if (form.order < 0 || form.order === "" || isNaN(form.order))
             e.order = "Введите число ≥ 0";
 
-        const titleMap = translations[form.titleKey] || {};
-        const descMap = translations[form.descriptionKey] || {};
-
         for (const lang of languages) {
-            if (!titleMap[lang.code]?.trim()) {
-                if (!e.titleTranslations) e.titleTranslations = {};
-                e.titleTranslations[lang.code] = "Обязательное поле";
+            const code = lang.code;
+
+            if (!titleTranslations[code]?.trim()) {
+                if (!e.title) e.title = {};
+                e.title[code] = "Обязательное поле";
             }
-            if (!descMap[lang.code]?.trim()) {
-                if (!e.descriptionTranslations) e.descriptionTranslations = {};
-                e.descriptionTranslations[lang.code] = "Обязательное поле";
+
+            if (!descriptionTranslations[code]?.trim()) {
+                if (!e.description) e.description = {};
+                e.description[code] = "Обязательное поле";
             }
         }
 
@@ -98,6 +96,9 @@ export default function FooterBlockDialog({initial, index, mode, onClose}) {
         return Object.keys(e).length === 0;
     };
 
+    // -----------------------------
+    // SAVE BLOCK
+    // -----------------------------
     const saveBlock = async () => {
         if (mode === "edit") {
             await fetch(`${API_URL}/footer/${form.id}`, {
@@ -124,6 +125,9 @@ export default function FooterBlockDialog({initial, index, mode, onClose}) {
         return block.id;
     };
 
+    // -----------------------------
+    // SAVE ALL
+    // -----------------------------
     const handleSave = async () => {
         if (!validate()) return;
 
@@ -132,12 +136,33 @@ export default function FooterBlockDialog({initial, index, mode, onClose}) {
         const finalTitleKey = `footer.block.${id}.${form.type}.title`;
         const finalDescriptionKey = `footer.block.${id}.${form.type}.description`;
 
-        const titleMap = translations[form.titleKey] || {};
-        const descMap = translations[form.descriptionKey] || {};
+        const payload = [
+            {
+                key: finalTitleKey,
+                values: Object.fromEntries(
+                    languages.map(l => [l.code, titleTranslations[l.code] || ""])
+                )
+            },
+            {
+                key: finalDescriptionKey,
+                values: Object.fromEntries(
+                    languages.map(l => [l.code, descriptionTranslations[l.code] || ""])
+                )
+            }
+        ];
 
-        for (const lang of languages) {
-            await saveValue(finalTitleKey, lang.code, titleMap[lang.code] || "");
-            await saveValue(finalDescriptionKey, lang.code, descMap[lang.code] || "");
+        if (mode === "edit") {
+            await updateKeysBatch(
+                payload.flatMap(item =>
+                    Object.entries(item.values).map(([lang, value]) => ({
+                        key: item.key,
+                        lang,
+                        value
+                    }))
+                )
+            );
+        } else {
+            await createKeysBatch(payload);
         }
 
         await fetch(`${API_URL}/footer/${id}`, {
@@ -156,6 +181,9 @@ export default function FooterBlockDialog({initial, index, mode, onClose}) {
         onClose();
     };
 
+    // -----------------------------
+    // RENDER
+    // -----------------------------
     if (loading) {
         return (
             <Modal open={true} onClose={onClose}>
@@ -163,9 +191,6 @@ export default function FooterBlockDialog({initial, index, mode, onClose}) {
             </Modal>
         );
     }
-
-    const titleMap = translations[form.titleKey] || {};
-    const descMap = translations[form.descriptionKey] || {};
 
     return (
         <Modal open={true} onClose={onClose} width={600}>
@@ -188,17 +213,17 @@ export default function FooterBlockDialog({initial, index, mode, onClose}) {
             <MultilangInput
                 label="Заголовок"
                 languages={languages.map(l => l.code)}
-                valueMap={titleMap}
-                errors={errors.titleTranslations}
-                onChange={next => updateTranslation(form.titleKey, next)}
+                valueMap={titleTranslations}
+                errors={errors.title}
+                onChange={setTitleTranslations}
             />
 
             <MultilangInput
                 label="Описание"
                 languages={languages.map(l => l.code)}
-                valueMap={descMap}
-                errors={errors.descriptionTranslations}
-                onChange={next => updateTranslation(form.descriptionKey, next)}
+                valueMap={descriptionTranslations}
+                errors={errors.description}
+                onChange={setDescriptionTranslations}
             />
 
             <LabeledInput

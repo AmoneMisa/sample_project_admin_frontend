@@ -4,24 +4,13 @@ import MultilangInput from "../controls/MultilangInput";
 
 export default function MenuItemDropdown({
                                              item,
-                                             toggleVisible,
-                                             updateHref,
-                                             toggleBadge,
-                                             removeSimpleItem,
-                                             addSimpleItem,
-                                             translations,
-                                             setTranslations,
+                                             updateItem,
+                                             translationMaps,
+                                             updateTranslation,
                                              languages,
                                              fieldErrors
                                          }) {
-    function updateTranslation(labelKey, next) {
-        setTranslations(prev => ({
-            ...prev,
-            [labelKey]: next
-        }));
-    }
-
-    function extractErrors(prefix) {
+    const extractErrors = (prefix) => {
         const result = {};
         for (const key in fieldErrors) {
             if (key.startsWith(prefix)) {
@@ -30,7 +19,7 @@ export default function MenuItemDropdown({
             }
         }
         return result;
-    }
+    };
 
     return (
         <>
@@ -39,15 +28,19 @@ export default function MenuItemDropdown({
                     <Checkbox
                         label="Отображать меню"
                         checked={item.visible !== false}
-                        onChange={() => toggleVisible([])}
+                        onChange={() =>
+                            updateItem(n => {
+                                n.visible = n.visible === false ? true : !n.visible;
+                            })
+                        }
                     />
 
                     <MultilangInput
                         label="Заголовок меню"
                         languages={languages}
-                        valueMap={translations[item.labelKey] || {}}
+                        valueMap={translationMaps[item.labelKey] || {}}
                         errors={extractErrors("label")}
-                        onChange={next => updateTranslation(item.labelKey, next)}
+                        onChange={(next) => updateTranslation(item.labelKey, next)}
                     />
                 </div>
 
@@ -57,20 +50,29 @@ export default function MenuItemDropdown({
                         const badgeErrors = extractErrors(`items.${i}.badge`);
 
                         return (
-                            <div key={sub.id || i} className="menu-modal__sub-item-wrapper">
+                            <div key={i} className="menu-modal__sub-item-wrapper">
 
                                 <div className="menu-modal__sub-item">
                                     <div className="menu-modal__sub-item-row">
                                         <Checkbox
                                             label={`Отображать пункт ${i + 1}`}
                                             checked={sub.visible !== false}
-                                            onChange={() => toggleVisible(["items", i])}
+                                            onChange={() =>
+                                                updateItem(n => {
+                                                    n.items[i].visible =
+                                                        n.items[i].visible === false
+                                                            ? true
+                                                            : !n.items[i].visible;
+                                                })
+                                            }
                                         />
 
                                         <button
                                             type="button"
                                             className="button button_reject"
-                                            onClick={() => removeSimpleItem(i)}
+                                            onClick={() =>
+                                                updateItem(n => n.items.splice(i, 1))
+                                            }
                                         >
                                             Удалить пункт
                                         </button>
@@ -80,9 +82,9 @@ export default function MenuItemDropdown({
                                         <MultilangInput
                                             label={`Пункт ${i + 1}`}
                                             languages={languages}
-                                            valueMap={translations[sub.labelKey] || {}}
+                                            valueMap={translationMaps[sub.labelKey] || {}}
                                             errors={labelErrors}
-                                            onChange={next =>
+                                            onChange={(next) =>
                                                 updateTranslation(sub.labelKey, next)
                                             }
                                         />
@@ -93,7 +95,11 @@ export default function MenuItemDropdown({
                                     <LabeledInput
                                         label="Ссылка"
                                         value={sub.href}
-                                        onChange={v => updateHref(["items", i], v)}
+                                        onChange={(v) =>
+                                            updateItem(n => {
+                                                n.items[i].href = v;
+                                            })
+                                        }
                                         error={fieldErrors[`items.${i}.href`] ?? ""}
                                     />
                                 </div>
@@ -103,7 +109,16 @@ export default function MenuItemDropdown({
                                         label="Показывать бейдж"
                                         checked={sub.showBadge === true}
                                         onChange={() =>
-                                            toggleBadge(["items", i], "dropdown-simple", i)
+                                            updateItem(n => {
+                                                if (!n.items[i].badgeKey) {
+                                                    n.items[i].badgeKey =
+                                                        `headerMenu.${n.id}.dropdown-simple.item.${i}.badge`;
+                                                }
+                                                n.items[i].showBadge =
+                                                    !n.items[i].showBadge;
+                                                if (!n.items[i].showBadge)
+                                                    n.items[i].badgeKey = null;
+                                            })
                                         }
                                     />
 
@@ -111,9 +126,9 @@ export default function MenuItemDropdown({
                                         <MultilangInput
                                             label="Бейдж"
                                             languages={languages}
-                                            valueMap={translations[sub.badgeKey] || {}}
+                                            valueMap={translationMaps[sub.badgeKey] || {}}
                                             errors={badgeErrors}
-                                            onChange={next =>
+                                            onChange={(next) =>
                                                 updateTranslation(sub.badgeKey, next)
                                             }
                                         />
@@ -129,7 +144,18 @@ export default function MenuItemDropdown({
             <button
                 type="button"
                 className="button button_secondary"
-                onClick={addSimpleItem}
+                onClick={() =>
+                    updateItem(n => {
+                        const i = n.items.length;
+                        n.items.push({
+                            labelKey: `headerMenu.${n.id}.dropdown-simple.item.${i}.title`,
+                            href: "",
+                            visible: true,
+                            badgeKey: null,
+                            showBadge: false
+                        });
+                    })
+                }
             >
                 Добавить пункт
             </button>

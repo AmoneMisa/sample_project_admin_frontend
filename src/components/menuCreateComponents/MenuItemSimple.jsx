@@ -4,22 +4,13 @@ import MultilangInput from "../controls/MultilangInput";
 
 export default function MenuItemSimple({
                                            item,
-                                           toggleVisible,
-                                           updateHref,
-                                           toggleBadge,
-                                           translations,
-                                           setTranslations,
+                                           updateItem,
+                                           translationMaps,
+                                           updateTranslation,
                                            languages,
                                            fieldErrors
                                        }) {
-    function updateTranslation(labelKey, next) {
-        setTranslations(prev => ({
-            ...prev,
-            [labelKey]: next
-        }));
-    }
-
-    function extractErrors(prefix) {
+    const extractErrors = (prefix) => {
         const result = {};
         for (const key in fieldErrors) {
             if (key.startsWith(prefix)) {
@@ -28,7 +19,7 @@ export default function MenuItemSimple({
             }
         }
         return result;
-    }
+    };
 
     const labelErrors = extractErrors("label");
     const badgeErrors = extractErrors("badge");
@@ -36,47 +27,59 @@ export default function MenuItemSimple({
     return (
         <div className="menu-modal__row">
 
-            {/* Левая колонка */}
             <div className="menu-modal__row-item">
-
                 <Checkbox
                     label="Отображать пункт меню"
                     checked={item.visible !== false}
-                    onChange={() => toggleVisible([])}
+                    onChange={() =>
+                        updateItem(n => {
+                            n.visible = n.visible === false ? true : !n.visible;
+                        })
+                    }
                 />
 
                 <MultilangInput
                     label="Заголовок"
                     languages={languages}
-                    valueMap={translations[item.labelKey] || {}}
+                    valueMap={translationMaps[item.labelKey] || {}}
                     errors={labelErrors}
-                    onChange={next => updateTranslation(item.labelKey, next)}
+                    onChange={(next) => updateTranslation(item.labelKey, next)}
                 />
             </div>
 
-            {/* Правая колонка */}
             <div className="menu-modal__row-item">
-
                 <LabeledInput
                     label="Ссылка"
                     value={item.href}
-                    onChange={v => updateHref([], v)}
+                    onChange={(v) =>
+                        updateItem(n => {
+                            n.href = v;
+                        })
+                    }
                     error={fieldErrors["href"] ?? ""}
                 />
 
                 <Checkbox
                     label="Показывать бейдж"
                     checked={item.showBadge === true}
-                    onChange={() => toggleBadge([], "simple")}
+                    onChange={() =>
+                        updateItem(n => {
+                            if (!n.badgeKey) {
+                                n.badgeKey = `headerMenu.${n.id}.simple.badge`;
+                            }
+                            n.showBadge = !n.showBadge;
+                            if (!n.showBadge) n.badgeKey = null;
+                        })
+                    }
                 />
 
                 {item.showBadge && item.badgeKey && (
                     <MultilangInput
                         label="Бейдж"
                         languages={languages}
-                        valueMap={translations[item.badgeKey] || {}}
+                        valueMap={translationMaps[item.badgeKey] || {}}
                         errors={badgeErrors}
-                        onChange={next => updateTranslation(item.badgeKey, next)}
+                        onChange={(next) => updateTranslation(item.badgeKey, next)}
                     />
                 )}
             </div>

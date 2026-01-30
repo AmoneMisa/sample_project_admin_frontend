@@ -1,7 +1,6 @@
 import {useEffect, useState} from "react";
 import LabeledInput from "../controls/LabeledInput";
 import LabeledSelect from "../controls/LabeledSelect";
-import {useAuth} from "../../hooks/authContext";
 import {useToast} from "../layout/ToastContext";
 import {useTranslations} from "../../hooks/useTranslations";
 import {useAuditLog} from "../../hooks/useAuditLog";
@@ -415,11 +414,14 @@ export default function MenuItemDialog({initialItem, onSave, onClose, title}) {
         );
     }
 
-    if (loading) {
+    const visibleKeys = collectVisibleKeys(item);
+    const missing = visibleKeys.some(k => !translations[k]);
+
+    if (missing) {
         return (
             <Modal open={true} onClose={onClose}>
                 <div className="dialog__window">
-                    <h2>Загрузка…</h2>
+                    <h2>Подготовка…</h2>
                 </div>
             </Modal>
         );

@@ -14,10 +14,11 @@ export default function FeatureCardDialog({initial, mode, onClose}) {
 
     const {
         languages,
+        translationMaps,
         loadAllTranslations,
         createKeysBatch,
         updateKeysBatch
-    } = useTranslations({});
+    } = useTranslations();
 
     const [form, setForm] = useState(() => {
         if (initial) return structuredClone(initial);
@@ -49,8 +50,8 @@ export default function FeatureCardDialog({initial, mode, onClose}) {
             await loadAllTranslations();
 
             if (mode === "edit") {
-                const titleMap = window.__translations[form.titleKey] || {};
-                const descMap = window.__translations[form.descriptionKey] || {};
+                const titleMap = translationMaps[form.titleKey] || {};
+                const descMap = translationMaps[form.descriptionKey] || {};
 
                 setTitleTranslations({...titleMap});
                 setDescriptionTranslations({...descMap});
@@ -64,7 +65,7 @@ export default function FeatureCardDialog({initial, mode, onClose}) {
 
             setLoading(false);
         })();
-    }, [languages.length]);
+    }, [languages.length, translationMaps]);
 
     // -----------------------------
     // VALIDATION

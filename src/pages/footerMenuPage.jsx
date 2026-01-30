@@ -5,7 +5,6 @@ import {useToast} from "../components/layout/ToastContext";
 import FooterMenuItemDialog from "../components/modals/FooterMenuItemDialog";
 import ConfirmDialog from "../components/modals/ConfirmDialog";
 import {useTranslations} from "../hooks/useTranslations";
-import {useAuditLog} from "../hooks/useAuditLog";
 import Checkbox from "../components/controls/Checkbox";
 import {FiEdit, FiTrash} from "react-icons/fi";
 
@@ -21,9 +20,11 @@ export default function FooterMenuPage() {
     const [deleteTarget, setDeleteTarget] = useState(null);
 
     const {
-        translations,
-        loadAllTranslations
-    } = useTranslations(useAuditLog());
+        languages,
+        translationMaps,
+        loadAllTranslations,
+        deleteKeys
+    } = useTranslations();
 
     // -----------------------------
     // LOAD FOOTER BLOCK + ITEMS
@@ -74,16 +75,27 @@ export default function FooterMenuPage() {
     }, [accessToken]);
 
     // -----------------------------
-    // DELETE ITEM
+    // DELETE ITEM + RELATED KEYS
     // -----------------------------
     async function deleteItem(id) {
+        const item = items.find(i => i.id === id);
+        if (!item) return;
+
+        // 1. delete item
         await fetch(`${API_URL}/footer/items/${id}`, {
             method: "DELETE",
             headers: {Authorization: `Bearer ${accessToken}`}
         });
 
+        // 2. delete translation keys
+        const keysToDelete = [item.labelKey];
+        if (item.descriptionKey) keysToDelete.push(item.descriptionKey);
+
+        await deleteKeys(keysToDelete);
+
+        // 3. update UI
         setItems(prev => prev.filter(i => i.id !== id));
-        showToast("Пункт удалён");
+        showToast("Пункт и связанные переводы удалены");
     }
 
     // -----------------------------
@@ -113,7 +125,7 @@ export default function FooterMenuPage() {
             key: "labelKey",
             title: "Название (ru)",
             render: (_, row) => {
-                const ru = translations[row.labelKey]?.ru;
+                const ru = translationMaps[row.labelKey]?.ru;
                 return ru?.trim() ? ru : "(нет перевода)";
             }
         },

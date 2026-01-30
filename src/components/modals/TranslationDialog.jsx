@@ -1,4 +1,4 @@
-import {useState} from "react";
+import {useState, useEffect} from "react";
 import Modal from "./Modal";
 import LabeledInput from "../controls/LabeledInput";
 import {FiSmile} from "react-icons/fi";
@@ -21,6 +21,15 @@ export default function TranslationDialog({
     const [emojiPickerFor, setEmojiPickerFor] = useState(null);
     const [errors, setErrors] = useState({});
     const keyExists = existingKeys.includes(initialKey);
+
+    // ⭐ ВАЖНО: синхронизация при открытии нового ключа
+    useEffect(() => {
+        setState({
+            key: initialKey,
+            values: {...initialValues}
+        });
+        setErrors({});
+    }, [initialKey, initialValues]);
 
     function validate() {
         const e = {};

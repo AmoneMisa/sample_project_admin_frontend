@@ -1,5 +1,4 @@
 import {useEffect, useState} from "react";
-import {useAuditLog} from "../hooks/useAuditLog";
 import ConfirmDialog from "../components/modals/ConfirmDialog";
 import FiltersBar from "../components/customElems/FiltersBar";
 import HistoryDialog from "../components/modals/HistoryDialog";
@@ -9,6 +8,7 @@ import {useAuth} from "../hooks/authContext";
 import CustomTable from "../components/customElems/CustomTable";
 import TranslationDialog from "../components/modals/TranslationDialog";
 import {useTranslations} from "../hooks/useTranslations";
+import {useAuditLog} from "../hooks/useAuditLog";
 
 export default function Index() {
     const [editingCell, setEditingCell] = useState(null);
@@ -23,14 +23,36 @@ export default function Index() {
     const canEdit = user && (user.role === "moderator" || user.role === "admin");
     const {showToast} = useToast();
 
-    const audit = useAuditLog();
-    let {
-        translations,
+    const {
         languages,
+        translationMaps,
+        updateTranslation,
         loadAllTranslations,
-        saveValue,
-        setMeta
-    } = useTranslations(audit);
+        updateKeysBatch,
+        deleteKeys
+    } = useTranslations();
+
+    const audit = useAuditLog({
+        applyUpdate: async (key, lang, value) => {
+            const prevMap = translationMaps[key] || {};
+            const nextMap = {...prevMap, [lang]: value};
+            updateTranslation(key, nextMap);
+
+            await updateKeysBatch([{key, lang, value}]);
+        },
+        applyDelete: async (key) => {
+            await deleteKeys([key]);
+        },
+        applyRestoreMap: async (key, map) => {
+            updateTranslation(key, map);
+            const items = Object.entries(map).map(([lang, value]) => ({
+                key,
+                lang,
+                value
+            }));
+            await updateKeysBatch(items);
+        }
+    });
 
     useEffect(() => {
         if (!loading && accessToken) {
@@ -45,15 +67,22 @@ export default function Index() {
     async function confirmDeleteKey() {
         if (!deleteTarget) return;
 
-        for (const lang of languages) {
-            await saveValue(deleteTarget, lang.code, "");
+        const oldMap = translationMaps[deleteTarget] || {};
+        if (Object.keys(oldMap).length === 0) {
+            setDeleteTarget(null);
+            return;
         }
 
-        setMeta(prev => ({
-            ...prev,
-            [deleteTarget]: {allowEmpty: true}
-        }));
+        // логируем батч удаления
+        audit.logBatch([
+            {
+                type: "delete",
+                key: deleteTarget,
+                oldMap
+            }
+        ]);
 
+        await deleteKeys([deleteTarget]);
         showToast("Переводы очищены");
         setDeleteTarget(null);
     }
@@ -62,14 +91,14 @@ export default function Index() {
         setDeleteTarget(null);
     }
 
-    const filtered = Object.entries(translations || {}).filter(([key, values]) => {
+    const filtered = Object.entries(translationMaps || {}).filter(([key, values]) => {
         const s = search.toLowerCase();
         if (!s) return true;
 
         if (key.toLowerCase().includes(s)) return true;
 
         return Object.values(values).some(v =>
-            String(v).toLowerCase().includes(s)
+            String(v ?? "").toLowerCase().includes(s)
         );
     });
 
@@ -104,7 +133,10 @@ export default function Index() {
                             <HistoryDialog
                                 open={historyOpen}
                                 history={audit.getHistory()}
-                                onRestore={(i) => audit.restore(i)}
+                                onRestore={async (i) => {
+                                    // откат к конкретному батчу — можно реализовать позже,
+                                    // сейчас оставим стандартный undo/redo
+                                }}
                                 onClose={() => setHistoryOpen(false)}
                             />
                         </>
@@ -217,17 +249,48 @@ export default function Index() {
                     languages={languages}
                     initialKey={editingCell.key}
                     initialValues={editingCell.values}
-                    existingKeys={Object.keys(translations)}
+                    existingKeys={Object.keys(translationMaps)}
                     onClose={() => setEditingCell(null)}
                     onSave={async (key, values) => {
+                        const prevMap = translationMaps[key] || {};
+                        const nextMap = {...prevMap};
+
+                        const batch = [];
+
                         for (const lang of languages) {
-                            await saveValue(
+                            const code = lang.code;
+                            const oldValue = prevMap[code] ?? "";
+                            const newValue = values[code] ?? "";
+
+                            if (oldValue === newValue) continue;
+
+                            nextMap[code] = newValue;
+
+                            batch.push({
+                                type: "update",
                                 key,
-                                lang.code,
-                                values[lang.code] ?? ""
-                            );
+                                lang: code,
+                                oldValue,
+                                newValue
+                            });
                         }
 
+                        if (batch.length === 0) {
+                            setEditingCell(null);
+                            return;
+                        }
+
+                        updateTranslation(key, nextMap);
+
+                        await updateKeysBatch(
+                            batch.map(item => ({
+                                key: item.key,
+                                lang: item.lang,
+                                value: item.newValue
+                            }))
+                        );
+
+                        audit.logBatch(batch);
                         setEditingCell(null);
                     }}
                 />

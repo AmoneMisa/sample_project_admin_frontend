@@ -1,106 +1,73 @@
-import { useCallback, useEffect, useState } from "react";
+import {useCallback, useMemo, useState} from "react";
 
-const STORAGE_KEY = "translationHistory";
+export function useAuditLog({applyUpdate, applyDelete, applyRestoreMap}) {
+    const [history, setHistory] = useState([]); // [{ timestamp, items: [...] }]
+    const [index, setIndex] = useState(-1);     // указывает на последний применённый батч
 
-export function useAuditLog() {
-    const [translations, setTranslations] = useState({});
-    const [meta, setMeta] = useState({});
-    const [history, setHistory] = useState([]);
-    const [canUndo, setCanUndo] = useState(false);
-    const [lastDeleted, setLastDeleted] = useState(null);
+    const canUndo = index >= 0;
+    const canRedo = index + 1 < history.length;
 
-    // LOAD HISTORY
-    useEffect(() => {
-        const raw = localStorage.getItem(STORAGE_KEY);
-        if (!raw) return;
+    const logBatch = useCallback((items) => {
+        if (!items || items.length === 0) return;
 
-        try {
-            const parsed = JSON.parse(raw);
-            if (Array.isArray(parsed)) {
-                setHistory(parsed.slice(-20));
-                setCanUndo(parsed.length > 0);
+        const batch = {
+            timestamp: new Date().toISOString(),
+            items
+        };
+
+        setHistory(prev => {
+            const trimmed = prev.slice(0, index + 1); // обрезаем хвост redo
+            return [...trimmed, batch];
+        });
+        setIndex(prev => prev + 1);
+    }, [index]);
+
+    const undo = useCallback(async () => {
+        if (index < 0) return;
+
+        const batch = history[index];
+
+        // откатываем в обратном порядке
+        for (const item of [...batch.items].reverse()) {
+            if (item.type === "update") {
+                await applyUpdate(item.key, item.lang, item.oldValue);
+            } else if (item.type === "delete") {
+                await applyRestoreMap(item.key, item.oldMap);
             }
-        } catch (e) {
-            console.error("Ошибка при загрузке истории:", e);
         }
-    }, []);
 
-    const persistHistory = (next) => {
-        try {
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(next.slice(-20)));
-        } catch (e) {
-            console.error("Ошибка при сохранении истории:", e);
+        setIndex(i => i - 1);
+    }, [history, index, applyUpdate, applyRestoreMap]);
+
+    const redo = useCallback(async () => {
+        if (index + 1 >= history.length) return;
+
+        const batch = history[index + 1];
+
+        for (const item of batch.items) {
+            if (item.type === "update") {
+                await applyUpdate(item.key, item.lang, item.newValue);
+            } else if (item.type === "delete") {
+                await applyDelete(item.key);
+            }
         }
-    };
 
-    // SAVE SNAPSHOT
-    const pushSnapshot = useCallback(
-        (event) => {
-            const snapshot = {
-                translations: structuredClone(translations),
-                meta: structuredClone(meta),
-                event,
-                timestamp: Date.now(),
-            };
-
-            const nextHistory = [...history.slice(-19), snapshot];
-
-            setHistory(nextHistory);
-            persistHistory(nextHistory);
-            setCanUndo(true);
-        },
-        [translations, meta, history]
-    );
-
-    // UNDO
-    const undo = useCallback(() => {
-        if (!history.length) return;
-
-        const last = history[history.length - 1];
-        const nextHistory = history.slice(0, -1);
-
-        setHistory(nextHistory);
-        persistHistory(nextHistory);
-
-        setTranslations(structuredClone(last.translations));
-        setMeta(structuredClone(last.meta));
-
-        setCanUndo(nextHistory.length > 0);
-    }, [history]);
+        setIndex(i => i + 1);
+    }, [history, index, applyUpdate, applyDelete]);
 
     const getHistory = useCallback(() => history, [history]);
 
-    const markDeleted = useCallback((key, translationsForKey, metaForKey) => {
-        setLastDeleted({
-            key,
-            translationsForKey: structuredClone(translationsForKey),
-            metaForKey: structuredClone(metaForKey),
-        });
-    }, []);
-
-    const restoreLastDeleted = useCallback(() => {
-        if (!lastDeleted) return null;
-
-        const ld = lastDeleted;
-        setLastDeleted(null);
-
-        return {
-            key: ld.key,
-            translationsForKey: structuredClone(ld.translationsForKey),
-            metaForKey: structuredClone(ld.metaForKey),
-        };
-    }, [lastDeleted]);
+    const groupedHistory = useMemo(
+        () => history,
+        [history]
+    );
 
     return {
-        translations,
-        setTranslations,
-        meta,
-        setMeta,
-        pushSnapshot,
+        logBatch,
         undo,
+        redo,
         canUndo,
-        getHistory,
-        markDeleted,
-        restoreLastDeleted,
+        canRedo,
+        getHistory: () => groupedHistory
     };
 }

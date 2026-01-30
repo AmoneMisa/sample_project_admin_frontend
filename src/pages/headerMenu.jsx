@@ -5,9 +5,7 @@ import {useToast} from "../components/layout/ToastContext";
 import MenuItemDialog from "../components/modals/MenuItemDialog";
 import Checkbox from "../components/controls/Checkbox";
 import {FiEdit, FiTrash} from "react-icons/fi";
-import {useAuditLogList} from "../hooks/useAuditLogList";
 import {useTranslations} from "../hooks/useTranslations";
-import {useAuditLog} from "../hooks/useAuditLog";
 
 export default function HeaderMenu() {
     const API_URL = process.env.REACT_APP_API_URL || "/api";
@@ -20,12 +18,12 @@ export default function HeaderMenu() {
     const [editingItem, setEditingItem] = useState(null);
     const [creating, setCreating] = useState(false);
 
-    const {setState, pushSnapshot} = useAuditLogList([]);
-
     const {
-        translations,
-        loadAllTranslations
-    } = useTranslations(useAuditLog());
+        languages,
+        translationMaps,
+        loadAllTranslations,
+        deleteKeys
+    } = useTranslations();
 
     // -----------------------------
     // LOAD MENU
@@ -56,8 +54,6 @@ export default function HeaderMenu() {
             });
 
             setMenu(normalized);
-            setState(normalized);
-            pushSnapshot(normalized, null, "Меню загружено");
         })();
     }, [accessToken]);
 
@@ -75,16 +71,23 @@ export default function HeaderMenu() {
         });
 
         setMenu(next);
-        setState(next);
-        pushSnapshot(next, null, "Меню обновлено");
         showToast("Меню сохранено");
     }
 
     // -----------------------------
-    // DELETE ITEM
+    // DELETE ITEM + RELATED KEYS
     // -----------------------------
     async function deleteItem(id) {
-        const next = menu.filter(item => item.id !== id);
+        const item = menu.find(i => i.id === id);
+        if (!item) return;
+
+        const next = menu.filter(i => i.id !== id);
+
+        // удаляем связанные ключи
+        if (item.labelKey) {
+            await deleteKeys([item.labelKey]);
+        }
+
         await saveMenu(next);
     }
 
@@ -158,7 +161,7 @@ export default function HeaderMenu() {
             render: (value) => {
                 if (!value) return <span className="table__cell-text">(нет ключа)</span>;
 
-                const ru = translations[value]?.ru || "(нет перевода)";
+                const ru = translationMaps[value]?.ru || "(нет перевода)";
 
                 return (
                     <a

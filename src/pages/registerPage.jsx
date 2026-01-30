@@ -83,10 +83,6 @@ export default function RegisterPage() {
         }
     }
 
-    if (loading) {
-        return <div>Загрузка...</div>;
-    }
-
     return (
         <div style={{ maxWidth: 400, margin: "80px auto" }}>
             <h2 className="gradient-text" style={{ marginBottom: 24 }}>

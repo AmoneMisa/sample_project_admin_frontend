@@ -5,10 +5,8 @@ import {useToast} from "../components/layout/ToastContext";
 import FeatureCardDialog from "../components/modals/FeatureCardDialog";
 import ConfirmDialog from "../components/modals/ConfirmDialog";
 import Checkbox from "../components/controls/Checkbox";
-import {FiEdit, FiRotateCcw, FiTrash} from "react-icons/fi";
-import {useAuditLogList} from "../hooks/useAuditLogList";
+import {FiEdit, FiTrash} from "react-icons/fi";
 import {useTranslations} from "../hooks/useTranslations";
-import {useAuditLog} from "../hooks/useAuditLog";
 
 export default function FeatureCardsPage() {
     const API_URL = process.env.REACT_APP_API_URL || "/api";
@@ -22,13 +20,14 @@ export default function FeatureCardsPage() {
     const [editing, setEditing] = useState(null);
     const [deleteTarget, setDeleteTarget] = useState(null);
 
-    const {setState, pushSnapshot, undo, canUndo} = useAuditLogList([]);
-
     const {
-        translations,
+        languages,
+        translationMaps,
+        updateTranslation,
         loadAllTranslations,
-        languages
-    } = useTranslations(useAuditLog());
+        updateKeysBatch,
+        deleteKeys
+    } = useTranslations();
 
     async function load() {
         const res = await fetch(`${API_URL}/feature-cards?all=true`, {
@@ -36,9 +35,7 @@ export default function FeatureCardsPage() {
         });
 
         const data = await res.json();
-
         setItems(data);
-        setState(data);
     }
 
     useEffect(() => {
@@ -63,24 +60,27 @@ export default function FeatureCardsPage() {
         const updated = await res.json();
         const next = items.map(i => (i.id === row.id ? updated : i));
 
-        pushSnapshot(next, null, "Изменена видимость карточки");
         setItems(next);
-        setState(next);
     }
 
     async function deleteItem(id) {
-        await fetch(`${API_URL}/feature-cards/${id}`, {
+        const item = items.find(i => i.id === id);
+        if (!item) return;
+
+        await fetch(`${API_URL}/footer/items/${id}`, {
             method: "DELETE",
             headers: {Authorization: `Bearer ${accessToken}`}
         });
 
-        const next = items.filter(i => i.id !== id);
+        const keysToDelete = [item.labelKey];
+        if (item.descriptionKey) keysToDelete.push(item.descriptionKey);
 
-        pushSnapshot(next, null, "Удалена карточка");
-        setItems(next);
-        setState(next);
-        showToast("Карточка удалена");
+        await deleteKeys(keysToDelete);
+
+        setItems(prev => prev.filter(i => i.id !== id));
+        showToast("Пункт и связанные переводы удалены");
     }
+
 
     const columns = [
         {key: "id", title: "ID", width: "60px"},
@@ -106,7 +106,7 @@ export default function FeatureCardsPage() {
             title: "Заголовок (ru)",
             width: "250px",
             render: (_, row) =>
-                translations[row.titleKey]?.ru || ""
+                translationMaps[row.titleKey]?.ru || ""
         },
 
         {
@@ -114,7 +114,7 @@ export default function FeatureCardsPage() {
             title: "Описание (ru)",
             width: "350px",
             render: (_, row) =>
-                translations[row.descriptionKey]?.ru || ""
+                translationMaps[row.descriptionKey]?.ru || ""
         },
 
         {
@@ -163,15 +163,6 @@ export default function FeatureCardsPage() {
 
                 {canEdit && (
                     <div style={{display: "flex", gap: 12}}>
-                        <button
-                            className="button button_icon button_border"
-                            disabled={!canUndo}
-                            onClick={undo}
-                            style={{color: "var(--color-error)"}}
-                        >
-                            <FiRotateCcw size={16}/> Отменить
-                        </button>
-
                         <button className="button" onClick={() => setCreating(true)}>
                             Создать
                         </button>

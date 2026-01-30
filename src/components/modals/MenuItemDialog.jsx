@@ -414,6 +414,16 @@ export default function MenuItemDialog({initialItem, onSave, onClose, title}) {
         );
     }
 
+    if (loading || !languages.length || !translations) {
+        return (
+            <Modal open={true} onClose={onClose}>
+                <div className="dialog__window">
+                    <h2>Загрузка…</h2>
+                </div>
+            </Modal>
+        );
+    }
+
     const visibleKeys = collectVisibleKeys(item);
     const missing = visibleKeys.some(k => !translations[k]);
 

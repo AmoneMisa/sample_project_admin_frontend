@@ -30,9 +30,6 @@ export default function FeatureCardsPage() {
         languages
     } = useTranslations(useAuditLog());
 
-    // -----------------------------
-    // LOAD ALL CARDS
-    // -----------------------------
     async function load() {
         const res = await fetch(`${API_URL}/feature-cards?all=true`, {
             headers: {Authorization: `Bearer ${accessToken}`}
@@ -53,9 +50,6 @@ export default function FeatureCardsPage() {
         })();
     }, [accessToken]);
 
-    // -----------------------------
-    // TOGGLE VISIBILITY
-    // -----------------------------
     async function toggleVisible(row) {
         const res = await fetch(`${API_URL}/feature-cards/${row.id}`, {
             method: "PATCH",
@@ -74,9 +68,6 @@ export default function FeatureCardsPage() {
         setState(next);
     }
 
-    // -----------------------------
-    // DELETE CARD
-    // -----------------------------
     async function deleteItem(id) {
         await fetch(`${API_URL}/feature-cards/${id}`, {
             method: "DELETE",
@@ -91,17 +82,6 @@ export default function FeatureCardsPage() {
         showToast("Карточка удалена");
     }
 
-    if (!translations || !languages) {
-        return (
-            <div className="page" style={{padding: 24}}>
-                <h2>Загрузка переводов…</h2>
-            </div>
-        );
-    }
-
-    // -----------------------------
-    // TABLE COLUMNS
-    // -----------------------------
     const columns = [
         {key: "id", title: "ID", width: "60px"},
 
@@ -176,9 +156,6 @@ export default function FeatureCardsPage() {
         },
     ];
 
-    // -----------------------------
-    // RENDER
-    // -----------------------------
     return (
         <div className="page" style={{padding: 24}}>
             <div className="page__header">

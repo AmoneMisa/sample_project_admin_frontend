@@ -20,38 +20,15 @@ export default function TranslationDialog({
 
     const [emojiPickerFor, setEmojiPickerFor] = useState(null);
     const [errors, setErrors] = useState({});
+    const keyExists = existingKeys.includes(initialKey);
 
-    const isNew = !existingKeys.includes(initialKey);
-
-    // -----------------------------
-    // VALIDATION
-    // -----------------------------
     function validate() {
         const e = {};
         let ok = true;
 
-        // validate key
-        if (isNew) {
-            if (!state.key.trim()) {
-                e.key = "Ключ обязателен";
-                ok = false;
-            } else if (!/^[a-zA-Z0-9._-]+$/.test(state.key)) {
-                e.key = "Только латиница, цифры, точки, дефисы и подчёркивания";
-                ok = false;
-            } else if (existingKeys.includes(state.key)) {
-                e.key = "Такой ключ уже существует";
-                ok = false;
-            }
-        }
-
-        // validate translations
-        for (const lang of languages) {
-            const v = state.values[lang.code];
-            if (!v || !v.trim()) {
-                if (!e.values) e.values = {};
-                e.values[lang.code] = "Поле обязательно";
-                ok = false;
-            }
+        if (!keyExists) {
+            e.key = "Этот ключ не существует. Создание новых ключей запрещено.";
+            ok = false;
         }
 
         setErrors(e);
@@ -63,29 +40,19 @@ export default function TranslationDialog({
         onSave(state.key, state.values);
     }
 
-    // -----------------------------
-    // RENDER
-    // -----------------------------
     return (
         <Modal
             open={open}
-            title={isNew ? "Создание нового ключа" : `Редактирование ключа: ${initialKey}`}
+            title={`Редактирование ключа: ${initialKey}`}
             onClose={onClose}
             width={600}
         >
-            {/* KEY FIELD */}
-            {isNew && (
-                <LabeledInput
-                    label="Ключ"
-                    value={state.key}
-                    error={errors.key}
-                    onChange={(v) =>
-                        setState(prev => ({...prev, key: v}))
-                    }
-                />
+            {!keyExists && (
+                <div style={{color: "var(--color-error)", marginBottom: 12}}>
+                    Этот ключ не существует. Создание новых ключей запрещено.
+                </div>
             )}
 
-            {/* TRANSLATION FIELDS */}
             {languages.map(lang => (
                 <div
                     key={lang.code}
@@ -110,7 +77,6 @@ export default function TranslationDialog({
                         }
                     />
 
-                    {/* Emoji button */}
                     <button
                         type="button"
                         className="button button_icon"
@@ -127,7 +93,6 @@ export default function TranslationDialog({
                 </div>
             ))}
 
-            {/* EMOJI PICKER */}
             {emojiPickerFor && (
                 <EmojiPickerPopup
                     onSelect={(emoji) => {
@@ -145,7 +110,6 @@ export default function TranslationDialog({
                 />
             )}
 
-            {/* ACTIONS */}
             <div style={{display: "flex", justifyContent: "flex-end", marginTop: 20}}>
                 <button className="button button_border" onClick={onClose}>
                     Отмена
@@ -155,6 +119,7 @@ export default function TranslationDialog({
                     className="button button_accept"
                     style={{marginLeft: 12}}
                     onClick={handleSave}
+                    disabled={!keyExists}
                 >
                     Сохранить
                 </button>

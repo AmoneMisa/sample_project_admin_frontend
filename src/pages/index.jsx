@@ -1,7 +1,6 @@
 import {useEffect, useState} from "react";
 import {useAuditLog} from "../hooks/useAuditLog";
 import ConfirmDialog from "../components/modals/ConfirmDialog";
-import AddKeyBar from "../components/customElems/AddKeyBar";
 import FiltersBar from "../components/customElems/FiltersBar";
 import HistoryDialog from "../components/modals/HistoryDialog";
 import {useToast} from "../components/layout/ToastContext";
@@ -20,23 +19,24 @@ export default function Index() {
     const [deleteTarget, setDeleteTarget] = useState(null);
     const [historyOpen, setHistoryOpen] = useState(false);
 
-    const {accessToken, user} = useAuth();
+    const {accessToken, user, loading} = useAuth();
     const canEdit = user && (user.role === "moderator" || user.role === "admin");
     const {showToast} = useToast();
 
     const audit = useAuditLog();
-    const {
+    let {
         translations,
         languages,
         loadAllTranslations,
         saveValue,
-        deleteKeys,
         setMeta
     } = useTranslations(audit);
 
     useEffect(() => {
-        if (accessToken) loadAllTranslations();
-    }, [accessToken]);
+        if (!loading && accessToken) {
+            loadAllTranslations();
+        }
+    }, [loading, accessToken, loadAllTranslations]);
 
     function requestDeleteKey(key) {
         setDeleteTarget(key);
@@ -44,38 +44,22 @@ export default function Index() {
 
     async function confirmDeleteKey() {
         if (!deleteTarget) return;
-        await deleteKeys([deleteTarget]);
+
+        for (const lang of languages) {
+            await saveValue(deleteTarget, lang.code, "");
+        }
+
+        setMeta(prev => ({
+            ...prev,
+            [deleteTarget]: {allowEmpty: true}
+        }));
+
+        showToast("Переводы очищены");
         setDeleteTarget(null);
     }
 
     function cancelDeleteKey() {
         setDeleteTarget(null);
-    }
-
-    async function handleAddKey(newKey) {
-        if (!accessToken) return;
-        if (translations[newKey]) return;
-
-        // создаём пустые значения
-        for (const lang of languages) {
-            await saveValue(newKey, lang.code, "");
-        }
-
-        setMeta(prev => ({
-            ...prev,
-            [newKey]: {allowEmpty: false}
-        }));
-
-        setSearch(newKey);
-        showToast("Ключ добавлен");
-    }
-
-    if (!translations || !languages) {
-        return (
-            <div className="page" style={{padding: 24}}>
-                <h2>Загрузка переводов</h2>
-            </div>
-        );
     }
 
     const filtered = Object.entries(translations || {}).filter(([key, values]) => {
@@ -128,20 +112,6 @@ export default function Index() {
                 </div>
 
                 <div className="page__header-row">
-                    {canEdit && (
-                        <AddKeyBar
-                            onAdd={(newKey) =>
-                                setEditingCell({
-                                    key: newKey,
-                                    values: Object.fromEntries(
-                                        languages.map(l => [l.code, ""])
-                                    )
-                                })
-                            }
-                            existingKeys={Object.keys(translations)}
-                        />
-                    )}
-
                     <FiltersBar
                         search={search}
                         setSearch={setSearch}
@@ -165,8 +135,8 @@ export default function Index() {
                                     setSortAsc(prev => !prev);
                                 }}
                             >
-                            Ключ {sortAsc ? "▲" : "▼"}
-                        </span>
+                                Ключ {sortAsc ? "▲" : "▼"}
+                            </span>
                         ),
                         render: (value) => <span>{value}</span>,
                     },
@@ -204,27 +174,27 @@ export default function Index() {
                         render: (_, row) =>
                             canEdit && (
                                 <span style={{display: "flex", gap: 8}}>
-                                <button
-                                    title="Редактировать"
-                                    className="button button_icon button_reject"
-                                    onClick={() =>
-                                        setEditingCell({
-                                            key: row.key,
-                                            values: {...row.values}
-                                        })
-                                    }
-                                >
-                                    <FiEdit size={16}/>
-                                </button>
+                                    <button
+                                        title="Редактировать"
+                                        className="button button_icon button_reject"
+                                        onClick={() =>
+                                            setEditingCell({
+                                                key: row.key,
+                                                values: {...row.values}
+                                            })
+                                        }
+                                    >
+                                        <FiEdit size={16}/>
+                                    </button>
 
-                                <button
-                                    title="Удалить"
-                                    className="button button_icon button_reject"
-                                    onClick={() => requestDeleteKey(row.key)}
-                                >
-                                    <FiTrash size={16}/>
-                                </button>
-                            </span>
+                                    <button
+                                        title="Очистить"
+                                        className="button button_icon button_reject"
+                                        onClick={() => requestDeleteKey(row.key)}
+                                    >
+                                        <FiTrash size={16}/>
+                                    </button>
+                                </span>
                             ),
                     },
                 ]}
@@ -234,14 +204,13 @@ export default function Index() {
             {canEdit && (
                 <ConfirmDialog
                     open={!!deleteTarget}
-                    title="Удалить ключ?"
-                    text={`Вы уверены, что хотите удалить ключ "${deleteTarget}"?`}
+                    title="Очистить переводы?"
+                    text={`Все переводы ключа "${deleteTarget}" будут стерты.`}
                     onConfirm={confirmDeleteKey}
                     onCancel={cancelDeleteKey}
                 />
             )}
 
-            {/* EDIT DIALOG */}
             {editingCell && (
                 <TranslationDialog
                     open={true}
@@ -251,10 +220,6 @@ export default function Index() {
                     existingKeys={Object.keys(translations)}
                     onClose={() => setEditingCell(null)}
                     onSave={async (key, values) => {
-                        if (!translations[key]) {
-                            await handleAddKey(key);
-                        }
-
                         for (const lang of languages) {
                             await saveValue(
                                 key,

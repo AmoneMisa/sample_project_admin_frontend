@@ -12,6 +12,7 @@ export default function PrivateRoute({ children, allowedRoles }) {
         return <Navigate to="/login" replace />;
     }
 
+    // Если есть ограничения по ролям — проверяем
     if (allowedRoles && !allowedRoles.includes(user.role)) {
         return <Navigate to="/" replace />;
     }

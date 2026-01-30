@@ -5,7 +5,15 @@ import LabeledInput from "../components/controls/LabeledInput";
 import Checkbox from "../components/controls/Checkbox";
 
 export default function LoginPage() {
-    const { login, user, accessToken, loading } = useAuth();
+    const {
+        user,
+        accessToken,
+        loading,
+        setAccessToken,
+        setRefreshToken,
+        setUser
+    } = useAuth();
+
     const navigate = useNavigate();
 
     const [email, setEmail] = useState("");
@@ -13,6 +21,9 @@ export default function LoginPage() {
     const [rememberMe, setRememberMe] = useState(false);
     const [error, setError] = useState("");
 
+    const API_URL = process.env.REACT_APP_API_URL || "/api";
+
+    // Если уже авторизован — редиректим
     useEffect(() => {
         if (!loading && user && accessToken) {
             navigate("/", { replace: true });
@@ -24,8 +35,44 @@ export default function LoginPage() {
         setError("");
 
         try {
-            await login(email, password, rememberMe);
-            navigate("/");
+            const res = await fetch(`${API_URL}/auth/login`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    email,
+                    password,
+                    remember_me: rememberMe
+                })
+            });
+
+            const data = await res.json();
+
+            if (!res.ok) {
+                throw new Error(data.detail || "Ошибка входа");
+            }
+
+            // Сохраняем токены
+            if (rememberMe) {
+                localStorage.setItem("access_token", data.access_token);
+                localStorage.setItem("refresh_token", data.refresh_token);
+            } else {
+                sessionStorage.setItem("access_token", data.access_token);
+                sessionStorage.setItem("refresh_token", data.refresh_token);
+            }
+
+            // Обновляем контекст
+            setAccessToken(data.access_token);
+            setRefreshToken(data.refresh_token);
+            setUser({
+                id: data.id,
+                email: data.email,
+                full_name: data.full_name,
+                role: data.role,
+                permissions: data.permissions
+            });
+
+            navigate("/", { replace: true });
+
         } catch (err) {
             setError(err.message);
         }

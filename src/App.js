@@ -17,8 +17,9 @@ import FooterPage from "./pages/footerPage";
 
 export default function App() {
     return (
-        <BrowserRouter basename="/admin">
-            <AuthProvider>
+        <AuthProvider>
+
+            <BrowserRouter basename="/admin">
                 <ToastProvider>
                     <Routes>
                         <Route path="/login" element={<LoginPage/>}/>
@@ -59,7 +60,8 @@ export default function App() {
                         </Route>
                     </Routes>
                 </ToastProvider>
-            </AuthProvider>
-        </BrowserRouter>
+            </BrowserRouter>
+        </AuthProvider>
+
     );
 }

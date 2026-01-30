@@ -162,17 +162,21 @@ export default function ContactsPage() {
                             {groupName === "social" && "Соцсети"}
                             {groupName === "other" && "Прочее"}
                         </h2>
-                        <div style={{display: "flex", flexWrap: "wrap", gap: 16}}> {list.map(contact => {
+                        <div className={"contacts-page__block"}> {list.map(contact => {
                                 const t = translations[contact.id] || {label: {}, value: {}};
-                                return (<div key={contact.id} style={{
-                                        flex: "1 1 calc(33.333% - 16px)",
-                                        minWidth: 280,
-                                        border: "1px solid #ddd",
-                                        borderRadius: 8,
-                                        padding: 16
-                                    }}> {contact.type === "phone" ? (
-                                        <> <PhoneInput international
+                                return (<div key={contact.id}
+                                             className={"contacts-page__row"}>
+                                        {contact.type === "phone" ? (
+                                        <>
+                                            <Checkbox label="Отображать" checked={contact.isVisible}
+                                                      onChange={() => {
+                                                          contact.isVisible = !contact.isVisible;
+                                                          setContacts([...contacts]);
+                                                      }}
+                                            />
+                                            <PhoneInput international
                                                        withCountryCallingCode value={contact.value}
+                                                       className={"contacts-page__field contacts-page__field_phone"}
                                                        onChange={v => {
                                                            contact.value = v || "";
                                                            setContacts([...contacts]);
@@ -185,12 +189,6 @@ export default function ContactsPage() {
                                                       }}
                                         />
                                     )}
-                                        <Checkbox label="Отображать" checked={contact.isVisible}
-                                                  onChange={() => {
-                                                      contact.isVisible = !contact.isVisible;
-                                                      setContacts([...contacts]);
-                                                  }}
-                                        />
                                         <MultilangInput label="Label"
                                                         languages={languages.map(l => l.code)}
                                                         valueMap={t.label}

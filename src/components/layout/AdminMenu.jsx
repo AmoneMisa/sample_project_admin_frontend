@@ -1,12 +1,27 @@
-import {NavLink} from "react-router-dom";
-import {FiGrid, FiHome, FiLayers, FiLogOut, FiMenu, FiMessageSquare, FiPhone, FiUsers} from "react-icons/fi";
-import {useAuth} from "../../hooks/authContext";
+import { NavLink, useNavigate } from "react-router-dom";
+import {
+    FiGrid,
+    FiHome,
+    FiLayers,
+    FiLogOut,
+    FiMenu,
+    FiMessageSquare,
+    FiPhone,
+    FiUsers
+} from "react-icons/fi";
+import { useAuth } from "../../hooks/authContext";
 
 export default function AdminMenu() {
-    const {user, logout} = useAuth();
+    const { user, logout } = useAuth();
+    const navigate = useNavigate();
 
     const isAdmin = user?.role === "admin";
     const isModerator = user?.role === "moderator";
+
+    async function handleLogout() {
+        await logout();
+        navigate("/login", { replace: true });
+    }
 
     return (
         <nav className="admin-menu">
@@ -40,35 +55,43 @@ export default function AdminMenu() {
                 <span>Главное меню</span>
             </NavLink>
 
-            <NavLink to="/feature-cards" className={({ isActive }) =>
-                "admin-menu__item" + (isActive ? " admin-menu__item_active" : "")
-            }
+            <NavLink
+                to="/feature-cards"
+                className={({ isActive }) =>
+                    "admin-menu__item" + (isActive ? " admin-menu__item_active" : "")
+                }
             >
-                <FiGrid size={18}/>
+                <FiGrid size={18} />
                 <span>Feature Cards</span>
             </NavLink>
 
-            <NavLink to="/contacts" className={({ isActive }) =>
-                "admin-menu__item" + (isActive ? " admin-menu__item_active" : "")
-            }
+            <NavLink
+                to="/contacts"
+                className={({ isActive }) =>
+                    "admin-menu__item" + (isActive ? " admin-menu__item_active" : "")
+                }
             >
-                <FiPhone size={18}/>
+                <FiPhone size={18} />
                 <span>Контакты</span>
             </NavLink>
 
-            <NavLink to="/menu" className={({ isActive }) =>
-                "admin-menu__item" + (isActive ? " admin-menu__item_active" : "")
-            }
+            <NavLink
+                to="/menu"
+                className={({ isActive }) =>
+                    "admin-menu__item" + (isActive ? " admin-menu__item_active" : "")
+                }
             >
-                <FiMenu size={18}/>
+                <FiMenu size={18} />
                 <span>Футер меню</span>
             </NavLink>
 
-            <NavLink to="/footer" className={({ isActive }) =>
-                "admin-menu__item" + (isActive ? " admin-menu__item_active" : "")
-            }
+            <NavLink
+                to="/footer"
+                className={({ isActive }) =>
+                    "admin-menu__item" + (isActive ? " admin-menu__item_active" : "")
+                }
             >
-                <FiLayers size={18}/>
+                <FiLayers size={18} />
                 <span>Футер</span>
             </NavLink>
 
@@ -96,7 +119,10 @@ export default function AdminMenu() {
                 </NavLink>
             )}
 
-            <button className="admin-menu__item admin-menu__logout gradient-text button_border" onClick={logout} >
+            <button
+                className="admin-menu__item admin-menu__logout gradient-text button_border"
+                onClick={handleLogout}
+            >
                 <FiLogOut size={18} />
                 <span>Выйти</span>
             </button>

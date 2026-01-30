@@ -266,12 +266,18 @@ input[type="number"]:focus {
     cursor: pointer;
     font-weight: 500;
     color: var(--color-link);
-    border-bottom: 2px solid transparent;
+    border-bottom: 1px solid transparent;
+    border-radius: 0;
+}
+
+.multilang-input__tab:hover {
+    border-radius: 6px;
+    color: var(--color-link);
 }
 
 .multilang-input__tab_active {
     color: var(--color-primary);
-    border-bottom: 2px solid var(--color-primary);
+    border-bottom: 1px solid var(--color-primary);
 }
 
 .multilang-input__field {
@@ -287,4 +293,44 @@ input[type="number"]:focus {
 
 .contact-item__phone {
     margin-top: 8px;
+}
+
+.contacts-page__field {
+    display: flex;
+    gap: 8px;
+}
+
+.PhoneInputCountry {
+    position: relative;
+}
+
+.PhoneInputCountrySelect {
+    padding-left: 20px;
+    max-width: 160px;
+}
+
+.PhoneInputCountryIcon {
+    max-width: 24px;
+    position: absolute;
+    z-index: 1;
+    height: 16px;
+    width: 16px;
+    top: 8px;
+    left: 6px;
+    pointer-events: none;
+}
+
+.contacts-page__block {
+    display: flex;
+    gap: 16px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--color-primary-alt);
+}
+
+.contacts-page__row {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    flex: calc(33% - 16px);
+    max-width: calc(33% - 16px);
 }

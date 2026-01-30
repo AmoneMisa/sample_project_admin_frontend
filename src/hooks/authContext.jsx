@@ -1,28 +1,25 @@
 import {createContext, useCallback, useContext, useEffect, useState} from "react";
-import {useNavigate} from "react-router-dom";
 
-const AuthContext = createContext(null);
+export const AuthContext = createContext(null);
 
 export function AuthProvider({children}) {
-    const navigate = useNavigate();
     const API_URL = process.env.REACT_APP_API_URL || "/api";
+
     const [user, setUser] = useState(null);
     const [accessToken, setAccessToken] = useState(null);
     const [refreshToken, setRefreshToken] = useState(null);
     const [loading, setLoading] = useState(true);
 
-
-    // -----------------------------
-    //  Logout
-    // -----------------------------
+    // --------------------------
+    // LOGOUT
+    // --------------------------
     const logout = useCallback(async () => {
         try {
             await fetch(`${API_URL}/auth/logout`, {
                 method: "POST",
                 headers: {Authorization: `Bearer ${accessToken}`},
             });
-        } catch {
-        }
+        } catch {}
 
         localStorage.clear();
         sessionStorage.clear();
@@ -30,13 +27,11 @@ export function AuthProvider({children}) {
         setAccessToken(null);
         setRefreshToken(null);
         setUser(null);
+    }, [API_URL, accessToken]);
 
-        navigate("/login");
-    }, [API_URL, accessToken, navigate]);
-
-    // -----------------------------
-    //  Refresh token
-    // -----------------------------
+    // --------------------------
+    // REFRESH TOKEN
+    // --------------------------
     const handleRefresh = useCallback(async () => {
         if (!refreshToken) return logout();
 
@@ -48,10 +43,9 @@ export function AuthProvider({children}) {
 
         const data = await res.json();
 
-        if (!res.ok) {
-            return logout();
-        }
+        if (!res.ok) return logout();
 
+        // обновляем access_token
         if (localStorage.getItem("refresh_token")) {
             localStorage.setItem("access_token", data.access_token);
         } else {
@@ -60,14 +54,15 @@ export function AuthProvider({children}) {
 
         setAccessToken(data.access_token);
 
+        // загружаем пользователя с новым токеном
         await fetchUser(data.access_token);
 
         return data.access_token;
     }, [API_URL, refreshToken, logout]);
 
-    // -----------------------------
-    //  Получение профиля
-    // -----------------------------
+    // --------------------------
+    // FETCH USER
+    // --------------------------
     const fetchUser = useCallback(async (token) => {
         try {
             const res = await fetch(`${API_URL}/auth/me`, {
@@ -83,9 +78,9 @@ export function AuthProvider({children}) {
         }
     }, [API_URL, handleRefresh]);
 
-    // -----------------------------
-    //  Загрузка токенов при старте
-    // -----------------------------
+    // --------------------------
+    // INITIAL LOAD
+    // --------------------------
     useEffect(() => {
         const storedAccess =
             localStorage.getItem("access_token") ||
@@ -98,52 +93,16 @@ export function AuthProvider({children}) {
         if (storedAccess && storedRefresh) {
             setAccessToken(storedAccess);
             setRefreshToken(storedRefresh);
+
             fetchUser(storedAccess).finally(() => setLoading(false));
         } else {
             setLoading(false);
         }
     }, [fetchUser]);
 
-    // -----------------------------
-    //  Логин
-    // -----------------------------
-    async function login(email, password, remember) {
-        const res = await fetch(`${API_URL}/auth/login`, {
-            method: "POST",
-            headers: {"Content-Type": "application/json"},
-            body: JSON.stringify({email, password, remember_me: remember}),
-        });
-
-        const data = await res.json();
-
-        if (!res.ok) {
-            throw new Error(data.detail || "Ошибка входа");
-        }
-
-        if (remember) {
-            localStorage.setItem("access_token", data.access_token);
-            localStorage.setItem("refresh_token", data.refresh_token);
-        } else {
-            sessionStorage.setItem("access_token", data.access_token);
-            sessionStorage.setItem("refresh_token", data.refresh_token);
-        }
-
-        setAccessToken(data.access_token);
-        setRefreshToken(data.refresh_token);
-        setUser({
-            id: data.id,
-            email: data.email,
-            full_name: data.full_name,
-            role: data.role,
-            permissions: data.permissions,
-        });
-
-        navigate("/");
-    }
-
-    // -----------------------------
-    //  Авто‑refresh каждые 10 минут
-    // -----------------------------
+    // --------------------------
+    // AUTO REFRESH EVERY 10 MIN
+    // --------------------------
     useEffect(() => {
         if (!refreshToken) return;
 
@@ -154,12 +113,17 @@ export function AuthProvider({children}) {
         return () => clearInterval(interval);
     }, [refreshToken, handleRefresh]);
 
+    // --------------------------
+    // PROVIDER
+    // --------------------------
     return (
         <AuthContext.Provider
             value={{
                 user,
                 accessToken,
-                login,
+                setAccessToken,
+                setRefreshToken,
+                setUser,
                 logout,
                 refresh: handleRefresh,
                 loading

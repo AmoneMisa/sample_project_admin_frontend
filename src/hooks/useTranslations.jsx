@@ -11,17 +11,16 @@ export function useTranslations({translations, setTranslations, meta, setMeta, p
     const [loaded, setLoaded] = useState(false);
 
     const loadLanguages = useCallback(async () => {
-        if (languages.length > 0) {
-            return languages;
-        }
+        if (languages.length > 0) return languages;
 
         const res = await fetch(`${API_URL}/languages/enabled`, {
-            headers: {Authorization: `Bearer ${accessToken}`}
+            headers: { Authorization: `Bearer ${accessToken}` }
         });
+
         const langs = await res.json();
         setLanguages(langs);
         return langs;
-    }, [API_URL, accessToken]);
+    }, [API_URL, accessToken, languages]);
 
     const loadAllTranslations = useCallback(async () => {
         if (!accessToken) return;
@@ -63,7 +62,7 @@ export function useTranslations({translations, setTranslations, meta, setMeta, p
         setTranslations(all);
         setMeta(nextMeta);
         setLoaded(true);
-    }, [accessToken, loadLanguages]);
+    }, [accessToken, loaded, loadLanguages, meta, setMeta, setTranslations]);
 
     const saveAll = useCallback(async () => {
         if (!accessToken) return;

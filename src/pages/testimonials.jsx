@@ -1,6 +1,6 @@
 import ConfirmDialog from "../components/modals/ConfirmDialog";
 import TestimonialDialog from "../components/modals/TestimonialDialog";
-import {FiCopy, FiEdit, FiRotateCcw, FiTrash} from "react-icons/fi";
+import {FiCopy, FiEdit, FiTrash} from "react-icons/fi";
 import Checkbox from "../components/controls/Checkbox";
 import CustomTable from "../components/customElems/CustomTable";
 import {useEffect, useMemo, useState} from "react";
@@ -169,15 +169,6 @@ export default function Testimonials() {
 
                 {canEdit && (
                     <div style={{display: "flex", gap: 12}}>
-                        <button
-                            className="button button_icon button_border"
-                            disabled={!canUndo}
-                            onClick={undo}
-                            style={{color: "var(--color-error)"}}
-                        >
-                            <FiRotateCcw size={16}/>
-                        </button>
-
                         <button className="button" onClick={() => setCreating(true)}>
                             Создать
                         </button>

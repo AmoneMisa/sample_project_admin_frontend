@@ -118,11 +118,7 @@ export default function TranslationDialog({
                 />
             )}
 
-            <div style={{display: "flex", justifyContent: "flex-end", marginTop: 20}}>
-                <button className="button button_border" onClick={onClose}>
-                    Отмена
-                </button>
-
+            <div className={"modal__actions"}>
                 <button
                     className="button button_accept"
                     style={{marginLeft: 12}}
@@ -130,6 +126,9 @@ export default function TranslationDialog({
                     disabled={!keyExists}
                 >
                     Сохранить
+                </button>
+                <button className="button button_reject" onClick={onClose}>
+                    Отмена
                 </button>
             </div>
         </Modal>

@@ -7,6 +7,7 @@ import Checkbox from "../components/controls/Checkbox";
 import {FiEdit, FiTrash} from "react-icons/fi";
 import {useTranslations} from "../hooks/useTranslations";
 import apiFetch from "../utils/apiFetch";
+import {v4 as uuid} from "uuid";
 
 export default function HeaderMenu() {
     const API_URL = process.env.REACT_APP_API_URL || "/api";

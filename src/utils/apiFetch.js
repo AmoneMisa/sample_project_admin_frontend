@@ -1,6 +1,6 @@
 export default async function apiFetch(url, options = {}) {
     try {
-        const token = localStorage.getItem("accessToken");
+        const token = localStorage.getItem("access_token");
 
         const headers = {
             ...(options.headers || {}),

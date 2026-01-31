@@ -15,6 +15,7 @@ export default function FeatureCardDialog({initial, mode, onClose}) {
 
     const {
         languages,
+        loadLanguages,
         translationMaps,
         loadAllTranslations,
         createKeysBatch,
@@ -45,6 +46,7 @@ export default function FeatureCardDialog({initial, mode, onClose}) {
 
     useEffect(() => {
         (async () => {
+            await loadLanguages();
             await loadAllTranslations();
 
             if (mode === "edit") {

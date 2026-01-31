@@ -75,7 +75,7 @@ export default function MenuItemDialog({initialItem, onSave, onClose, title}) {
         walk(item);
         setLocalMaps(maps);
         setLoading(false);
-    }, [translationMaps, item]);
+    }, [translationMaps]);
 
     const updateItem = (fn) => {
         setItem(prev => {
@@ -192,7 +192,7 @@ export default function MenuItemDialog({initialItem, onSave, onClose, title}) {
 
     const saveItem = async () => {
         if (initialItem) {
-            await apiFetch(`${API_URL}/menu/${item.id}`, {
+            await apiFetch(`${API_URL}/header-menu/${item.id}`, {
                 method: "PATCH",
                 headers: {
                     "Content-Type": "application/json",
@@ -204,7 +204,7 @@ export default function MenuItemDialog({initialItem, onSave, onClose, title}) {
             return item.id;
         }
 
-        const created = await apiFetch(`${API_URL}/menu`, {
+        const created = await apiFetch(`${API_URL}/header-menu`, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",

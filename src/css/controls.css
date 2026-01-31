@@ -319,3 +319,55 @@ input[type="number"]:focus {
     left: 6px;
     pointer-events: none;
 }
+
+.toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    user-select: none;
+    color: var(--color-link);
+}
+
+.toggle input {
+    display: none;
+}
+
+.toggle__track {
+    width: 42px;
+    height: 22px;
+    background: var(--color-gray);
+    border-radius: 22px;
+    position: relative;
+    transition: background 0.25s ease;
+    display: flex;
+    align-items: center;
+    padding: 2px;
+}
+
+.toggle__thumb {
+    width: 18px;
+    height: 18px;
+    background: var(--color-blackest);
+    border-radius: 50%;
+    transition: transform 0.25s ease, background 0.25s ease;
+    box-shadow: 0 0 4px rgba(0,0,0,0.4);
+}
+
+.toggle input:checked + .toggle__track {
+    background-image: var(--color-primary-gradient);
+}
+
+.toggle input:checked + .toggle__track .toggle__thumb {
+    transform: translateX(20px);
+    background: white;
+}
+
+.toggle_disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.toggle_disabled .toggle__track {
+    filter: brightness(70%);
+}

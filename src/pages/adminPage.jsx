@@ -6,6 +6,8 @@ import Checkbox from "../components/controls/Checkbox";
 import LabeledFileInput from "../components/controls/LabeledFileInput";
 import LabeledInput from "../components/controls/LabeledInput";
 import {useTranslations} from "../hooks/useTranslations";
+import apiFetch from "../utils/apiFetch";
+import Toggle from "../components/controls/Toggle";
 
 const ISO_LANGUAGES = {
     en: "English",
@@ -36,6 +38,7 @@ const ISO_LANGUAGES = {
 };
 
 export default function AdminPage() {
+    const API_URL = process.env.REACT_APP_API_URL || "/api";
     const {user} = useAuth();
     const {showToast} = useToast();
 
@@ -51,6 +54,18 @@ export default function AdminPage() {
     const [newCode, setNewCode] = useState("");
     const [newName, setNewName] = useState("");
     const [suggestions, setSuggestions] = useState([]);
+
+    async function cleanup(mode) {
+        const params = new URLSearchParams({translations: 1});
+        if (mode) params.append("mode", mode);
+
+        const res = await apiFetch(`${API_URL}/cleanup?${params.toString()}`, {
+            method: "POST",
+        });
+
+        const data = await res.json();
+        showToast(`Удалено ключей: ${data.removed}`);
+    }
 
     useEffect(() => {
         loadLanguages();
@@ -122,41 +137,66 @@ export default function AdminPage() {
         <div className="page" style={{padding: 24}}>
             <div className="page__header">
                 <h1>Админка</h1>
+                <div className={"page__block"}>
+                    <h2>Загрузка переводов</h2>
+                    <LabeledFileInput
+                        label="Загрузить файлы переводов"
+                        multiple
+                        accept="application/json"
+                        onChange={uploadFiles}
+                    />
 
-                <h2>Загрузка переводов</h2>
-                <LabeledFileInput
-                    label="Загрузить файлы переводов"
-                    multiple
-                    accept="application/json"
-                    onChange={uploadFiles}
-                />
-
-                {user.role === "admin" && languages.length === 0 && (
-                    <button
-                        className="button button_accept"
-                        onClick={handleInitLanguages}
-                        style={{marginTop: 12, maxWidth: "300px"}}
-                    >
-                        Инициализировать языки
-                    </button>
-                )}
+                    {user.role === "admin" && languages.length === 0 && (
+                        <button
+                            className="button button_accept"
+                            onClick={handleInitLanguages}
+                            style={{marginTop: 12, maxWidth: "300px"}}
+                        >
+                            Инициализировать языки
+                        </button>
+                    )}
+                </div>
             </div>
+            <div className={"page__block"}>
 
+                <h2>Очистка переводов</h2>
+
+                <div style={{display: "flex", gap: 12, flexWrap: "wrap"}}>
+                    <button className="button button_border" onClick={() => cleanup()}>
+                        Очистить битые ключи
+                    </button>
+
+                    <button className="button button_border" onClick={() => cleanup("headerMenu")}>
+                        Очистить ключи headerMenu
+                    </button>
+
+                    <button className="button button_border" onClick={() => cleanup("contacts")}>
+                        Очистить ключи contacts
+                    </button>
+
+                    <button className="button button_border" onClick={() => cleanup("featureCard")}>
+                        Очистить ключи featureCard
+                    </button>
+                </div>
+            </div>
             <h2>Языки</h2>
             <CustomTable
                 columns={[
-                    {key: "code", title: "Код"},
-                    {key: "name", title: "Название"},
                     {
-                        key: "enabled",
-                        title: "Enabled",
-                        render: (value, row) => (
-                            <Checkbox
-                                checked={value}
-                                onChange={(e) => toggleLanguage(row.code, e.target.checked)}
-                            />
-                        ),
+                        key: "code",
+                        title: "Код",
+                        render: (_, row) => (
+                            <div style={{display: "flex", flexDirection: "column", gap: 6}}>
+                                <span>{row.code}</span>
+                                <Toggle
+                                    checked={row.enabled}
+                                    onChange={(e) => toggleLanguage(row.code, e.target.checked)}
+                                    title="Выключить / включить язык"
+                                />
+                            </div>
+                        )
                     },
+                    {key: "name", title: "Название"},
                 ]}
                 data={languages}
             />

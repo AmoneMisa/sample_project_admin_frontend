@@ -4,6 +4,7 @@ import LabeledSelect from "../components/controls/LabeledSelect";
 import {useAuth} from "../hooks/authContext";
 import CustomTable from "../components/customElems/CustomTable";
 import apiFetch from "../utils/apiFetch";
+import Checkbox from "../components/controls/Checkbox";
 
 export default function UsersPage() {
     const API_URL = process.env.REACT_APP_API_URL || "/api";
@@ -12,16 +13,18 @@ export default function UsersPage() {
     const [roleFilter, setRoleFilter] = useState("all");
     const [search, setSearch] = useState("");
 
+    const PERMISSIONS = [
+        {key: "canEditMenu", label: "Редактировать меню"},
+        {key: "canEditContacts", label: "Редактировать контакты"},
+        {key: "canEditFeatureCards", label: "Редактировать featureCard"},
+        {key: "canPublish", label: "Публиковать"},
+    ];
+
     async function loadUsers() {
         const params = new URLSearchParams();
 
-        if (roleFilter !== "all") {
-            params.set("role", roleFilter);
-        }
-
-        if (search.trim()) {
-            params.set("email", search.trim());
-        }
+        if (roleFilter !== "all") params.set("role", roleFilter);
+        if (search.trim()) params.set("email", search.trim());
 
         const url = `${API_URL}/users?${params.toString()}`;
 
@@ -50,6 +53,19 @@ export default function UsersPage() {
         loadUsers();
     }
 
+    async function updatePermissions(id, permissions) {
+        await apiFetch(`${API_URL}/users/${id}/permissions`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${accessToken}`
+            },
+            body: JSON.stringify({permissions})
+        });
+
+        loadUsers();
+    }
+
     async function deleteUser(id) {
         await apiFetch(`${API_URL}/users/${id}/delete`, {
             method: "POST",
@@ -73,6 +89,32 @@ export default function UsersPage() {
         {key: "email", title: "Email"},
         {key: "full_name", title: "ФИО"},
         {key: "role", title: "Роль"},
+        {
+            key: "permissions",
+            title: "Права",
+            render: (_, u) => {
+                const isAdmin = u.role === "admin";
+                return (
+                    <div style={{display: "flex", flexDirection: "column", gap: 4}}>
+                        {PERMISSIONS.map(p => (
+                            <Checkbox
+                                key={p.key}
+                                checked={u.permissions?.[p.key] || false}
+                                disabled={isAdmin}
+                                onChange={async (e) => {
+                                    const updated = {
+                                        ...u.permissions,
+                                        [p.key]: e.target.checked
+                                    };
+                                    await updatePermissions(u.id, updated);
+                                }}
+                                label={p.label}
+                            />
+                        ))}
+                    </div>
+                );
+            }
+        },
         {
             key: "actions",
             title: "Действия",

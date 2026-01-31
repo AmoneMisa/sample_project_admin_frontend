@@ -2,19 +2,15 @@ import {useEffect, useState} from "react";
 import Modal from "./Modal";
 import MultilangInput from "../controls/MultilangInput";
 import LabeledSelect from "../controls/LabeledSelect";
-import {useAuth} from "../../hooks/authContext";
 import {useToast} from "../layout/ToastContext";
 import {v4 as uuid} from "uuid";
 import {useTranslations} from "../../hooks/useTranslations";
 import MenuItemDropdownMega from "../menuCreateComponents/MenuItemDropdownMega";
 import MenuItemDropdown from "../menuCreateComponents/MenuItemDropdown";
 import MenuItemSimple from "../menuCreateComponents/MenuItemSimple";
-import apiFetch from "../../utils/apiFetch";
 
-export default function MenuItemDialog({initialItem, onSave, onClose, title}) {
-    const API_URL = process.env.REACT_APP_API_URL || "/api";
-    const {accessToken} = useAuth();
-    const {showToast} = useToast();
+export default function MenuItemDialog({ initialItem, onSave, onClose, title }) {
+    const { showToast } = useToast();
 
     const {
         languages,
@@ -46,6 +42,7 @@ export default function MenuItemDialog({initialItem, onSave, onClose, title}) {
     });
 
     const [localMaps, setLocalMaps] = useState({});
+
     useEffect(() => {
         loadLanguages();
         loadAllTranslations();
@@ -56,7 +53,7 @@ export default function MenuItemDialog({initialItem, onSave, onClose, title}) {
 
         const maps = {};
         const collect = (key) => {
-            maps[key] = {...(translationMaps[key] || {})};
+            maps[key] = { ...(translationMaps[key] || {}) };
         };
 
         const walk = (node) => {
@@ -92,16 +89,6 @@ export default function MenuItemDialog({initialItem, onSave, onClose, title}) {
         }));
     };
 
-    const makeLabelKey = (rootId, type) =>
-        `headerMenu.${rootId}.${type}.label`;
-
-    const makeSimpleItemKey = (rootId, i) =>
-        `headerMenu.${rootId}.dropdown-simple.item.${i}.title`;
-    const makeColumnTitleKey = (rootId, c) =>
-        `headerMenu.${rootId}.dropdown-mega.column.${c}.title`;
-
-    const makeMegaItemKey = (rootId, c, s) =>
-        `headerMenu.${rootId}.dropdown-mega.column.${c}.item.${s}.title`;
     const validate = () => {
         const errs = {};
         let hasError = false;
@@ -112,8 +99,7 @@ export default function MenuItemDialog({initialItem, onSave, onClose, title}) {
             try {
                 new URL(url);
                 return true;
-            } catch {
-            }
+            } catch {}
             if (/^\/[A-Za-z0-9._~!$&'()*+,;=:@/%?-]*$/.test(url)) return true;
             if (/^[A-Za-z0-9._~!$&'()*+,;=:@/%?-]+$/.test(url)) return true;
             if (/^\?[A-Za-z0-9._~!$&'()*+,;=:@/%?-]*$/.test(url)) return true;
@@ -190,36 +176,9 @@ export default function MenuItemDialog({initialItem, onSave, onClose, title}) {
         return result;
     };
 
-    const saveItem = async () => {
-        if (initialItem) {
-            await apiFetch(`${API_URL}/header-menu/${item.id}`, {
-                method: "PATCH",
-                headers: {
-                    "Content-Type": "application/json",
-                    Authorization: `Bearer ${accessToken}`
-                },
-                body: JSON.stringify(item)
-            });
-
-            return item.id;
-        }
-
-        const created = await apiFetch(`${API_URL}/header-menu`, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${accessToken}`
-            },
-            body: JSON.stringify(item)
-        });
-
-        return created.id;
-    };
-
     const handleSave = async () => {
         if (!validate()) return;
 
-        await saveItem();
         const payload = collectAllKeys();
 
         if (initialItem) {
@@ -240,6 +199,7 @@ export default function MenuItemDialog({initialItem, onSave, onClose, title}) {
         onSave(item);
         onClose();
     };
+
     return (
         <Modal open={true} onClose={onClose} width={800}>
             <h2>{title}</h2>

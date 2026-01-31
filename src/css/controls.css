@@ -8,10 +8,6 @@ textarea, input, .input, select {
     align-items: center;
     height: 36px;
     font-family: 'Fira Sans', 'Sora', sans-serif;
-
-    &:not([type="file"]) {
-        display: flex;
-    }
 }
 
 textarea, .textarea {

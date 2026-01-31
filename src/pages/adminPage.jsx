@@ -2,7 +2,6 @@ import {useEffect, useState} from "react";
 import {useAuth} from "../hooks/authContext";
 import {useToast} from "../components/layout/ToastContext";
 import CustomTable from "../components/customElems/CustomTable";
-import Checkbox from "../components/controls/Checkbox";
 import LabeledFileInput from "../components/controls/LabeledFileInput";
 import LabeledInput from "../components/controls/LabeledInput";
 import {useTranslations} from "../hooks/useTranslations";
@@ -56,14 +55,16 @@ export default function AdminPage() {
     const [suggestions, setSuggestions] = useState([]);
 
     async function cleanup(mode) {
-        const params = new URLSearchParams({translations: 1});
+        const params = new URLSearchParams({ translations: 1 });
         if (mode) params.append("mode", mode);
 
-        const res = await apiFetch(`${API_URL}/cleanup?${params.toString()}`, {
+        const data = await apiFetch(`${API_URL}/cleanup?${params.toString()}`, {
             method: "POST",
+            headers: {
+                Authorization: `Bearer ${user.accessToken}`, // ← добавили токен
+            },
         });
 
-        const data = await res.json();
         showToast(`Удалено ключей: ${data.removed}`);
     }
 

@@ -9,8 +9,8 @@ import MenuItemDropdownMega from "../menuCreateComponents/MenuItemDropdownMega";
 import MenuItemDropdown from "../menuCreateComponents/MenuItemDropdown";
 import MenuItemSimple from "../menuCreateComponents/MenuItemSimple";
 
-export default function MenuItemDialog({ initialItem, onSave, onClose, title }) {
-    const { showToast } = useToast();
+export default function MenuItemDialog({initialItem, onSave, onClose, title}) {
+    const {showToast} = useToast();
 
     const {
         languages,
@@ -24,6 +24,17 @@ export default function MenuItemDialog({ initialItem, onSave, onClose, title }) 
     const [loading, setLoading] = useState(true);
     const [fieldErrors, setFieldErrors] = useState({});
     const [error, setError] = useState("");
+    const makeLabelKey = (rootId, type) =>
+        `headerMenu.${rootId}.${type}.label`;
+
+    const makeSimpleItemKey = (rootId, i) =>
+        `headerMenu.${rootId}.dropdown-simple.item.${i}.title`;
+
+    const makeColumnTitleKey = (rootId, c) =>
+        `headerMenu.${rootId}.dropdown-mega.column.${c}.title`;
+
+    const makeMegaItemKey = (rootId, c, s) =>
+        `headerMenu.${rootId}.dropdown-mega.column.${c}.item.${s}.title`;
 
     const [item, setItem] = useState(() => {
         if (!initialItem) {
@@ -53,7 +64,7 @@ export default function MenuItemDialog({ initialItem, onSave, onClose, title }) 
 
         const maps = {};
         const collect = (key) => {
-            maps[key] = { ...(translationMaps[key] || {}) };
+            maps[key] = {...(translationMaps[key] || {})};
         };
 
         const walk = (node) => {
@@ -99,7 +110,8 @@ export default function MenuItemDialog({ initialItem, onSave, onClose, title }) 
             try {
                 new URL(url);
                 return true;
-            } catch {}
+            } catch {
+            }
             if (/^\/[A-Za-z0-9._~!$&'()*+,;=:@/%?-]*$/.test(url)) return true;
             if (/^[A-Za-z0-9._~!$&'()*+,;=:@/%?-]+$/.test(url)) return true;
             if (/^\?[A-Za-z0-9._~!$&'()*+,;=:@/%?-]*$/.test(url)) return true;

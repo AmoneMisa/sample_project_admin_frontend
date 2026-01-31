@@ -65,7 +65,7 @@ export default function FeatureCardDialog({initial, mode, onClose}) {
 
             setLoading(false);
         })();
-    }, [languages.length, translationMaps]);
+    }, [translationMaps]);
 
     function validate() {
         const e = {};

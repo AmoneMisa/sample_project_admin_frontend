@@ -99,13 +99,14 @@ export default function HeaderMenu() {
     }
 
     async function handleSaveFromDialog(item) {
+        const isEdit = !!editingItem;
         let next;
 
-        if (!item.id) {
-            const maxId = menu.reduce((m, it) => Math.max(m, it.id || 0), 0);
-            const withId = {...item, id: maxId + 1};
-            next = [...menu, withId];
+        if (!isEdit) {
+            // Создание нового пункта
+            next = [...menu, item];
         } else {
+            // Редактирование существующего
             next = menu.map(it => (it.id === item.id ? item : it));
         }
 

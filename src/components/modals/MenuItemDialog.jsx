@@ -1,16 +1,14 @@
 import {useEffect, useState} from "react";
-import Modal from "./Modal";
-import MultilangInput from "../controls/MultilangInput";
-import LabeledSelect from "../controls/LabeledSelect";
 import {useToast} from "../layout/ToastContext";
-import {v4 as uuid} from "uuid";
 import {useTranslations} from "../../hooks/useTranslations";
-import MenuItemDropdownMega from "../menuCreateComponents/MenuItemDropdownMega";
-import MenuItemDropdown from "../menuCreateComponents/MenuItemDropdown";
+import LabeledSelect from "../controls/LabeledSelect";
+import MultilangInput from "../controls/MultilangInput";
+import Modal from "./Modal";
 import MenuItemSimple from "../menuCreateComponents/MenuItemSimple";
-
-export default function MenuItemDialog({initialItem, onSave, onClose, title}) {
-    const {showToast} = useToast();
+import MenuItemDropdown from "../menuCreateComponents/MenuItemDropdown";
+import MenuItemDropdownMega from "../menuCreateComponents/MenuItemDropdownMega";
+export default function MenuItemDialog({ initialItem, onSave, onClose, title }) {
+    const { showToast } = useToast();
 
     const {
         languages,
@@ -21,36 +19,23 @@ export default function MenuItemDialog({initialItem, onSave, onClose, title}) {
         updateKeysBatch
     } = useTranslations({});
 
-    const [loading, setLoading] = useState(true);
+    const [, setLoading] = useState(true);
     const [fieldErrors, setFieldErrors] = useState({});
     const [error, setError] = useState("");
-    const makeLabelKey = (rootId, type) =>
-        `headerMenu.${rootId}.${type}.label`;
 
-    const makeSimpleItemKey = (rootId, i) =>
-        `headerMenu.${rootId}.dropdown-simple.item.${i}.title`;
+    const makeLabelKey = (id, type) =>
+        `headerMenu.${id}.${type}.label`;
 
-    const makeColumnTitleKey = (rootId, c) =>
-        `headerMenu.${rootId}.dropdown-mega.column.${c}.title`;
+    const makeSimpleItemKey = (id, i) =>
+        `headerMenu.${id}.dropdown-simple.item.${i}.title`;
 
-    const makeMegaItemKey = (rootId, c, s) =>
-        `headerMenu.${rootId}.dropdown-mega.column.${c}.item.${s}.title`;
+    const makeColumnTitleKey = (id, c) =>
+        `headerMenu.${id}.dropdown-mega.column.${c}.title`;
 
-    const [item, setItem] = useState(() => {
-        if (!initialItem) {
-            const rootId = uuid();
-            return {
-                id: rootId,
-                type: "simple",
-                visible: true,
-                href: "",
-                labelKey: `headerMenu.${rootId}.simple.label`,
-                badgeKey: null,
-                showBadge: false
-            };
-        }
-        return structuredClone(initialItem);
-    });
+    const makeMegaItemKey = (id, c, s) =>
+        `headerMenu.${id}.dropdown-mega.column.${c}.item.${s}.title`;
+
+    const [item, setItem] = useState(() => structuredClone(initialItem));
 
     const [localMaps, setLocalMaps] = useState({});
 
@@ -64,7 +49,7 @@ export default function MenuItemDialog({initialItem, onSave, onClose, title}) {
 
         const maps = {};
         const collect = (key) => {
-            maps[key] = {...(translationMaps[key] || {})};
+            maps[key] = { ...(translationMaps[key] || {}) };
         };
 
         const walk = (node) => {
@@ -110,8 +95,7 @@ export default function MenuItemDialog({initialItem, onSave, onClose, title}) {
             try {
                 new URL(url);
                 return true;
-            } catch {
-            }
+            } catch {}
             if (/^\/[A-Za-z0-9._~!$&'()*+,;=:@/%?-]*$/.test(url)) return true;
             if (/^[A-Za-z0-9._~!$&'()*+,;=:@/%?-]+$/.test(url)) return true;
             if (/^\?[A-Za-z0-9._~!$&'()*+,;=:@/%?-]*$/.test(url)) return true;
@@ -141,7 +125,7 @@ export default function MenuItemDialog({initialItem, onSave, onClose, title}) {
         if (item.type === "dropdown-mega") {
             item.columns.forEach((col, c) => {
                 col.items.forEach((sub, s) =>
-                    validateHref(["columns", c, "items", s, "href"], sub.href)
+                    validateHref(["columns", c, "items", s, "href"])
                 );
             });
             if (item.image?.src) validateHref(["image", "src"], item.image.src);
@@ -214,7 +198,7 @@ export default function MenuItemDialog({initialItem, onSave, onClose, title}) {
 
     return (
         <Modal open={true} onClose={onClose} width={800}>
-            <h2>{title}</h2>
+            <h2 className={"modal__header"}>{title}</h2>
 
             {error && (
                 <div style={{color: "red", marginBottom: 12}}>
@@ -226,19 +210,22 @@ export default function MenuItemDialog({initialItem, onSave, onClose, title}) {
                 label="Тип"
                 value={item.type}
                 onChange={(v) => updateItem(n => {
-                    const rootId = n.id;
+                    const id = n.id;
+                    if (!id) return; // ждём id от родителя
+
                     if (v === "simple") {
                         n.type = "simple";
-                        n.labelKey = makeLabelKey(rootId, "simple");
+                        n.labelKey = makeLabelKey(id, "simple");
                         n.items = undefined;
                         n.columns = undefined;
                         n.image = undefined;
                     }
+
                     if (v === "dropdown-simple") {
                         n.type = "dropdown-simple";
-                        n.labelKey = makeLabelKey(rootId, "dropdown-simple");
+                        n.labelKey = makeLabelKey(id, "dropdown-simple");
                         n.items = n.items?.length ? n.items : [{
-                            labelKey: makeSimpleItemKey(rootId, 0),
+                            labelKey: makeSimpleItemKey(id, 0),
                             href: "",
                             visible: true,
                             badgeKey: null,
@@ -247,13 +234,14 @@ export default function MenuItemDialog({initialItem, onSave, onClose, title}) {
                         n.columns = undefined;
                         n.image = undefined;
                     }
+
                     if (v === "dropdown-mega") {
                         n.type = "dropdown-mega";
-                        n.labelKey = makeLabelKey(rootId, "dropdown-mega");
+                        n.labelKey = makeLabelKey(id, "dropdown-mega");
                         n.columns = n.columns?.length ? n.columns : [{
-                            titleKey: makeColumnTitleKey(rootId, 0),
+                            titleKey: makeColumnTitleKey(id, 0),
                             items: [{
-                                labelKey: makeMegaItemKey(rootId, 0, 0),
+                                labelKey: makeMegaItemKey(id, 0, 0),
                                 href: "",
                                 visible: true,
                                 badgeKey: null,

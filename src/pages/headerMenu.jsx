@@ -221,7 +221,15 @@ export default function HeaderMenu() {
             {creating && (
                 <MenuItemDialog
                     title="Создать пункт меню"
-                    initialItem={null}
+                    initialItem={{
+                        id: uuid(),
+                        type: "simple",
+                        visible: true,
+                        href: "",
+                        labelKey: null,
+                        badgeKey: null,
+                        showBadge: false
+                    }}
                     onSave={(item) => {
                         handleSaveFromDialog(item);
                         setCreating(false);

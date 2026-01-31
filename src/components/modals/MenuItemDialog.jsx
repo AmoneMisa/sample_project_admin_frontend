@@ -35,7 +35,20 @@ export default function MenuItemDialog({ initialItem, onSave, onClose, title }) 
     const makeMegaItemKey = (id, c, s) =>
         `headerMenu.${id}.dropdown-mega.column.${c}.item.${s}.title`;
 
-    const [item, setItem] = useState(() => structuredClone(initialItem));
+    const [item, setItem] = useState(() => {
+        if (!initialItem) {
+            return {
+                id: null,
+                type: "simple",
+                visible: true,
+                href: "",
+                labelKey: null,
+                badgeKey: null,
+                showBadge: false
+            };
+        }
+        return structuredClone(initialItem);
+    });
 
     const [localMaps, setLocalMaps] = useState({});
 

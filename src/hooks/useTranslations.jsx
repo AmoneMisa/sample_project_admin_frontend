@@ -138,6 +138,34 @@ export function useTranslations() {
         showToast("Язык создан");
     }, [API_URL, accessToken, showToast]);
 
+    const importTranslations = useCallback(async (files) => {
+        const formData = new FormData();
+
+        for (const file of files) {
+            formData.append("files", file);
+        }
+
+        const data = await apiFetch(`${API_URL}/translations/import`, {
+            method: "POST",
+            body: formData
+        });
+
+        setTranslationMaps(prev => {
+            const next = {...prev};
+
+            for (const [lang, entries] of Object.entries(data)) {
+                for (const [key, value] of Object.entries(entries)) {
+                    if (!next[key]) next[key] = {};
+                    next[key][lang] = value;
+                }
+            }
+
+            return next;
+        });
+
+        showToast("Файлы успешно загружены");
+    }, [API_URL, accessToken, showToast]);
+
     return {
         languages,
         translationMaps,
@@ -148,6 +176,7 @@ export function useTranslations() {
         updateKeysBatch,
         deleteKeys,
         updateLanguage,
-        createLanguage
+        createLanguage,
+        importTranslations
     };
 }

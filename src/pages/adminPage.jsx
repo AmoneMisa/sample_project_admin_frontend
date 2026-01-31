@@ -38,7 +38,7 @@ const ISO_LANGUAGES = {
 
 export default function AdminPage() {
     const API_URL = process.env.REACT_APP_API_URL || "/api";
-    const {user, accessToken } = useAuth();
+    const {user } = useAuth();
     const {showToast} = useToast();
 
     const {
@@ -94,7 +94,7 @@ export default function AdminPage() {
     }, [newCode]);
 
     async function toggleLanguage(code, enabled) {
-        await updateLanguage(code, {enabled});
+        await updateLanguage(code, { isEnabled: enabled });
         showToast(`Язык ${code} ${enabled ? "включён" : "выключен"}`);
     }
 

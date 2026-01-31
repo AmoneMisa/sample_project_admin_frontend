@@ -1,6 +1,16 @@
-export default async function(url, options = {}) {
+export default async function apiFetch(url, options = {}) {
     try {
-        const res = await fetch(url, options);
+        const token = localStorage.getItem("accessToken");
+
+        const headers = {
+            ...(options.headers || {}),
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        };
+
+        const res = await fetch(url, {
+            ...options,
+            headers,
+        });
 
         if (!res.ok) {
             console.error(`Ошибка запроса: ${res.status}`);

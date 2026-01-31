@@ -38,7 +38,7 @@ const ISO_LANGUAGES = {
 
 export default function AdminPage() {
     const API_URL = process.env.REACT_APP_API_URL || "/api";
-    const {user} = useAuth();
+    const {user, accessToken } = useAuth();
     const {showToast} = useToast();
 
     const {
@@ -59,10 +59,7 @@ export default function AdminPage() {
         if (mode) params.append("mode", mode);
 
         const data = await apiFetch(`${API_URL}/cleanup?${params.toString()}`, {
-            method: "POST",
-            headers: {
-                Authorization: `Bearer ${user.accessToken}`, // ← добавили токен
-            },
+            method: "POST"
         });
 
         showToast(`Удалено ключей: ${data.removed}`);

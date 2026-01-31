@@ -118,7 +118,7 @@ export default function AdminPage() {
         await createLanguage({
             code: newCode,
             name: newName,
-            enabled: true
+            isEnabled: true
         });
 
         showToast("Язык добавлен");
@@ -184,10 +184,10 @@ export default function AdminPage() {
                         key: "code",
                         title: "Код",
                         render: (_, row) => (
-                            <div style={{display: "flex", flexDirection: "column", gap: 6}}>
+                            <div style={{display: "flex", gap: 8}}>
                                 <span>{row.code}</span>
                                 <Toggle
-                                    checked={row.enabled}
+                                    checked={row.isEnabled}
                                     onChange={(e) => toggleLanguage(row.code, e.target.checked)}
                                     title="Выключить / включить язык"
                                 />

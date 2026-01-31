@@ -107,7 +107,6 @@ export default function HeaderMenu() {
             // Создание нового пункта
             next = [...menu, item];
         } else {
-            // Редактирование существующего
             next = menu.map(it => (it.id === item.id ? item : it));
         }
 
@@ -219,25 +218,29 @@ export default function HeaderMenu() {
 
             <CustomTable columns={columns} data={menu}/>
 
-            {creating && (
-                <MenuItemDialog
-                    title="Создать пункт меню"
-                    initialItem={{
-                        id: uuid(),
-                        type: "simple",
-                        visible: true,
-                        href: "",
-                        labelKey: null,
-                        badgeKey: null,
-                        showBadge: false
-                    }}
-                    onSave={(item) => {
-                        handleSaveFromDialog(item);
-                        setCreating(false);
-                    }}
-                    onClose={() => setCreating(false)}
-                />
-            )}
+            {creating && (() => {
+                const id = uuid();
+
+                return (
+                    <MenuItemDialog
+                        title="Создать пункт меню"
+                        initialItem={{
+                            id,
+                            type: "simple",
+                            visible: true,
+                            href: "",
+                            labelKey: `headerMenu.${id}.simple.label`,
+                            badgeKey: null,
+                            showBadge: false
+                        }}
+                        onSave={(item) => {
+                            handleSaveFromDialog(item);
+                            setCreating(false);
+                        }}
+                        onClose={() => setCreating(false)}
+                    />
+                );
+            })()}
 
             {editingItem && (
                 <MenuItemDialog

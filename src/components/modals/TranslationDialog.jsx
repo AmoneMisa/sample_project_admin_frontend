@@ -92,7 +92,7 @@ export default function TranslationDialog({
                             position: "absolute",
                             right: 6,
                             top: 34,
-                            padding: 4
+                            padding: 5
                         }}
                         onClick={() => setEmojiPickerFor({lang: lang.code})}
                     >

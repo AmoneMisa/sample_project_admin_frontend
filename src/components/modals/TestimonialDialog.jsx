@@ -1,9 +1,9 @@
-import {useState} from "react";
+import { useState, useMemo } from "react";
 import Modal from "./Modal";
 import LabeledInput from "../controls/LabeledInput";
-import Checkbox from "../controls/Checkbox";
+import Toggle from "../controls/Toggle";
 
-export default function TestimonialDialog({title, initial, onSave, onClose}) {
+export default function TestimonialDialog({ title, initial, onSave, onClose }) {
     const [form, setForm] = useState({
         name: initial?.name || "",
         role: initial?.role || "",
@@ -17,8 +17,8 @@ export default function TestimonialDialog({title, initial, onSave, onClose}) {
     const [errors, setErrors] = useState({});
 
     const updateField = (field, value) => {
-        setForm(prev => ({...prev, [field]: value}));
-        setErrors(prev => ({...prev, [field]: ""}));
+        setForm((prev) => ({ ...prev, [field]: value }));
+        setErrors((prev) => ({ ...prev, [field]: "" }));
     };
 
     const isValidUrl = (str) => {
@@ -54,71 +54,137 @@ export default function TestimonialDialog({title, initial, onSave, onClose}) {
         onClose();
     };
 
+    const avatarOk = form.avatar && isValidUrl(form.avatar);
+    const logoOk = form.logo && isValidUrl(form.logo);
+
     return (
-        <Modal open={true} title={title} onClose={onClose} width={500}>
-            <LabeledInput
-                label="Имя"
-                value={form.name}
-                onChange={v => updateField("name", v)}
-                error={errors.name}
-            />
+        <Modal open title={title} onClose={onClose} width={560}>
 
-            <LabeledInput
-                label="Роль"
-                value={form.role}
-                onChange={v => updateField("role", v)}
-                error={errors.role}
-            />
+            {/* Toggle */}
+            <div className="menu-modal__row">
+                <div className="menu-modal__row-item">
+                    <Toggle
+                        label="Отображать"
+                        checked={form.isVisible}
+                        onChange={() => updateField("isVisible", !form.isVisible)}
+                    />
+                </div>
+            </div>
 
-            <label className="field-holder">
-                <span className="field-holder__label">Отзыв</span>
-                <textarea
-                    className={
-                        "field-holder__input" +
-                        (errors.quote ? " field-holder__input_error" : "")
-                    }
-                    style={{padding: 6, minHeight: 80}}
-                    value={form.quote}
-                    onChange={e => updateField("quote", e.target.value)}
-                />
-                {errors.quote && (
-                    <div className="field-holder__error">{errors.quote}</div>
-                )}
-            </label>
+            {/* Имя + роль */}
+            <div className="menu-modal__row">
+                <div className="menu-modal__row-item">
+                    <LabeledInput
+                        label="Имя"
+                        placeholder="Анна Иванова"
+                        value={form.name}
+                        onChange={(v) => updateField("name", v)}
+                        error={errors.name}
+                    />
+                </div>
 
-            <LabeledInput
-                label="Рейтинг"
-                type="number"
-                value={form.rating}
-                max={5}
-                min={1}
-                onChange={v => updateField("rating", Number(v))}
-                error={errors.rating}
-            />
+                <div className="menu-modal__row-item">
+                    <LabeledInput
+                        label="Роль"
+                        placeholder="CEO / Designer"
+                        value={form.role}
+                        onChange={(v) => updateField("role", v)}
+                        error={errors.role}
+                    />
+                </div>
+            </div>
 
-            <LabeledInput
-                label="Аватар URL"
-                value={form.avatar}
-                onChange={v => updateField("avatar", v)}
-                error={errors.avatar}
-            />
+            {/* Отзыв */}
+            <div className="menu-modal__row">
+                <div className="menu-modal__row-item">
 
-            <LabeledInput
-                label="Лого URL"
-                value={form.logo}
-                onChange={v => updateField("logo", v)}
-                error={errors.logo}
-            />
+                    <label className="field-holder">
+                        <span className="field-holder__label">Отзыв</span>
 
-            <Checkbox
-                label="Отображать"
-                checked={form.isVisible}
-                onChange={() => updateField("isVisible", !form.isVisible)}
-            />
+                        <textarea
+                            className={
+                                "field-holder__input" +
+                                (errors.quote ? " field-holder__input_error" : "")
+                            }
+                            placeholder="Напишите отзыв…"
+                            style={{ minHeight: 110 }}
+                            value={form.quote}
+                            onChange={(e) => updateField("quote", e.target.value)}
+                        />
 
-            <button className="button button_accept" onClick={handleSave}>
-                Сохранить
-            </button>
+                        {errors.quote && (
+                            <div className="field-holder__error">{errors.quote}</div>
+                        )}
+                    </label>
+
+                </div>
+            </div>
+
+            {/* Рейтинг */}
+            <div className="menu-modal__row">
+                <div className="menu-modal__row-item">
+                    <LabeledInput
+                        label="Рейтинг"
+                        type="number"
+                        min={1}
+                        max={5}
+                        placeholder="1–5"
+                        value={form.rating}
+                        onChange={(v) => updateField("rating", Number(v))}
+                        error={errors.rating}
+                    />
+                </div>
+            </div>
+            <div className="menu-modal__row">
+
+                <div className="menu-modal__row-item">
+
+                    <LabeledInput
+                        label="Аватар URL"
+                        placeholder="https://..."
+                        value={form.avatar}
+                        onChange={(v) => updateField("avatar", v)}
+                        error={errors.avatar}
+                    />
+
+                    {avatarOk && (
+                        <div className="menu-modal__preview">
+                            <img src={form.avatar} alt="" />
+                        </div>
+                    )}
+
+                </div>
+
+                <div className="menu-modal__row-item">
+
+                    <LabeledInput
+                        label="Лого URL"
+                        placeholder="https://..."
+                        value={form.logo}
+                        onChange={(v) => updateField("logo", v)}
+                        error={errors.logo}
+                    />
+
+                    {logoOk && (
+                        <div className="menu-modal__preview menu-modal__preview_logo">
+                            <img src={form.logo} alt="" />
+                        </div>
+                    )}
+
+                </div>
+
+            </div>
+
+            <div className="modal__actions">
+                <button className="button button_accept" onClick={handleSave}>
+                    Сохранить
+                </button>
+
+                <button className="button button_reject" onClick={onClose}>
+                    Отмена
+                </button>
+            </div>
+
         </Modal>
     );
 }

@@ -4,7 +4,6 @@ export default function LabeledInput({
                                          value,
                                          title = "",
                                          onChange,
-                                         max = 5,
                                          minLength,
                                          maxLength,
                                          type = "text",
@@ -14,11 +13,12 @@ export default function LabeledInput({
                                      }) {
     function handleChange(e) {
         let v = e.target.value;
+
         const forbidden = /<\/?(script|style|code)[^>]*>/gi;
-        // const anyTag = /<\/?[^>]+>/gi;
+        const anyTag = /<\/?[^>]+>/gi;
+
         v = v.replace(forbidden, "");
 
-        // запретить любые теги:
         // v = v.replace(anyTag, "");
 
         if (maxLength && v.length > maxLength) {
@@ -42,8 +42,6 @@ export default function LabeledInput({
                     " field-holder__input" +
                     (error ? " field-holder__input_error" : "")
                 }
-                max={max}
-                min={1}
                 minLength={minLength}
                 maxLength={maxLength}
                 title={title}

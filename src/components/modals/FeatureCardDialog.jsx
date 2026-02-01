@@ -174,16 +174,38 @@ export default function FeatureCardDialog({initial, mode, onClose}) {
             <h2 className="modal__header gradient-text">
                 {mode === "edit" ? "Редактировать карточку" : "Создать карточку"}
             </h2>
-
-            <LabeledInput
-                label="URL изображения"
-                value={form.image}
-                error={errors.image}
-                onChange={(v) => updateField("image", v)}
-            />
-
+            <div className="menu-modal__row">
+                <div className="menu-modal__row-item">
+                    <LabeledInput
+                        label="URL изображения"
+                        placeholder="https://... (png/jpg/svg/webp)"
+                        value={form.image}
+                        error={errors.image}
+                        onChange={(v) => updateField("image", v)}
+                    />
+                    {form.image?.trim() && (
+                        <div className="menu-modal__preview menu-modal__preview_image">
+                            <img
+                                src={form.image}
+                                alt="Preview"
+                                onError={(e) => {
+                                    e.currentTarget.style.display = "none";
+                                    const parent = e.currentTarget.parentElement;
+                                    if (parent && !parent.querySelector(".menu-modal__preview-fallback")) {
+                                        const div = document.createElement("div");
+                                        div.className = "menu-modal__preview-fallback";
+                                        div.textContent = "Не удалось загрузить изображение";
+                                        parent.appendChild(div);
+                                    }
+                                }}
+                            />
+                        </div>
+                    )}
+                </div>
+            </div>
             <MultilangInput
                 label="Заголовок"
+                placeholder="Например: Быстрая доставка"
                 languages={languages.map(l => l.code)}
                 valueMap={titleTranslations}
                 errors={errors.title}
@@ -192,6 +214,7 @@ export default function FeatureCardDialog({initial, mode, onClose}) {
 
             <MultilangInput
                 label="Описание"
+                placeholder="Коротко опишите преимущество (1–2 строки)"
                 languages={languages.map(l => l.code)}
                 valueMap={descriptionTranslations}
                 errors={errors.description}

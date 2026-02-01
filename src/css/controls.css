@@ -563,18 +563,13 @@ input[type="number"]:focus {
 .number-input__btn {
     width: 32px;
     height: 32px;
-
     border-radius: 10px;
     border: 1px solid var(--ui-border);
-
     background: var(--color-dark);
     color: var(--color-link);
-
     display: grid;
     place-items: center;
-
     cursor: pointer;
-
     transition: all .15s ease;
 }
 

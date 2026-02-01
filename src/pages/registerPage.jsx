@@ -2,6 +2,7 @@ import {useState, useEffect} from "react";
 import {useNavigate, Link} from "react-router-dom";
 import {useAuth} from "../hooks/authContext";
 import LabeledInput from "../components/controls/LabeledInput";
+import PasswordInput from "../components/controls/PasswordInput";
 import apiFetch from "../utils/apiFetch";
 
 export default function RegisterPage() {
@@ -20,6 +21,7 @@ export default function RegisterPage() {
 
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
+    const [password2, setPassword2] = useState("");
     const [fullName, setFullName] = useState("");
     const [error, setError] = useState("");
 
@@ -29,9 +31,29 @@ export default function RegisterPage() {
         }
     }, [user, accessToken, loading, navigate]);
 
+    function validateEmail(email) {
+        return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+    }
+
+    function validateName(name) {
+        return /^[A-Za-zА-Яа-яЁё\s\-]+$/.test(name);
+    }
+
     async function handleRegister(e) {
         e.preventDefault();
         setError("");
+
+        if (!validateEmail(email)) {
+            return setError("Некорректный email");
+        }
+
+        if (!validateName(fullName)) {
+            return setError("Имя может содержать только буквы, пробелы и тире");
+        }
+
+        if (password !== password2) {
+            return setError("Пароли не совпадают");
+        }
 
         try {
             await apiFetch(`${API_URL}/auth/register`, {
@@ -70,12 +92,16 @@ export default function RegisterPage() {
             navigate("/", {replace: true});
 
         } catch (err) {
-            setError(err.message);
+            if (err.message.includes("already exists")) {
+                setError("Пользователь с таким email уже существует");
+            } else {
+                setError(err.message);
+            }
         }
     }
 
     return (
-        <div style={{maxWidth: 400, margin: "80px auto"}}>
+        <div className={"page"} style={{maxWidth: 400, margin: "80px auto"}}>
             <h2 className="gradient-text" style={{marginBottom: 24}}>
                 Регистрация
             </h2>
@@ -83,19 +109,31 @@ export default function RegisterPage() {
             <form className="field-holder" onSubmit={handleRegister}>
                 <LabeledInput
                     label="Email"
+                    placeholder="example@mail.com"
+                    autoComplete="email"
                     value={email}
                     onChange={setEmail}
                 />
 
-                <LabeledInput
+                <PasswordInput
                     label="Пароль"
-                    type="password"
+                    placeholder="Введите пароль"
+                    autoComplete="new-password"
                     value={password}
                     onChange={setPassword}
                 />
 
+                <PasswordInput
+                    label="Подтвердите пароль"
+                    placeholder="Повторите пароль"
+                    autoComplete="new-password"
+                    value={password2}
+                    onChange={setPassword2}
+                />
+
                 <LabeledInput
                     label="Полное имя"
+                    placeholder="Иван Иванов"
                     value={fullName}
                     onChange={setFullName}
                 />

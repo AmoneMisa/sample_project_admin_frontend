@@ -3,6 +3,7 @@ import {useNavigate, Link} from "react-router-dom";
 import {useAuth} from "../hooks/authContext";
 import LabeledInput from "../components/controls/LabeledInput";
 import Checkbox from "../components/controls/Checkbox";
+import PasswordInput from "../components/controls/PasswordInput";
 import apiFetch from "../utils/apiFetch";
 
 export default function LoginPage() {
@@ -30,9 +31,21 @@ export default function LoginPage() {
         }
     }, [user, accessToken, loading, navigate]);
 
+    function validateEmail(email) {
+        return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+    }
+
     async function handleLogin(e) {
         e.preventDefault();
         setError("");
+
+        if (!validateEmail(email)) {
+            return setError("Некорректный email");
+        }
+
+        if (!password) {
+            return setError("Введите пароль");
+        }
 
         try {
             const data = await apiFetch(`${API_URL}/auth/login`, {
@@ -66,12 +79,18 @@ export default function LoginPage() {
             navigate("/", {replace: true});
 
         } catch (err) {
-            setError(err.message);
+            if (err.message.includes("invalid") || err.message.includes("incorrect")) {
+                setError("Неверный email или пароль");
+            } else if (err.message.includes("not found")) {
+                setError("Пользователь не найден");
+            } else {
+                setError(err.message);
+            }
         }
     }
 
     return (
-        <div style={{maxWidth: 400, margin: "80px auto"}}>
+        <div className={"page"} style={{maxWidth: 400, margin: "80px auto"}}>
             <h2 className="gradient-text" style={{marginBottom: 24}}>
                 Вход
             </h2>
@@ -79,13 +98,16 @@ export default function LoginPage() {
             <form className="field-holder" onSubmit={handleLogin}>
                 <LabeledInput
                     label="Email"
+                    autoComplete="username"
+                    placeholder="example@mail.com"
                     value={email}
                     onChange={setEmail}
                 />
 
-                <LabeledInput
+                <PasswordInput
+                    autoComplete="current-password"
                     label="Пароль"
-                    type="password"
+                    placeholder="Введите пароль"
                     value={password}
                     onChange={setPassword}
                 />

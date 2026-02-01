@@ -9,7 +9,8 @@ export default function LabeledInput({
                                          type = "text",
                                          className = "",
                                          error = "",
-                                         hint = ""
+                                         hint = "",
+                                         autoComplete
                                      }) {
     function handleChange(e) {
         let v = e.target.value;
@@ -33,6 +34,7 @@ export default function LabeledInput({
             {label && <span className="field-holder__label">{label}</span>}
 
             <input
+                autoComplete={autoComplete}
                 type={type}
                 value={value}
                 placeholder={placeholder}

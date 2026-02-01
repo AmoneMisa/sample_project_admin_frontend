@@ -70,6 +70,7 @@ select:disabled,
     user-select: none;
     background-image: none;
     padding: 6px 8px;
+    height: 36px;
 }
 
 .selectx:disabled {

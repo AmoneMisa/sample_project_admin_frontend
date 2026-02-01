@@ -1,13 +1,177 @@
-textarea, input, .input, select {
-    border-radius: 8px;
+textarea,
+input,
+.input,
+select {
+    border-radius: var(--control-radius);
     background-color: var(--color-blackest);
     color: var(--color-link);
     border: 1px solid var(--ui-border);
-    padding: 8px 6px;
+    padding: var(--control-pad-y) var(--control-pad-x);
     max-width: 100%;
     align-items: center;
-    height: 36px;
+    min-height: var(--control-height);
+    height: var(--control-height);
     font-family: 'Fira Sans', 'Sora', sans-serif;
+    transition: border-color .2s ease, box-shadow .2s ease, filter .2s ease;
+}
+
+textarea,
+.textarea {
+    height: auto;
+    min-height: 90px;
+    max-height: 5rem;
+    width: -webkit-fill-available;
+    resize: none;
+}
+
+textarea::placeholder,
+input::placeholder,
+.input::placeholder {
+    color: rgba(188, 195, 215, 0.55);
+}
+
+textarea:focus,
+input:focus,
+select:focus,
+.input:focus {
+    outline: none;
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 2px var(--color-primary-alt);
+}
+
+textarea:hover,
+input:hover,
+select:hover,
+.input:hover {
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 1px var(--color-primary-alt);
+}
+
+textarea:disabled,
+input:disabled,
+select:disabled,
+.input:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.select {
+    position: relative;
+}
+
+.selectx {
+    width: 100%;
+    text-align: left;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    cursor: pointer;
+    user-select: none;
+    background-image: none;
+    padding: 6px 8px;
+}
+
+.selectx:disabled {
+    cursor: not-allowed;
+}
+
+.selectx__value {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--color-link);
+    font-weight: 600;
+}
+
+.selectx__value_placeholder {
+    font-weight: 500;
+    opacity: 0.75;
+}
+
+.selectx__chevron {
+    display: grid;
+    place-items: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 10px;
+    background: var(--color-dark);
+    border: 1px solid var(--ui-border);
+    color: var(--color-link);
+    flex: 0 0 28px;
+}
+
+.selectx_open .selectx__chevron {
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 1px var(--color-primary-alt);
+}
+
+.selectx__menu {
+    position: absolute;
+    z-index: 50;
+    left: 0;
+    right: 0;
+    top: calc(100% + 8px);
+    background: var(--color-blackest);
+    border: 1px solid var(--ui-border);
+    border-radius: 12px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.45);
+    padding: 6px;
+    max-height: 260px;
+    overflow: auto;
+}
+
+.selectx__option {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 6px 8px;
+    border-radius: 6px;
+    color: var(--color-link);
+    cursor: pointer;
+
+    transition: background .15s ease, border-color .15s ease, filter .15s ease;
+}
+
+.selectx__option:hover,
+.selectx__option_active {
+    background: var(--color-dark);
+    box-shadow: 0 0 0 1px var(--ui-border);
+}
+
+.selectx__option_selected {
+    background: var(--color-primary-alt);
+    box-shadow: 0 0 0 1px var(--color-primary-alt);
+}
+
+.selectx__option-label {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.selectx__option-mark {
+    opacity: 0.9;
+    font-weight: 800;
+}
+
+.selectx__empty {
+    padding: 10px;
+    color: var(--color-link);
+    opacity: 0.7;
+}
+
+.field-holder__input_disabled {
+    opacity: 0.65;
+}
+
+.field-holder__input_error,
+.field-holder__input_error input,
+.field-holder__input_error select,
+.field-holder__input_error textarea {
+    border-color: var(--color-error);
+    box-shadow: none;
 }
 
 textarea, .textarea {
@@ -240,52 +404,70 @@ input[type="number"]:focus {
     border-color: var(--color-error);
 }
 
-.multilang-input {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-}
-
-.multilang-input__label {
-    font-weight: bold;
-}
-
 .multilang-input__tabs {
     display: flex;
-    gap: 12px;
+    gap: 8px;
+    align-items: center;
+    padding: 4px;
+    border: 1px solid var(--ui-border);
+    border-radius: 12px;
+    background: var(--secondary-bg-gradient);
+    width: fit-content;
 }
 
 .multilang-input__tab {
-    padding: 4px 12px;
-    border: none;
+    padding: 6px 12px;
+    border: 1px solid transparent;
+    border-radius: 10px;
+
     background: transparent;
-    cursor: pointer;
-    font-weight: 500;
     color: var(--color-link);
-    border-bottom: 1px solid transparent;
-    border-radius: 0;
+
+    cursor: pointer;
+    font-weight: 600;
+
+    transition: filter .2s ease, border-color .2s ease, background .2s ease, transform .05s ease;
 }
 
 .multilang-input__tab:hover {
-    border-radius: 6px;
-    color: var(--color-link);
+    border-color: var(--ui-border);
+    background: var(--color-dark);
+    filter: brightness(110%);
+}
+
+.multilang-input__tab:active {
+    transform: translateY(1px);
 }
 
 .multilang-input__tab_active {
-    color: var(--color-primary);
-    border-bottom: 1px solid var(--color-primary);
+    border-color: var(--color-primary-alt);
+    background: var(--color-primary-alt);
+    color: var(--color-link);
+    box-shadow: 0 0 0 1px var(--color-primary-alt);
 }
 
+/* Поле ввода — как “контрол” с мягким фокусом */
 .multilang-input__field {
-    padding: 8px;
-    border: 1px solid var(--color-link);
-    border-radius: 8px;
+    border: 1px solid var(--ui-border);
+    background: var(--color-blackest);
+    border-radius: 12px;
+    padding: 10px 12px;
+    color: var(--color-link);
+
+    transition: border-color .2s ease, box-shadow .2s ease, filter .2s ease;
 }
 
-.multilang-input__error {
-    color: var(--color-error);
-    font-size: 12px;
+.multilang-input__field:focus {
+    outline: none;
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 2px var(--color-primary-alt);
 }
+
+/* Плейсхолдер приятнее */
+.multilang-input__field::placeholder {
+    color: rgba(188, 195, 215, 0.55);
+}
+
 
 .contact-item__phone {
     margin-top: 8px;
@@ -347,7 +529,7 @@ input[type="number"]:focus {
     background: var(--color-blackest);
     border-radius: 50%;
     transition: transform 0.25s ease, background 0.25s ease;
-    box-shadow: 0 0 4px rgba(0,0,0,0.4);
+    box-shadow: 0 0 4px rgba(0, 0, 0, 0.4);
 }
 
 .toggle input:checked + .toggle__track {

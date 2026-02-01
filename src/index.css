@@ -35,6 +35,12 @@
     --color-error: #c03c3c;
     --color-warning: #a99b3e;
     --color-accept: #25773f;
+    --control-radius: 12px;
+    --control-height: 36px;
+    --control-pad-x: 12px;
+    --control-pad-y: 10px;
+    --btn-radius: 10px;
+    --btn-height: 36px;
 }
 
 *, *:after, *:before {

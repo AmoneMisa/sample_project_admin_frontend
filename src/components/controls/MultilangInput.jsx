@@ -6,6 +6,7 @@ export default function MultilangInput({
                                            valueMap,
                                            errors = {},
                                            onChange,
+                                           placeholder,
                                            hint,
                                            className = "",
                                        }) {
@@ -36,6 +37,7 @@ export default function MultilangInput({
             </div>
 
             <input
+                placeholder={placeholder}
                 className={
                     "input" +
                     (errors[activeLang] ? " field-holder__input_error" : "")

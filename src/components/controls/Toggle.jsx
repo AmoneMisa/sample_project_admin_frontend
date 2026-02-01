@@ -2,11 +2,12 @@ export default function Toggle({
                                    checked,
                                    onChange,
                                    label,
+                                   title,
                                    disabled = false,
                                    className = ""
                                }) {
     return (
-        <label className={`toggle ${className} ${disabled ? "toggle_disabled" : ""}`}>
+        <label className={`toggle ${className} ${disabled ? "toggle_disabled" : ""}`} title={title}>
             <input
                 type="checkbox"
                 checked={checked}

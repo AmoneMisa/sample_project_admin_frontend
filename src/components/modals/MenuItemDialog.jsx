@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
-import { useToast } from "../layout/ToastContext";
-import { useTranslations } from "../../hooks/useTranslations";
+import {useEffect, useState} from "react";
+import {useToast} from "../layout/ToastContext";
+import {useTranslations} from "../../hooks/useTranslations";
 import LabeledSelect from "../controls/LabeledSelect";
 import MultilangInput from "../controls/MultilangInput";
 import Modal from "./Modal";
@@ -13,9 +13,9 @@ export default function MenuItemDialog({
                                            onSave,
                                            onClose,
                                            title,
-                                           badges = [] // <-- добавь сюда список бейджей из родителя [{id,label}, ...]
+                                           badges = []
                                        }) {
-    const { showToast } = useToast();
+    const {showToast} = useToast();
 
     const {
         languages,
@@ -43,17 +43,15 @@ export default function MenuItemDialog({
                 visible: true,
                 href: "",
                 labelKey: null,
-                badgeId: "" // <-- новое
+                badgeId: ""
             };
         }
 
-        // миграция старых данных на лету (на всякий)
         const next = structuredClone(initialItem);
         if (next.badgeId == null) next.badgeId = "";
         delete next.badgeKey;
         delete next.showBadge;
 
-        // в items/mega items тоже мигрируем
         const walk = (node) => {
             if (!node) return;
             if (node.badgeId == null) node.badgeId = "";
@@ -79,7 +77,7 @@ export default function MenuItemDialog({
 
         const maps = {};
         const collect = (key) => {
-            maps[key] = { ...(translationMaps[key] || {}) };
+            maps[key] = {...(translationMaps[key] || {})};
         };
 
         const walk = (node) => {
@@ -124,7 +122,8 @@ export default function MenuItemDialog({
             try {
                 new URL(url);
                 return true;
-            } catch {}
+            } catch {
+            }
             if (/^\/[A-Za-z0-9._~!$&'()*+,;=:@/%?-]*$/.test(url)) return true;
             if (/^[A-Za-z0-9._~!$&'()*+,;=:@/%?-]+$/.test(url)) return true;
             if (/^\?[A-Za-z0-9._~!$&'()*+,;=:@/%?-]*$/.test(url)) return true;
@@ -229,7 +228,7 @@ export default function MenuItemDialog({
             <h2 className={"modal__header"}>{title}</h2>
 
             {error && (
-                <div style={{ color: "red", marginBottom: 12 }}>
+                <div style={{color: "red", marginBottom: 12}}>
                     {error}
                 </div>
             )}
@@ -261,7 +260,7 @@ export default function MenuItemDialog({
                                     labelKey: makeSimpleItemKey(id, 0),
                                     href: "",
                                     visible: true,
-                                    badgeId: "" // <-- новое
+                                    badgeId: ""
                                 }];
                             n.columns = undefined;
                             n.image = undefined;
@@ -291,14 +290,15 @@ export default function MenuItemDialog({
                     })
                 }
                 options={[
-                    { value: "simple", label: "Простой" },
-                    { value: "dropdown-simple", label: "Выпадающий простой" },
-                    { value: "dropdown-mega", label: "Мега-меню" }
+                    {value: "simple", label: "Простой"},
+                    {value: "dropdown-simple", label: "Выпадающий"},
+                    {value: "dropdown-mega", label: "Мега-меню"}
                 ]}
             />
 
             <MultilangInput
-                label="Название"
+                label="Название меню"
+                placeholder={"Название меню"}
                 languages={languages.map(l => l.code)}
                 valueMap={localMaps[item.labelKey] || {}}
                 onChange={(m) => updateTranslation(item.labelKey, m)}

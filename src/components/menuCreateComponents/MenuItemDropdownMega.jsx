@@ -1,9 +1,12 @@
+import {useState} from "react";
 import LabeledSelect from "../controls/LabeledSelect";
 import LabeledInput from "../controls/LabeledInput";
-import Checkbox from "../controls/Checkbox";
 import MultilangInput from "../controls/MultilangInput";
-import {FiTrash2, FiPlus, FiTrash} from "react-icons/fi";
+import {FiChevronDown, FiChevronRight, FiFolder, FiPlus, FiTrash} from "react-icons/fi";
 import Toggle from "../controls/Toggle";
+import {TbFileDots} from "react-icons/tb";
+import {BiCommentDots} from "react-icons/bi";
+import {LuFolderDot} from "react-icons/lu";
 
 export default function MenuItemDropdownMega({
                                                  item,
@@ -30,6 +33,15 @@ export default function MenuItemDropdownMega({
         ...badges.map(b => ({value: b.id, label: b.label}))
     ];
 
+    const [collapsedLists, setCollapsedLists] = useState(() => ({}));     // { [c]: true }
+    const [collapsedItems, setCollapsedItems] = useState(() => ({}));     // { ["c:s"]: true }
+
+    const toggleList = (c) => setCollapsedLists(prev => ({...prev, [c]: !prev[c]}));
+    const toggleItem = (c, s) => setCollapsedItems(prev => {
+        const k = `${c}:${s}`;
+        return {...prev, [k]: !prev[k]};
+    });
+
     const addList = () =>
         updateItem(n => {
             const c = n.columns.length;
@@ -37,6 +49,7 @@ export default function MenuItemDropdownMega({
                 titleKey: `headerMenu.${n.id}.dropdown-mega.column.${c}.title`,
                 items: []
             });
+            setCollapsedLists(prev => ({...prev, [c]: false}));
         });
 
     const removeList = (c) =>
@@ -53,6 +66,8 @@ export default function MenuItemDropdownMega({
                 visible: true,
                 badgeId: ""
             });
+            setCollapsedLists(prev => ({...prev, [c]: false}));
+            setCollapsedItems(prev => ({...prev, [`${c}:${s}`]: false}));
         });
 
     const removeCategory = (c, s) =>
@@ -91,112 +106,164 @@ export default function MenuItemDropdownMega({
                 </div>
             </div>
 
-            {item.columns.map((col, c) => (
-                <div key={c} className="menu-modal__row">
-                    <div className="menu-modal__row-item menu-modal__row_col">
-                        <div className="menu-modal__sub-item-row menu-modal__sub-item-row_between">
-                            <div className="menu-modal__sub-item-row_grow">
-                                <MultilangInput
-                                    label={`Заголовок списка ${c + 1}`}
-                                    languages={languages}
-                                    valueMap={translationMaps[col.titleKey] || {}}
-                                    errors={extractErrors(`columns.${c}.title`)}
-                                    onChange={(next) => updateTranslation(col.titleKey, next)}
-                                />
+            {item.columns.map((col, c) => {
+                const listCollapsed = collapsedLists[c] === true;
+
+                return (
+                    <div key={c} className="menu-modal__row">
+                        <div className="menu-modal__row-item menu-modal__row_col">
+                            <div className="menu-modal__sub-item-row menu-modal__sub-item-row_between">
+                                <div className="menu-modal__sub-item-row_grow">
+                                    <MultilangInput
+                                        placeholder={"Название списка"}
+                                        languages={languages}
+                                        valueMap={translationMaps[col.titleKey] || {}}
+                                        errors={extractErrors(`columns.${c}.title`)}
+                                        onChange={(next) => updateTranslation(col.titleKey, next)}
+                                    />
+                                </div>
+
+                                <div style={{alignSelf: "start", width: "auto"}} className={"menu-modal__sub-item-row"}>
+                                    <button
+                                        type="button"
+                                        className="button button_border"
+                                        title={listCollapsed ? "Развернуть список" : "Свернуть список"}
+                                        onClick={() => toggleList(c)}
+                                    >
+                                        {listCollapsed ? <FiChevronRight size={16}/> : <FiChevronDown size={16}/>}
+                                    </button>
+
+                                    <Toggle
+                                        title={"Отображать список"}
+                                        checked={col.visible !== false}
+                                        onChange={() =>
+                                            updateItem(n => {
+                                                const cur = n.columns[c].visible;
+                                                n.columns[c].visible = cur === false ? true : !cur;
+                                            })
+                                        }
+                                    />
+
+                                    <button
+                                        type="button"
+                                        className="button button_icon button_reject"
+                                        title="Удалить список"
+                                        onClick={() => removeList(c)}
+                                    >
+                                        <FiTrash size={16}/>
+                                    </button>
+                                </div>
                             </div>
 
-                            <button
-                                type="button"
-                                className="button button_icon button_reject"
-                                title="Удалить список"
-                                onClick={() => removeList(c)}
-                            >
-                                <FiTrash2/>
-                            </button>
+                            {!listCollapsed && (
+                                <>
+                                    {col.items.map((sub, s) => {
+                                        const labelErrors = extractErrors(`columns.${c}.items.${s}.label`);
+                                        const itemKey = `${c}:${s}`;
+                                        const itemCollapsed = collapsedItems[itemKey] === true;
+
+                                        return (
+                                            <div key={s} className="menu-modal__sub-item menu-modal__sub-item_col">
+                                                <div
+                                                    className="menu-modal__sub-item-row menu-modal__sub-item-row_between">
+                                                    <div className="menu-modal__sub-item-row_grow">
+                                                        <MultilangInput
+                                                            languages={languages}
+                                                            placeholder={"Название категории"}
+                                                            valueMap={translationMaps[sub.labelKey] || {}}
+                                                            errors={labelErrors}
+                                                            onChange={(next) => updateTranslation(sub.labelKey, next)}
+                                                        />
+                                                    </div>
+                                                    <div className="menu-modal__sub-item-row"
+                                                         style={{width: "auto", alignSelf: "start"}}
+                                                    >
+                                                        <button
+                                                            type="button"
+                                                            className="button button_icon button_border"
+                                                            title={itemCollapsed ? "Развернуть пункт" : "Свернуть пункт"}
+                                                            onClick={() => toggleItem(c, s)}
+                                                        >
+                                                            {itemCollapsed ? <FiChevronRight size={16}/> :
+                                                                <FiChevronDown size={16}/>}
+                                                        </button>
+
+                                                        <Toggle
+                                                            title={"Отображать пункт"}
+                                                            checked={sub.visible !== false}
+                                                            onChange={() =>
+                                                                updateItem(n => {
+                                                                    const cur = n.columns[c].items[s].visible;
+                                                                    n.columns[c].items[s].visible = cur === false ? true : !cur;
+                                                                })
+                                                            }
+                                                        />
+
+                                                        <button
+                                                            type="button"
+                                                            className="button button_icon button_reject"
+                                                            title="Удалить пункт"
+                                                            onClick={() => removeCategory(c, s)}
+                                                        >
+                                                            <FiTrash size={16}/>
+                                                        </button>
+                                                    </div>
+                                                </div>
+
+                                                {!itemCollapsed && (
+                                                    <>
+                                                        <div className="menu-modal__sub-item-row">
+                                                            <div className="menu-modal__sub-item-row_fixed"
+                                                                 style={{alignSelf: "end"}}>
+                                                                <LabeledSelect
+                                                                    label="Бейдж"
+                                                                    value={sub.badgeId ?? ""}
+                                                                    onChange={(v) =>
+                                                                        updateItem(n => {
+                                                                            n.columns[c].items[s].badgeId = v || "";
+                                                                        })
+                                                                    }
+                                                                    options={badgeOptions}
+                                                                />
+                                                            </div>
+                                                            <div className="menu-modal__sub-item-row">
+                                                                <LabeledInput
+                                                                    label="Ссылка"
+                                                                    placeholder={"/category"}
+                                                                    value={sub.href}
+                                                                    onChange={(v) =>
+                                                                        updateItem(n => {
+                                                                            n.columns[c].items[s].href = v;
+                                                                        })
+                                                                    }
+                                                                    error={fieldErrors[`columns.${c}.items.${s}.href`] ?? ""}
+                                                                />
+                                                            </div>
+                                                        </div>
+                                                    </>
+                                                )}
+                                            </div>
+                                        );
+                                    })}
+
+                                    <button
+                                        type="button"
+                                        className="button button_border"
+                                        onClick={() => addCategory(c)}
+                                    >
+                                        <FiPlus style={{marginRight: 8}} size={16}/>
+                                        Добавить категорию
+                                    </button>
+                                </>
+                            )}
                         </div>
-
-                        {col.items.map((sub, s) => {
-                            const labelErrors = extractErrors(`columns.${c}.items.${s}.label`);
-
-                            return (
-                                <div key={s} className="menu-modal__sub-item menu-modal__sub-item_col">
-                                    <div className="menu-modal__sub-item-row menu-modal__sub-item-row_between">
-                                        <Checkbox
-                                            label={`Отображать пункт ${c + 1}.${s + 1}`}
-                                            checked={sub.visible !== false}
-                                            onChange={() =>
-                                                updateItem(n => {
-                                                    const cur = n.columns[c].items[s].visible;
-                                                    n.columns[c].items[s].visible = cur === false ? true : !cur;
-                                                })
-                                            }
-                                        />
-
-                                        <button
-                                            type="button"
-                                            className="button button_icon button_reject"
-                                            title="Удалить пункт"
-                                            onClick={() => removeCategory(c, s)}
-                                        >
-                                            <FiTrash size={16}/>
-                                        </button>
-                                    </div>
-
-                                    <div className="menu-modal__sub-item-row">
-                                        <div className="menu-modal__sub-item-row_grow">
-                                            <MultilangInput
-                                                label={`Пункт ${c + 1}.${s + 1}`}
-                                                languages={languages}
-                                                valueMap={translationMaps[sub.labelKey] || {}}
-                                                errors={labelErrors}
-                                                onChange={(next) => updateTranslation(sub.labelKey, next)}
-                                            />
-                                        </div>
-
-                                        <div className="menu-modal__sub-item-row_fixed">
-                                            <LabeledSelect
-                                                label="Бейдж"
-                                                value={sub.badgeId ?? ""}
-                                                onChange={(v) =>
-                                                    updateItem(n => {
-                                                        n.columns[c].items[s].badgeId = v || "";
-                                                    })
-                                                }
-                                                options={badgeOptions}
-                                            />
-                                        </div>
-                                    </div>
-
-                                    <div className="menu-modal__sub-item-row">
-                                        <LabeledInput
-                                            label="Ссылка"
-                                            value={sub.href}
-                                            onChange={(v) =>
-                                                updateItem(n => {
-                                                    n.columns[c].items[s].href = v;
-                                                })
-                                            }
-                                            error={fieldErrors[`columns.${c}.items.${s}.href`] ?? ""}
-                                        />
-                                    </div>
-                                </div>
-                            );
-                        })}
-
-                        <button
-                            type="button"
-                            className="button button_border"
-                            onClick={() => addCategory(c)}
-                        >
-                            <FiPlus style={{marginRight: 8}}/>
-                            Добавить категорию
-                        </button>
                     </div>
-                </div>
-            ))}
+                )
+                    ;
+            })}
 
             <button type="button" className="button button_secondary" onClick={addList}>
-                <FiPlus style={{marginRight: 8}}/>
+                <FiPlus style={{marginRight: 8}} size={16}/>
                 Добавить список
             </button>
 

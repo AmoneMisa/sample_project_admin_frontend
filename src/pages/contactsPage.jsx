@@ -19,6 +19,7 @@ export default function ContactsPage() {
     const [contacts, setContacts] = useState([]);
     const [errors, setErrors] = useState({});
     const [loading, setLoading] = useState(true);
+    const [initialLoad, setInitialLoad] = useState(true);
 
     const SOCIAL_TYPES = [
         "facebook", "instagram", "telegram", "whatsapp",
@@ -71,6 +72,23 @@ export default function ContactsPage() {
         };
     }
 
+    function normalizeContact(c) {
+        const fixed = { ...c };
+        if (!fixed.labelKey) {
+            fixed.labelKey = makeLabelKey(fixed.type, fixed.id);
+        }
+
+        if ("label" in fixed) {
+            delete fixed.label;
+        }
+
+        if (fixed.type === "social" && !fixed.socialType) {
+            fixed.socialType = "instagram";
+        }
+
+        return fixed;
+    }
+
     async function loadContacts() {
         return apiFetch(`${API_URL}/contacts?all=true`, {
             headers: {Authorization: `Bearer ${accessToken}`}
@@ -87,16 +105,15 @@ export default function ContactsPage() {
             await loadLanguages();
             let loaded = await loadContacts();
 
-            if (!loaded.some(c => c.type === "phone")) loaded.push(createContact("phone"));
-            if (!loaded.some(c => c.type === "email")) loaded.push(createContact("email"));
-            if (!loaded.some(c => c.type === "address")) loaded.push(createContact("address"));
-            if (!loaded.some(c => c.type === "other")) loaded.push(createFooterInfo());
+            if (initialLoad) {
+                if (!loaded.some(c => c.type === "phone")) loaded.push(createContact("phone"));
+                if (!loaded.some(c => c.type === "email")) loaded.push(createContact("email"));
+                if (!loaded.some(c => c.type === "address")) loaded.push(createContact("address"));
+                if (!loaded.some(c => c.type === "other")) loaded.push(createFooterInfo());
+                setInitialLoad(false);
+            }
 
-            loaded = loaded.map(c => ({
-                ...c,
-                labelKey: c.labelKey || makeLabelKey(c.type, c.id)
-            }));
-
+            loaded = loaded.map(normalizeContact);
             setContacts(loaded);
 
             const next = {};
@@ -145,8 +162,7 @@ export default function ContactsPage() {
         const data = await apiFetch(url, {
             method,
             headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${accessToken}`
+                "Content-Type": "application/json"
             },
             body: JSON.stringify(contact)
         });
@@ -190,6 +206,9 @@ export default function ContactsPage() {
         }
 
         await saveContact(contact);
+        const updated = await loadContacts();
+        setContacts(updated);
+
         showToast("Контакт сохранён");
     }
 

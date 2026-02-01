@@ -3,11 +3,11 @@ import CustomTable from "../components/customElems/CustomTable";
 import {useAuth} from "../hooks/authContext";
 import {useToast} from "../components/layout/ToastContext";
 import MenuItemDialog from "../components/modals/MenuItemDialog";
-import Checkbox from "../components/controls/Checkbox";
 import {FiEdit, FiTrash} from "react-icons/fi";
 import {useTranslations} from "../hooks/useTranslations";
 import apiFetch from "../utils/apiFetch";
 import {v4 as uuid} from "uuid";
+import Toggle from "../components/controls/Toggle";
 
 export default function HeaderMenu() {
     const API_URL = process.env.REACT_APP_API_URL || "/api";
@@ -31,9 +31,7 @@ export default function HeaderMenu() {
         (async () => {
             await loadAllTranslations();
 
-            const data = await apiFetch(`${API_URL}/header-menu`, {
-                headers: {Authorization: `Bearer ${accessToken}`}
-            });
+            const data = await apiFetch(`${API_URL}/header-menu`);
 
             const normalized = data.map((item, index) => {
                 const id = item.id ?? index + 1;
@@ -54,8 +52,7 @@ export default function HeaderMenu() {
         await apiFetch(`${API_URL}/header-menu`, {
             method: "PATCH",
             headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${accessToken}`
+                "Content-Type": "application/json"
             },
             body: JSON.stringify({json: next})
         });
@@ -104,31 +101,33 @@ export default function HeaderMenu() {
         let next;
 
         if (!isEdit) {
-            // Создание нового пункта
             next = [...menu, item];
         } else {
             next = menu.map(it => (it.id === item.id ? item : it));
         }
 
         await saveMenu(next);
+        await loadAllTranslations();
     }
 
     const columns = [
-        {key: "type", title: "Тип", width: "120px"},
-
         {
-            key: "visible",
-            title: "Отображать",
-            width: "120px",
+            key: "type",
+            title: "Тип",
+            width: "160px",
             render: (_, item) => (
-                <Checkbox
-                    checked={item.visible !== false}
-                    onChange={() => canEdit && toggleVisible(item.id)}
-                    disabled={!canEdit}
-                />
+                <div style={{display: "flex", alignItems: "center", gap: 8}}>
+                    <span>{item.type}</span>
+
+                    <Toggle
+                        checked={item.visible !== false}
+                        onChange={() => canEdit && toggleVisible(item.id)}
+                        disabled={!canEdit}
+                        title="Показать / скрыть"
+                    />
+                </div>
             )
         },
-
         {
             key: "labelKey",
             title: "Название (ru)",
@@ -140,7 +139,6 @@ export default function HeaderMenu() {
                 return (
                     <a
                         href={`/admin/?key=${value}`}
-                        className="table__cell-text"
                         style={{color: "var(--color-link)"}}
                     >
                         {ru}
@@ -148,7 +146,6 @@ export default function HeaderMenu() {
                 );
             }
         },
-
         {
             key: "order",
             title: "Порядок",
@@ -175,7 +172,6 @@ export default function HeaderMenu() {
                 </div>
             )
         },
-
         {
             key: "actions",
             title: "Действия",
@@ -183,21 +179,21 @@ export default function HeaderMenu() {
             render: (_, item) =>
                 canEdit && (
                     <span style={{display: "flex", gap: 8}}>
-                        <button
-                            className="button button_icon"
-                            onClick={() => setEditingItem(item)}
-                            title="Редактировать пункт"
-                        >
-                            <FiEdit size={16}/>
-                        </button>
-                        <button
-                            className="button button_icon button_reject"
-                            onClick={() => deleteItem(item.id)}
-                            title="Удалить пункт"
-                        >
-                            <FiTrash size={16}/>
-                        </button>
-                    </span>
+                    <button
+                        className="button button_icon"
+                        onClick={() => setEditingItem(item)}
+                        title="Редактировать пункт"
+                    >
+                        <FiEdit size={16}/>
+                    </button>
+                    <button
+                        className="button button_icon button_reject"
+                        onClick={() => deleteItem(item.id)}
+                        title="Удалить пункт"
+                    >
+                        <FiTrash size={16}/>
+                    </button>
+                </span>
                 )
         }
     ];

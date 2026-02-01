@@ -1,13 +1,20 @@
-import {useEffect, useState} from "react";
-import {useToast} from "../layout/ToastContext";
-import {useTranslations} from "../../hooks/useTranslations";
+import { useEffect, useState } from "react";
+import { useToast } from "../layout/ToastContext";
+import { useTranslations } from "../../hooks/useTranslations";
 import LabeledSelect from "../controls/LabeledSelect";
 import MultilangInput from "../controls/MultilangInput";
 import Modal from "./Modal";
 import MenuItemSimple from "../menuCreateComponents/MenuItemSimple";
 import MenuItemDropdown from "../menuCreateComponents/MenuItemDropdown";
 import MenuItemDropdownMega from "../menuCreateComponents/MenuItemDropdownMega";
-export default function MenuItemDialog({ initialItem, onSave, onClose, title }) {
+
+export default function MenuItemDialog({
+                                           initialItem,
+                                           onSave,
+                                           onClose,
+                                           title,
+                                           badges = [] // <-- добавь сюда список бейджей из родителя [{id,label}, ...]
+                                       }) {
     const { showToast } = useToast();
 
     const {
@@ -23,17 +30,10 @@ export default function MenuItemDialog({ initialItem, onSave, onClose, title }) 
     const [fieldErrors, setFieldErrors] = useState({});
     const [error, setError] = useState("");
 
-    const makeLabelKey = (id, type) =>
-        `headerMenu.${id}.${type}.label`;
-
-    const makeSimpleItemKey = (id, i) =>
-        `headerMenu.${id}.dropdown-simple.item.${i}.title`;
-
-    const makeColumnTitleKey = (id, c) =>
-        `headerMenu.${id}.dropdown-mega.column.${c}.title`;
-
-    const makeMegaItemKey = (id, c, s) =>
-        `headerMenu.${id}.dropdown-mega.column.${c}.item.${s}.title`;
+    const makeLabelKey = (id, type) => `headerMenu.${id}.${type}.label`;
+    const makeSimpleItemKey = (id, i) => `headerMenu.${id}.dropdown-simple.item.${i}.title`;
+    const makeColumnTitleKey = (id, c) => `headerMenu.${id}.dropdown-mega.column.${c}.title`;
+    const makeMegaItemKey = (id, c, s) => `headerMenu.${id}.dropdown-mega.column.${c}.item.${s}.title`;
 
     const [item, setItem] = useState(() => {
         if (!initialItem) {
@@ -43,11 +43,28 @@ export default function MenuItemDialog({ initialItem, onSave, onClose, title }) 
                 visible: true,
                 href: "",
                 labelKey: null,
-                badgeKey: null,
-                showBadge: false
+                badgeId: "" // <-- новое
             };
         }
-        return structuredClone(initialItem);
+
+        // миграция старых данных на лету (на всякий)
+        const next = structuredClone(initialItem);
+        if (next.badgeId == null) next.badgeId = "";
+        delete next.badgeKey;
+        delete next.showBadge;
+
+        // в items/mega items тоже мигрируем
+        const walk = (node) => {
+            if (!node) return;
+            if (node.badgeId == null) node.badgeId = "";
+            delete node.badgeKey;
+            delete node.showBadge;
+            if (node.items) node.items.forEach(walk);
+            if (node.columns) node.columns.forEach(col => col.items.forEach(walk));
+        };
+        walk(next);
+
+        return next;
     });
 
     const [localMaps, setLocalMaps] = useState({});
@@ -68,7 +85,6 @@ export default function MenuItemDialog({ initialItem, onSave, onClose, title }) 
         const walk = (node) => {
             if (!node) return;
             if (node.labelKey) collect(node.labelKey);
-            if (node.badgeKey) collect(node.badgeKey);
             if (node.items) node.items.forEach(walk);
             if (node.columns) {
                 node.columns.forEach(col => {
@@ -138,7 +154,7 @@ export default function MenuItemDialog({ initialItem, onSave, onClose, title }) 
         if (item.type === "dropdown-mega") {
             item.columns.forEach((col, c) => {
                 col.items.forEach((sub, s) =>
-                    validateHref(["columns", c, "items", s, "href"])
+                    validateHref(["columns", c, "items", s, "href"], sub.href)
                 );
             });
             if (item.image?.src) validateHref(["image", "src"], item.image.src);
@@ -171,7 +187,6 @@ export default function MenuItemDialog({ initialItem, onSave, onClose, title }) 
         const walk = (node) => {
             if (!node) return;
             if (node.labelKey) add(node.labelKey);
-            if (node.badgeKey) add(node.badgeKey);
             if (node.items) node.items.forEach(walk);
             if (node.columns) {
                 node.columns.forEach(col => {
@@ -214,7 +229,7 @@ export default function MenuItemDialog({ initialItem, onSave, onClose, title }) 
             <h2 className={"modal__header"}>{title}</h2>
 
             {error && (
-                <div style={{color: "red", marginBottom: 12}}>
+                <div style={{ color: "red", marginBottom: 12 }}>
                     {error}
                 </div>
             )}
@@ -222,56 +237,63 @@ export default function MenuItemDialog({ initialItem, onSave, onClose, title }) 
             <LabeledSelect
                 label="Тип"
                 value={item.type}
-                onChange={(v) => updateItem(n => {
-                    const id = n.id;
-                    if (!id) return; // ждём id от родителя
+                onChange={(v) =>
+                    updateItem(n => {
+                        const id = n.id;
+                        if (!id) return;
 
-                    if (v === "simple") {
-                        n.type = "simple";
-                        n.labelKey = makeLabelKey(id, "simple");
-                        n.items = undefined;
-                        n.columns = undefined;
-                        n.image = undefined;
-                    }
+                        if (v === "simple") {
+                            n.type = "simple";
+                            n.labelKey = makeLabelKey(id, "simple");
+                            n.badgeId = n.badgeId ?? "";
+                            n.items = undefined;
+                            n.columns = undefined;
+                            n.image = undefined;
+                        }
 
-                    if (v === "dropdown-simple") {
-                        n.type = "dropdown-simple";
-                        n.labelKey = makeLabelKey(id, "dropdown-simple");
-                        n.items = n.items?.length ? n.items : [{
-                            labelKey: makeSimpleItemKey(id, 0),
-                            href: "",
-                            visible: true,
-                            badgeKey: null,
-                            showBadge: false
-                        }];
-                        n.columns = undefined;
-                        n.image = undefined;
-                    }
+                        if (v === "dropdown-simple") {
+                            n.type = "dropdown-simple";
+                            n.labelKey = makeLabelKey(id, "dropdown-simple");
+                            n.badgeId = n.badgeId ?? "";
+                            n.items = n.items?.length
+                                ? n.items
+                                : [{
+                                    labelKey: makeSimpleItemKey(id, 0),
+                                    href: "",
+                                    visible: true,
+                                    badgeId: "" // <-- новое
+                                }];
+                            n.columns = undefined;
+                            n.image = undefined;
+                        }
 
-                    if (v === "dropdown-mega") {
-                        n.type = "dropdown-mega";
-                        n.labelKey = makeLabelKey(id, "dropdown-mega");
-                        n.columns = n.columns?.length ? n.columns : [{
-                            titleKey: makeColumnTitleKey(id, 0),
-                            items: [{
-                                labelKey: makeMegaItemKey(id, 0, 0),
-                                href: "",
-                                visible: true,
-                                badgeKey: null,
-                                showBadge: false
-                            }]
-                        }];
-                        n.items = undefined;
-                        n.image = {
-                            src: n.image?.src || "",
-                            position: n.image?.position || "right"
-                        };
-                    }
-                })}
+                        if (v === "dropdown-mega") {
+                            n.type = "dropdown-mega";
+                            n.labelKey = makeLabelKey(id, "dropdown-mega");
+                            n.badgeId = n.badgeId ?? "";
+                            n.columns = n.columns?.length
+                                ? n.columns
+                                : [{
+                                    titleKey: makeColumnTitleKey(id, 0),
+                                    items: [{
+                                        labelKey: makeMegaItemKey(id, 0, 0),
+                                        href: "",
+                                        visible: true,
+                                        badgeId: "" // <-- новое
+                                    }]
+                                }];
+                            n.items = undefined;
+                            n.image = {
+                                src: n.image?.src || "",
+                                position: n.image?.position || "right"
+                            };
+                        }
+                    })
+                }
                 options={[
-                    {value: "simple", label: "Простой"},
-                    {value: "dropdown-simple", label: "Выпадающий простой"},
-                    {value: "dropdown-mega", label: "Мега-меню"}
+                    { value: "simple", label: "Простой" },
+                    { value: "dropdown-simple", label: "Выпадающий простой" },
+                    { value: "dropdown-mega", label: "Мега-меню" }
                 ]}
             />
 
@@ -290,6 +312,7 @@ export default function MenuItemDialog({ initialItem, onSave, onClose, title }) 
                     updateTranslation={updateTranslation}
                     languages={languages.map(l => l.code)}
                     fieldErrors={fieldErrors}
+                    badges={badges}
                 />
             )}
 
@@ -301,6 +324,7 @@ export default function MenuItemDialog({ initialItem, onSave, onClose, title }) 
                     updateTranslation={updateTranslation}
                     languages={languages.map(l => l.code)}
                     fieldErrors={fieldErrors}
+                    badges={badges}
                 />
             )}
 
@@ -312,6 +336,7 @@ export default function MenuItemDialog({ initialItem, onSave, onClose, title }) 
                     updateTranslation={updateTranslation}
                     languages={languages.map(l => l.code)}
                     fieldErrors={fieldErrors}
+                    badges={badges}
                 />
             )}
 

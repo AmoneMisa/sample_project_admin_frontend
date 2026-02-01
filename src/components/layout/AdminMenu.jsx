@@ -54,6 +54,7 @@ export default function AdminMenu() {
 
     const rootRef = useRef(null);
     const [collapsed, setCollapsed] = useState(false);
+    const [hydrated, setHydrated] = useState(false);
     const [pos, setPos] = useState(() => {
         return {x: 16, y: Math.max(16, Math.round(window.innerHeight * 0.25))};
     });
@@ -70,36 +71,47 @@ export default function AdminMenu() {
     useEffect(() => {
         try {
             const saved = JSON.parse(localStorage.getItem(LS_KEY) || "{}");
+
             if (typeof saved.collapsed === "boolean") setCollapsed(saved.collapsed);
+
             if (saved.pos && typeof saved.pos.x === "number" && typeof saved.pos.y === "number") {
                 setPos(saved.pos);
             }
-        } catch {
+        } catch (e) {
+            console.error("Trying to parse localStorage:", e);
+        } finally {
+            setHydrated(true);
         }
     }, []);
 
     useEffect(() => {
+        if (!hydrated) return;
+
         try {
             localStorage.setItem(LS_KEY, JSON.stringify({collapsed, pos}));
-        } catch {
+        } catch (e){
+            console.error("Trying to parse localStorage:", e);
         }
-    }, [collapsed, pos]);
+    }, [hydrated, collapsed, pos]);
 
     useEffect(() => {
         const fix = () => {
             const el = rootRef.current;
             if (!el) return;
+
             const rect = el.getBoundingClientRect();
-            const next = clampPos(pos, {w: rect.width, h: rect.height}, 12);
-            if (next.x !== pos.x || next.y !== pos.y) setPos(next);
+
+            setPos(prev => {
+                const next = clampPos(prev, {w: rect.width, h: rect.height}, 12);
+                if (next.x === prev.x && next.y === prev.y) return prev;
+                return next;
+            });
         };
 
         fix();
-
         window.addEventListener("resize", fix);
         return () => window.removeEventListener("resize", fix);
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [collapsed]); // when collapsed size changes -> re-clamp
+    }, [collapsed]);
 
     async function handleLogout() {
         await logout();
@@ -107,6 +119,7 @@ export default function AdminMenu() {
     }
 
     const onDragStart = (e) => {
+        if (e.target.closest("[data-nodrag='true']")) return;
         if (e.button != null && e.button !== 0) return;
 
         const el = rootRef.current;
@@ -125,6 +138,7 @@ export default function AdminMenu() {
 
         e.preventDefault();
     };
+
 
     const onDragMove = (e) => {
         if (!dragRef.current.dragging) return;
@@ -168,7 +182,9 @@ export default function AdminMenu() {
                 <span className="admin-menu__handle-dots" aria-hidden="true"/>
                 <button
                     type="button"
+                    data-nodrag="true"
                     className="admin-menu__collapse-button"
+                    onPointerDown={(e) => e.stopPropagation()}
                     onClick={(e) => {
                         e.stopPropagation();
                         setCollapsed(v => !v);

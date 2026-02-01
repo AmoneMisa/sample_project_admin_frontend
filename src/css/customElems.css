@@ -51,6 +51,7 @@
 .admin-menu_collapsed {
     width: auto;
     border-radius: 999px;
+    max-width: 100px;
 }
 
 .admin-menu__handle {

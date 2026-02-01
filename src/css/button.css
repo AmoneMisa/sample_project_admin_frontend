@@ -125,3 +125,70 @@ button:disabled,
 .button_ghost:hover {
     background: var(--color-dark);
 }
+
+.fab {
+    position: fixed;
+    right: 20px;
+    z-index: 999;
+    width: 44px;
+    height: 44px;
+    border-radius: 14px;
+    display: grid;
+    place-items: center;
+    background: radial-gradient(120% 120% at 20% 0%,
+    rgba(128, 90, 245, 0.18) 0%,
+    rgba(128, 90, 245, 0) 55%),
+    var(--secondary-bg-gradient);
+    border: 1px solid var(--ui-border);
+    color: var(--color-link);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+    backdrop-filter: blur(10px);
+    cursor: pointer;
+    transition: transform .18s ease,
+    filter .18s ease,
+    box-shadow .18s ease,
+    background .18s ease;
+}
+
+.fab:hover {
+    filter: brightness(115%);
+    transform: translateY(-2px);
+
+    box-shadow: 0 10px 26px rgba(0, 0, 0, 0.45),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+}
+
+.fab:active {
+    transform: translateY(0);
+    filter: brightness(95%);
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.02);
+}
+
+.fab svg {
+    width: 18px;
+    height: 18px;
+    stroke-width: 2.2;
+}
+
+.fab_contact {
+    bottom: 80px;
+}
+
+.fab_scroll {
+    bottom: 20px;
+}
+
+@media (max-width: 640px) {
+    .fab {
+        width: 40px;
+        height: 40px;
+        border-radius: 12px;
+    }
+
+    .fab svg {
+        width: 16px;
+        height: 16px;
+    }
+}

@@ -15,17 +15,17 @@ import ContactsPage from "./pages/contactsPage";
 import FooterMenuPage from "./pages/footerMenuPage";
 import FooterPage from "./pages/footerPage";
 import OfferCardsPage from "./pages/offerCardsPage";
+import ScrollTopButton from "./components/controls/ScrollTopButton";
+import ContactMeButton from "./components/controls/ContactMeButton";
 
 export default function App() {
     return (
         <AuthProvider>
-
             <BrowserRouter basename="/admin">
                 <ToastProvider>
                     <Routes>
                         <Route path="/login" element={<LoginPage/>}/>
                         <Route path="/register" element={<RegisterPage/>}/>
-
                         <Route
                             path="/"
                             element={
@@ -61,9 +61,10 @@ export default function App() {
                             />
                         </Route>
                     </Routes>
+                    <ScrollTopButton />
+                    <ContactMeButton />
                 </ToastProvider>
             </BrowserRouter>
         </AuthProvider>
-
     );
 }

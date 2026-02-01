@@ -1,9 +1,10 @@
-import { useState, useMemo } from "react";
+import {useState, useMemo} from "react";
 import Modal from "./Modal";
 import LabeledInput from "../controls/LabeledInput";
 import Toggle from "../controls/Toggle";
+import LabeledNumberInput from "../controls/LabeledNumberInput";
 
-export default function TestimonialDialog({ title, initial, onSave, onClose }) {
+export default function TestimonialDialog({title, initial, onSave, onClose}) {
     const [form, setForm] = useState({
         name: initial?.name || "",
         role: initial?.role || "",
@@ -17,8 +18,8 @@ export default function TestimonialDialog({ title, initial, onSave, onClose }) {
     const [errors, setErrors] = useState({});
 
     const updateField = (field, value) => {
-        setForm((prev) => ({ ...prev, [field]: value }));
-        setErrors((prev) => ({ ...prev, [field]: "" }));
+        setForm((prev) => ({...prev, [field]: value}));
+        setErrors((prev) => ({...prev, [field]: ""}));
     };
 
     const isValidUrl = (str) => {
@@ -107,7 +108,7 @@ export default function TestimonialDialog({ title, initial, onSave, onClose }) {
                                 (errors.quote ? " field-holder__input_error" : "")
                             }
                             placeholder="Напишите отзыв…"
-                            style={{ minHeight: 110 }}
+                            style={{minHeight: 110}}
                             value={form.quote}
                             onChange={(e) => updateField("quote", e.target.value)}
                         />
@@ -116,16 +117,13 @@ export default function TestimonialDialog({ title, initial, onSave, onClose }) {
                             <div className="field-holder__error">{errors.quote}</div>
                         )}
                     </label>
-
                 </div>
             </div>
 
-            {/* Рейтинг */}
             <div className="menu-modal__row">
                 <div className="menu-modal__row-item">
-                    <LabeledInput
+                    <LabeledNumberInput
                         label="Рейтинг"
-                        type="number"
                         min={1}
                         max={5}
                         placeholder="1–5"
@@ -136,9 +134,7 @@ export default function TestimonialDialog({ title, initial, onSave, onClose }) {
                 </div>
             </div>
             <div className="menu-modal__row">
-
                 <div className="menu-modal__row-item">
-
                     <LabeledInput
                         label="Аватар URL"
                         placeholder="https://..."
@@ -146,17 +142,13 @@ export default function TestimonialDialog({ title, initial, onSave, onClose }) {
                         onChange={(v) => updateField("avatar", v)}
                         error={errors.avatar}
                     />
-
                     {avatarOk && (
                         <div className="menu-modal__preview">
-                            <img src={form.avatar} alt="" />
+                            <img src={form.avatar} alt=""/>
                         </div>
                     )}
-
                 </div>
-
                 <div className="menu-modal__row-item">
-
                     <LabeledInput
                         label="Лого URL"
                         placeholder="https://..."
@@ -164,22 +156,17 @@ export default function TestimonialDialog({ title, initial, onSave, onClose }) {
                         onChange={(v) => updateField("logo", v)}
                         error={errors.logo}
                     />
-
                     {logoOk && (
                         <div className="menu-modal__preview menu-modal__preview_logo">
-                            <img src={form.logo} alt="" />
+                            <img src={form.logo} alt=""/>
                         </div>
                     )}
-
                 </div>
-
             </div>
-
             <div className="modal__actions">
                 <button className="button button_accept" onClick={handleSave}>
                     Сохранить
                 </button>
-
                 <button className="button button_reject" onClick={onClose}>
                     Отмена
                 </button>

@@ -549,3 +549,40 @@ input[type="number"]:focus {
 .toggle_disabled .toggle__track {
     filter: brightness(70%);
 }
+
+.number-input {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.number-input input {
+    text-align: center;
+}
+
+.number-input__btn {
+    width: 32px;
+    height: 32px;
+
+    border-radius: 10px;
+    border: 1px solid var(--ui-border);
+
+    background: var(--color-dark);
+    color: var(--color-link);
+
+    display: grid;
+    place-items: center;
+
+    cursor: pointer;
+
+    transition: all .15s ease;
+}
+
+.number-input__btn:hover {
+    border-color: var(--color-primary);
+    background: var(--color-primary-alt);
+}
+
+.number-input__btn:active {
+    transform: translateY(1px);
+}

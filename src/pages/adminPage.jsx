@@ -7,6 +7,7 @@ import LabeledInput from "../components/controls/LabeledInput";
 import {useTranslations} from "../hooks/useTranslations";
 import apiFetch from "../utils/apiFetch";
 import Toggle from "../components/controls/Toggle";
+import {FiChevronDown, FiChevronRight} from "react-icons/fi";
 
 const ISO_LANGUAGES = {
     en: "English",
@@ -38,7 +39,7 @@ const ISO_LANGUAGES = {
 
 export default function AdminPage() {
     const API_URL = process.env.REACT_APP_API_URL || "/api";
-    const {user } = useAuth();
+    const {user} = useAuth();
     const {showToast} = useToast();
 
     const {
@@ -54,8 +55,18 @@ export default function AdminPage() {
     const [newName, setNewName] = useState("");
     const [suggestions, setSuggestions] = useState([]);
 
+    const [collapsed, setCollapsed] = useState(() => ({
+        upload: false,
+        cleanup: false,
+        languages: false,
+        addLang: false
+    }));
+
+    const toggleSection = (key) =>
+        setCollapsed(prev => ({...prev, [key]: !prev[key]}));
+
     async function cleanup(mode) {
-        const params = new URLSearchParams({ translations: 1 });
+        const params = new URLSearchParams({translations: 1});
         if (mode) params.append("mode", mode);
 
         const data = await apiFetch(`${API_URL}/cleanup?${params.toString()}`, {
@@ -83,8 +94,7 @@ export default function AdminPage() {
         } else {
             const candidates = Object.keys(ISO_LANGUAGES)
                 .filter(c =>
-                    c.startsWith(code) ||
-                    ISO_LANGUAGES[c].toLowerCase().includes(code)
+                    c.startsWith(code) || ISO_LANGUAGES[c].toLowerCase().includes(code)
                 )
                 .slice(0, 3);
 
@@ -94,7 +104,7 @@ export default function AdminPage() {
     }, [newCode]);
 
     async function toggleLanguage(code, enabled) {
-        await updateLanguage(code, { isEnabled: enabled });
+        await updateLanguage(code, {isEnabled: enabled});
         showToast(`Язык ${code} ${enabled ? "включён" : "выключен"}`);
     }
 
@@ -127,125 +137,157 @@ export default function AdminPage() {
         await loadLanguages();
     }
 
+    const canInit = user?.role === "admin" && languages.length === 0;
+
     if (!user || !["admin", "moderator"].includes(user.role)) {
         return <div>Нет доступа</div>;
     }
 
     return (
-        <div className="page" style={{padding: 24}}>
-            <div className="page__header">
-                <h1>Админка</h1>
-                <div className={"page__block"}>
-                    <h2>Загрузка переводов</h2>
-                    <LabeledFileInput
-                        label="Загрузить файлы переводов"
-                        multiple
-                        accept="application/json"
-                        onChange={uploadFiles}
-                    />
+        <div className="page admin-page">
+            <div className="admin-page__header">
+                <h1 className="page__header">Админка</h1>
+            </div>
+            <div className="page__topbar page__topbar_wrap">
+                <div className="page__topbar-col">
+                    <div className="page__topbar-title">Загрузка переводов</div>
+                    <div className="page__row page__row_wrap">
+                        <LabeledFileInput
+                            label="Загрузить файлы переводов"
+                            multiple
+                            accept="application/json"
+                            onChange={uploadFiles}
+                        />
+                        {canInit && (
+                            <button
+                                className="button button_accept"
+                                onClick={handleInitLanguages}
+                            >
+                                Инициализировать языки
+                            </button>
+                        )}
+                    </div>
+                </div>
 
-                    {user.role === "admin" && languages.length === 0 && (
-                        <button
-                            className="button button_accept"
-                            onClick={handleInitLanguages}
-                            style={{marginTop: 12, maxWidth: "300px"}}
-                        >
-                            Инициализировать языки
+                <div className="page__topbar-col">
+                    <div className="page__topbar-title">Очистка переводов</div>
+                    <div className="page__row page__row_wrap">
+                        <button className="button button_border" onClick={() => cleanup()}>
+                            Очистить битые ключи
                         </button>
-                    )}
+                        <button className="button button_border" onClick={() => cleanup("headerMenu")}>
+                            Очистить headerMenu
+                        </button>
+                        <button className="button button_border" onClick={() => cleanup("contacts")}>
+                            Очистить contacts
+                        </button>
+                        <button className="button button_border" onClick={() => cleanup("featureCard")}>
+                            Очистить featureCard
+                        </button>
+                    </div>
                 </div>
             </div>
-            <div className={"page__block"}>
 
-                <h2>Очистка переводов</h2>
+            {/* Languages section */}
+            <div className="admin-page__card">
+                <button
+                    type="button"
+                    className="admin-page__card-head"
+                    onClick={() => toggleSection("languages")}
+                >
+                    <span className="admin-page__card-title gradient-text">Языки</span>
+                    <span className="admin-page__chev" aria-hidden="true">
+            {collapsed.languages ? <FiChevronRight size={18}/> : <FiChevronDown size={18}/>}
+          </span>
+                </button>
 
-                <div style={{display: "flex", gap: 12, flexWrap: "wrap"}}>
-                    <button className="button button_border" onClick={() => cleanup()}>
-                        Очистить битые ключи
-                    </button>
-
-                    <button className="button button_border" onClick={() => cleanup("headerMenu")}>
-                        Очистить ключи headerMenu
-                    </button>
-
-                    <button className="button button_border" onClick={() => cleanup("contacts")}>
-                        Очистить ключи contacts
-                    </button>
-
-                    <button className="button button_border" onClick={() => cleanup("featureCard")}>
-                        Очистить ключи featureCard
-                    </button>
-                </div>
+                {!collapsed.languages && (
+                    <div className="admin-page__card-body">
+                        <div className="admin-page__table-wrap">
+                            <CustomTable
+                                columns={[
+                                    {
+                                        key: "code",
+                                        title: "Код",
+                                        render: (_, row) => (
+                                            <div className="admin-page__lang-cell">
+                                                <span className="admin-page__lang-code">{row.code}</span>
+                                                <Toggle
+                                                    checked={row.isEnabled}
+                                                    onChange={(e) => toggleLanguage(row.code, e.target.checked)}
+                                                    title="Выключить / включить язык"
+                                                />
+                                            </div>
+                                        )
+                                    },
+                                    {key: "name", title: "Название"}
+                                ]}
+                                data={languages}
+                            />
+                        </div>
+                    </div>
+                )}
             </div>
-            <h2>Языки</h2>
-            <CustomTable
-                columns={[
-                    {
-                        key: "code",
-                        title: "Код",
-                        render: (_, row) => (
-                            <div style={{display: "flex", gap: 8}}>
-                                <span>{row.code}</span>
-                                <Toggle
-                                    checked={row.isEnabled}
-                                    onChange={(e) => toggleLanguage(row.code, e.target.checked)}
-                                    title="Выключить / включить язык"
+
+            {/* Add language */}
+            {user.role === "admin" && (
+                <div className="admin-page__card">
+                    <button
+                        type="button"
+                        className="admin-page__card-head"
+                        onClick={() => toggleSection("addLang")}
+                    >
+                        <span className="admin-page__card-title gradient-text">Добавить язык</span>
+                        <span className="admin-page__chev" aria-hidden="true">
+              {collapsed.addLang ? <FiChevronRight size={18}/> : <FiChevronDown size={18}/>}
+            </span>
+                    </button>
+
+                    {!collapsed.addLang && (
+                        <div className="admin-page__card-body">
+                            <div className="admin-page__grid-2">
+                                <LabeledInput
+                                    label="Код"
+                                    value={newCode}
+                                    onChange={setNewCode}
+                                    placeholder="en"
+                                />
+                                <LabeledInput
+                                    label="Название"
+                                    value={newName}
+                                    onChange={setNewName}
+                                    placeholder="English"
                                 />
                             </div>
-                        )
-                    },
-                    {key: "name", title: "Название"},
-                ]}
-                data={languages}
-            />
 
-            {user.role === "admin" && (
-                <div style={{marginTop: 36}}>
-                    <h3 style={{marginBottom: 20}}>Добавить язык</h3>
+                            {suggestions.length > 0 && (
+                                <div className="admin-page__suggest">
+                                    <div className="admin-page__suggest-title">Возможные варианты:</div>
+                                    <div className="admin-page__suggest-list">
+                                        {suggestions.map(code => (
+                                            <button
+                                                key={code}
+                                                className="button button_border"
+                                                onClick={() => {
+                                                    setNewCode(code);
+                                                    setNewName(ISO_LANGUAGES[code]);
+                                                    setSuggestions([]);
+                                                }}
+                                            >
+                                                {code} — {ISO_LANGUAGES[code]}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
 
-                    <div style={{display: "flex", gap: 12}}>
-                        <LabeledInput
-                            label="Код"
-                            value={newCode}
-                            onChange={setNewCode}
-                            placeholder="en"
-                        />
-                        <LabeledInput
-                            label="Название"
-                            value={newName}
-                            onChange={setNewName}
-                            placeholder="English"
-                        />
-                    </div>
-
-                    {suggestions.length > 0 && (
-                        <div style={{marginTop: 8}}>
-                            <span style={{fontSize: 14}}>Возможные варианты:</span>
-                            <div style={{display: "flex", gap: 8, marginTop: 4}}>
-                                {suggestions.map(code => (
-                                    <button
-                                        key={code}
-                                        className="button button_border"
-                                        onClick={() => {
-                                            setNewCode(code);
-                                            setNewName(ISO_LANGUAGES[code]);
-                                            setSuggestions([]);
-                                        }}
-                                    >
-                                        {code} — {ISO_LANGUAGES[code]}
-                                    </button>
-                                ))}
+                            <div className="admin-page__actions">
+                                <button className="button" onClick={addLanguage}>
+                                    Добавить
+                                </button>
                             </div>
                         </div>
                     )}
-
-                    <button
-                        className="button"
-                        onClick={addLanguage}
-                        style={{marginTop: 12}}
-                    >
-                        Добавить
-                    </button>
                 </div>
             )}
         </div>

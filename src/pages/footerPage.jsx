@@ -3,7 +3,7 @@ import {useAuth} from "../hooks/authContext";
 import {useToast} from "../components/layout/ToastContext";
 import FooterBlockDialog from "../components/modals/FooterBlockDialog";
 import ConfirmDialog from "../components/modals/ConfirmDialog";
-import Checkbox from "../components/controls/Checkbox";
+import Toggle from "../components/controls/Toggle";
 import {FiEdit, FiTrash} from "react-icons/fi";
 import CustomTable from "../components/customElems/CustomTable";
 import apiFetch from "../utils/apiFetch";
@@ -19,9 +19,7 @@ export default function FooterPage() {
     const [deleteTarget, setDeleteTarget] = useState(null);
 
     async function load() {
-        const data = await apiFetch(`${API_URL}/footer?all=true`, {
-            headers: { Authorization: `Bearer ${accessToken}` }
-        });
+        const data = await apiFetch(`${API_URL}/footer?all=true`);
         setBlocks(data);
     }
 
@@ -34,21 +32,19 @@ export default function FooterPage() {
             method: "PATCH",
             headers: {
                 "Content-Type": "application/json",
-                Authorization: `Bearer ${accessToken}`
             },
-            body: JSON.stringify({ isVisible: !block.isVisible })
+            body: JSON.stringify({isVisible: !block.isVisible})
         });
 
-        setBlocks(blocks.map(b => (b.id === block.id ? updated : b)));
+        setBlocks(prev => prev.map(b => (b.id === block.id ? updated : b)));
     }
 
     async function deleteBlock(id) {
         await apiFetch(`${API_URL}/footer/${id}`, {
-            method: "DELETE",
-            headers: { Authorization: `Bearer ${accessToken}` }
+            method: "DELETE"
         });
 
-        setBlocks(blocks.filter(b => b.id !== id));
+        setBlocks(prev => prev.filter(b => b.id !== id));
         showToast("Блок удалён");
     }
 
@@ -61,48 +57,69 @@ export default function FooterPage() {
         {
             key: "isVisible",
             title: "Видимость",
+            width: "160px",
             render: (_, row) => (
-                <Checkbox
-                    checked={row.isVisible}
-                    onChange={() => toggleVisible(row)}
-                />
+                <div style={{display: "flex", alignItems: "center", justifyContent: "center"}}>
+                    <Toggle
+                        checked={!!row.isVisible}
+                        onChange={() => toggleVisible(row)}
+                        title="Показать / скрыть блок"
+                    />
+                </div>
             )
         },
         {
             key: "actions",
             title: "Действия",
+            width: "160px",
             render: (_, row) => (
-                <span style={{display: "flex", gap: 8}}>
-                <button
-                    className="button button_icon"
-                    onClick={() => setEditing(row)}
-                >
-                    <FiEdit size={16}/>
-                </button>
+                <div style={{display: "flex", gap: 8, justifyContent: "center"}}>
+                    <button
+                        type="button"
+                        className="button button_icon"
+                        onClick={() => setEditing(row)}
+                        title="Редактировать"
+                    >
+                        <FiEdit size={16}/>
+                    </button>
 
-                <button
-                    className="button button_icon"
-                    onClick={() => setDeleteTarget(row.id)}
-                >
-                    <FiTrash size={16}/>
-                </button>
-            </span>
+                    <button
+                        type="button"
+                        className="button button_icon button_reject"
+                        onClick={() => setDeleteTarget(row.id)}
+                        title="Удалить"
+                    >
+                        <FiTrash size={16}/>
+                    </button>
+                </div>
             )
         }
     ];
 
     return (
-        <div className="page" style={{padding: 24}}>
-            <h1 className="page__header">Footer</h1>
+        <div className="page footer-page">
+            <div className="page__topbar page__topbar_sticky page__topbar_wrap">
+                <div className="page__topbar-col">
+                    <h1 className="page__header">Footer</h1>
+                    <div className="page__topbar-title">
+                        Управление блоками футера
+                    </div>
+                </div>
 
-            <button className="button" onClick={() => setCreating(true)}>
-                Создать блок
-            </button>
+                <div className="page__row page__row_wrap" style={{justifyContent: "flex-end"}}>
+                    <button
+                        type="button"
+                        className="button"
+                        onClick={() => setCreating(true)}
+                    >
+                        Создать блок
+                    </button>
+                </div>
+            </div>
 
-            <CustomTable
-                columns={columns}
-                data={blocks}
-            />
+            <div className="page__block page__block_card">
+                <CustomTable columns={columns} data={blocks}/>
+            </div>
 
             {creating && (
                 <FooterBlockDialog

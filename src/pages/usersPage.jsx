@@ -26,12 +26,7 @@ export default function UsersPage() {
         if (roleFilter !== "all") params.set("role", roleFilter);
         if (search.trim()) params.set("email", search.trim());
 
-        const url = `${API_URL}/users?${params.toString()}`;
-
-        const res = await fetch(url, {
-            headers: {Authorization: `Bearer ${accessToken}`},
-        });
-
+        const res = await apiFetch(`${API_URL}/users?${params.toString()}`);
         const data = await res.json();
         setUsers(data);
     }
@@ -45,7 +40,6 @@ export default function UsersPage() {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
-                Authorization: `Bearer ${accessToken}`
             },
             body: JSON.stringify({role})
         });
@@ -58,7 +52,6 @@ export default function UsersPage() {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
-                Authorization: `Bearer ${accessToken}`
             },
             body: JSON.stringify({permissions})
         });
@@ -69,7 +62,6 @@ export default function UsersPage() {
     async function deleteUser(id) {
         await apiFetch(`${API_URL}/users/${id}/delete`, {
             method: "POST",
-            headers: {Authorization: `Bearer ${accessToken}`}
         });
 
         loadUsers();
@@ -78,7 +70,6 @@ export default function UsersPage() {
     async function restoreUser(id) {
         await apiFetch(`${API_URL}/users/${id}/restore`, {
             method: "POST",
-            headers: {Authorization: `Bearer ${accessToken}`}
         });
 
         loadUsers();
@@ -164,7 +155,7 @@ export default function UsersPage() {
     return (
         <div className='page' style={{padding: 24}}>
             <div className="page__header">
-                <h2 className="gradient-text" style={{marginBottom: 24}}>
+                <h2>
                     Управление пользователями
                 </h2>
 

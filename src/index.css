@@ -8,6 +8,8 @@
 @import "css/customElems.css";
 @import "css/controls.css";
 @import "css/editor.css";
+@import "css/page.css";
+@import "css/adminPage.css";
 @import "css/contacts.css";
 
 :root {

@@ -296,9 +296,8 @@ export default function ContactsPage() {
 
     return (
         <div className="page contacts-page">
-            <div className="contacts-page__topbar">
+            <div className="page__topbar contacts-page__topbar">
                 <h1 className="page__header">Контакты</h1>
-
                 <div className="contacts-page__topbar-actions">
                     <button className="button" onClick={() => addContact("phone")}>Добавить телефон</button>
                     <button className="button" onClick={() => addContact("email")}>Добавить email</button>

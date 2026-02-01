@@ -5,7 +5,7 @@ import {useToast} from "../components/layout/ToastContext";
 import FooterMenuItemDialog from "../components/modals/FooterMenuItemDialog";
 import ConfirmDialog from "../components/modals/ConfirmDialog";
 import {useTranslations} from "../hooks/useTranslations";
-import Checkbox from "../components/controls/Checkbox";
+import Toggle from "../components/controls/Toggle";
 import {FiEdit, FiTrash} from "react-icons/fi";
 import apiFetch from "../utils/apiFetch";
 
@@ -20,11 +20,7 @@ export default function FooterMenuPage() {
     const [editing, setEditing] = useState(null);
     const [deleteTarget, setDeleteTarget] = useState(null);
 
-    const {
-        translationMaps,
-        loadAllTranslations,
-        deleteKeys
-    } = useTranslations();
+    const {translationMaps, loadAllTranslations, deleteKeys} = useTranslations();
 
     async function load() {
         const blocks = await apiFetch(`${API_URL}/footer?all=true`, {
@@ -101,7 +97,6 @@ export default function FooterMenuPage() {
 
     const columns = [
         {key: "id", title: "ID", width: "80px"},
-
         {
             key: "labelKey",
             title: "Название (ru)",
@@ -124,9 +119,15 @@ export default function FooterMenuPage() {
         {
             key: "isVisible",
             title: "Отображать",
-            width: "120px",
+            width: "140px",
             render: (value, row) => (
-                <Checkbox checked={value} onChange={() => toggleVisible(row)}/>
+                <div style={{display: "flex", alignItems: "center", justifyContent: "center"}}>
+                    <Toggle
+                        checked={!!value}
+                        onChange={() => toggleVisible(row)}
+                        title="Показать / скрыть"
+                    />
+                </div>
             )
         },
         {
@@ -134,15 +135,18 @@ export default function FooterMenuPage() {
             title: "Действия",
             width: "140px",
             render: (_, row) => (
-                <div style={{display: "flex", gap: 8}}>
+                <div style={{display: "flex", gap: 8, justifyContent: "center"}}>
                     <button
+                        type="button"
                         className="button button_icon"
                         onClick={() => setEditing(row)}
                         title="Редактировать"
                     >
                         <FiEdit size={16}/>
                     </button>
+
                     <button
+                        type="button"
                         className="button button_icon button_reject"
                         onClick={() => setDeleteTarget(row.id)}
                         title="Удалить"
@@ -155,18 +159,33 @@ export default function FooterMenuPage() {
     ];
 
     return (
-        <div className="page" style={{padding: 24}}>
-            <h1 className={"page__header"}>Меню футера</h1>
+        <div className="page footer-menu-page">
+            <div className="page__topbar page__topbar_sticky page__topbar_wrap">
+                <div className="page__topbar-col">
+                    <h1 className="page__header">Меню футера</h1>
+                    <div className="page__topbar-title">
+                        Управление пунктами меню футера
+                    </div>
+                </div>
 
-            <div style={{marginBottom: 12}}>
-                <button className="button" onClick={() => setCreating(true)}>
-                    Создать пункт
-                </button>
+                <div className="page__row page__row_wrap" style={{justifyContent: "flex-end"}}>
+                    <button
+                        type="button"
+                        className="button"
+                        onClick={() => setCreating(true)}
+                        disabled={!menuBlock}
+                        title={!menuBlock ? "Блок меню ещё не загружен" : "Создать пункт"}
+                    >
+                        Создать пункт
+                    </button>
+                </div>
             </div>
 
-            <CustomTable columns={columns} data={items}/>
+            <div className="page__block page__block_card">
+                <CustomTable columns={columns} data={items}/>
+            </div>
 
-            {creating && (
+            {creating && menuBlock && (
                 <FooterMenuItemDialog
                     mode="create"
                     blockId={menuBlock.id}
@@ -177,7 +196,7 @@ export default function FooterMenuPage() {
                 />
             )}
 
-            {editing && (
+            {editing && menuBlock && (
                 <FooterMenuItemDialog
                     mode="edit"
                     initial={editing}

@@ -1,30 +1,9 @@
 .contacts-page {
-    padding: 24px;
-    display: flex;
-    flex-direction: column;
     gap: 16px;
-}
-
-.page__block_actions {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 10px;
-    padding-bottom: 16px;
-    border-bottom: 1px solid var(--color-primary-alt);
-}
-
-.page__block {
-    padding: 14px 0 18px;
-}
-
-.page__block:not(:last-child) {
-    border-bottom: 1px solid var(--color-primary-alt);
 }
 
 .contacts-page h2 {
     font-size: 22px;
-    font-weight: 700;
-    color: var(--color-link);
     letter-spacing: 0.2px;
 }
 
@@ -48,7 +27,6 @@
 }
 
 .contacts-page__row {
-    display: flex;
     flex-direction: column;
     gap: 12px;
     padding: 14px;
@@ -57,6 +35,7 @@
     var(--secondary-bg-gradient);
     border: 1px solid var(--ui-border);
     box-shadow: var(--shadow-light);
+    scroll-margin-top: 120px;
 }
 
 .contacts-page__row:hover {
@@ -72,17 +51,16 @@
     border-bottom: 1px solid rgba(255, 255, 255, 0.05);
 }
 
-.contacts-page__row .button.button_icon {
+.contacts-page__row .button.button_icon,
+.contacts-page__group-toggle.button.button_icon {
     width: 34px;
     height: 34px;
     border-radius: 12px;
     display: grid;
     place-items: center;
-
     background: rgba(255, 255, 255, 0.03);
     border: 1px solid var(--ui-border);
     color: var(--color-link);
-
     transition: filter .2s ease, border-color .2s ease, background .2s ease;
 }
 
@@ -92,11 +70,7 @@
     background: rgba(128, 90, 245, 0.10);
 }
 
-.contacts-page__row .button.button_icon:has(svg) {
-}
-
 .contacts-page__field {
-    display: flex;
     gap: 10px;
     align-items: flex-end;
 }
@@ -107,7 +81,6 @@
 
 .contacts-page__field_phone .PhoneInput {
     width: 100%;
-    display: flex;
     gap: 10px;
     align-items: center;
 }
@@ -150,19 +123,6 @@
 
 .contacts-page__topbar {
     position: sticky;
-    top: 12px;
-    z-index: 5;
-    padding: 14px;
-    border-radius: 16px;
-    border: 1px solid var(--ui-border);
-    background: radial-gradient(120% 120% at 20% 0%, rgba(128, 90, 245, 0.10) 0%, rgba(128, 90, 245, 0.00) 55%),
-    var(--secondary-bg-gradient);
-    box-shadow: var(--shadow-light);
-    backdrop-filter: blur(10px);
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 14px;
 }
 
 .contacts-page__topbar .page__header {
@@ -170,20 +130,17 @@
 }
 
 .contacts-page__topbar-actions {
-    display: flex;
     flex-wrap: wrap;
     gap: 10px;
 }
 
 .contacts-page__group-header {
-    display: flex;
     align-items: center;
     gap: 10px;
     margin: 10px 0 14px;
 }
 
 .contacts-page__group-title {
-    display: flex;
     align-items: baseline;
     gap: 10px;
     margin: 0;
@@ -198,33 +155,13 @@
     background: rgba(255, 255, 255, 0.02);
 }
 
-.contacts-page__group-toggle.button.button_icon {
-    width: 34px;
-    height: 34px;
-    border-radius: 12px;
-    display: grid;
-    place-items: center;
-
-    background: rgba(255, 255, 255, 0.03);
-    border: 1px solid var(--ui-border);
-    color: var(--color-link);
-}
-
 .contacts-card__header {
-    display: flex;
-    align-items: center;
     justify-content: space-between;
     gap: 10px;
-
     padding-bottom: 8px;
     border-bottom: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 .contacts-card__actions {
-    display: flex;
     gap: 8px;
-}
-
-.contacts-page__row {
-    scroll-margin-top: 120px;
 }

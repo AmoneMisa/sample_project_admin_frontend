@@ -353,7 +353,7 @@ export default function ContactsPage() {
                                                         }}
                                                     />
 
-                                                    <div className="contacts-card__actions">
+                                                    <div className="page__block_actions contacts-card__actions">
                                                         <button
                                                             className="button button_icon"
                                                             onClick={() => saveAll(contact)}

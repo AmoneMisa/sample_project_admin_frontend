@@ -3,6 +3,7 @@
 }
 
 .contacts-page h2 {
+    display: flex;
     font-size: 22px;
     letter-spacing: 0.2px;
 }
@@ -27,6 +28,7 @@
 }
 
 .contacts-page__row {
+    display: flex;
     flex-direction: column;
     gap: 12px;
     padding: 14px;
@@ -132,9 +134,11 @@
 .contacts-page__topbar-actions {
     flex-wrap: wrap;
     gap: 10px;
+    display: flex;
 }
 
 .contacts-page__group-header {
+    display: flex;
     align-items: center;
     gap: 10px;
     margin: 10px 0 14px;
@@ -156,6 +160,7 @@
 }
 
 .contacts-card__header {
+    display: flex;
     justify-content: space-between;
     gap: 10px;
     padding-bottom: 8px;

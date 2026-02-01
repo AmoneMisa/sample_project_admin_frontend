@@ -15,17 +15,13 @@
     background: var(--color-blackest);
     border: 1px solid var(--ui-border);
     border-radius: 14px;
-
     box-shadow:
             0 20px 60px rgba(0, 0, 0, 0.55),
             0 0 0 1px var(--color-primary-alt);
-
     padding: 22px;
-
     max-width: 650px;
     width: fit-content;
     min-width: 300px;
-
     display: flex;
     flex-direction: column;
     gap: 14px;
@@ -157,4 +153,41 @@
 .menu-modal__sub-item:hover {
     border-color: var(--color-primary);
     box-shadow: 0 0 0 1px var(--color-primary-alt);
+}
+
+.translation-dialog__row {
+    position: relative;
+    width: 100%;
+    margin-bottom: 12px;
+}
+
+.translation-dialog__emoji-btn {
+    position: absolute;
+    top: 25px;
+    right: 0;
+    height: 32px;
+    width: 32px;
+    border-radius: 12px;
+    background: var(--color-dark);
+    border: 1px solid var(--ui-border);
+    color: var(--color-link);
+    display: grid;
+    place-items: center;
+    transition: filter .2s ease, border-color .2s ease, transform .05s ease;
+}
+
+.translation-dialog__emoji-btn:hover {
+    border-color: var(--color-primary);
+    filter: brightness(115%);
+}
+
+.translation-dialog__emoji-btn:active {
+    transform: translateY(1px);
+}
+
+@media (max-width: 520px) {
+    .translation-dialog__emoji-btn {
+        right: 8px;
+        top: 34px;
+    }
 }

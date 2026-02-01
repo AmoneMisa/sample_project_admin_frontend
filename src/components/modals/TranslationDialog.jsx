@@ -62,18 +62,12 @@ export default function TranslationDialog({
             )}
 
             {languages.map(lang => (
-                <div
-                    key={lang.code}
-                    style={{
-                        position: "relative",
-                        width: "100%",
-                        marginBottom: 12
-                    }}
-                >
+                <div key={lang.code} className="translation-dialog__row">
                     <LabeledInput
                         label={lang.code.toUpperCase()}
                         value={state.values[lang.code] ?? ""}
                         error={errors.values?.[lang.code]}
+                        className="translation-dialog__input input_icons"
                         onChange={(v) =>
                             setState(prev => ({
                                 ...prev,
@@ -87,16 +81,11 @@ export default function TranslationDialog({
 
                     <button
                         type="button"
-                        className="button button_icon"
-                        style={{
-                            position: "absolute",
-                            right: 6,
-                            top: 34,
-                            padding: 5
-                        }}
-                        onClick={() => setEmojiPickerFor({lang: lang.code})}
+                        className="translation-dialog__emoji-btn button button_icon"
+                        title="Вставить эмодзи"
+                        onClick={() => setEmojiPickerFor({ lang: lang.code })}
                     >
-                        <FiSmile size={16}/>
+                        <FiSmile size={16} />
                     </button>
                 </div>
             ))}

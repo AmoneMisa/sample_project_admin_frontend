@@ -1,88 +1,160 @@
 .table {
-    border-collapse: collapse;
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    margin-top: 20px;
+    background: var(--color-blackest);
+    border: 1px solid var(--ui-border);
+    border-radius: 14px;
+    overflow: hidden;
+    box-shadow: var(--shadow-light);
 }
 
 .table__header-row {
     position: sticky;
-    top: -1px;
-    background-color: var(--background-color);
-    z-index: 1;
-    border-top: 2px solid var(--color-primary-alt);
-    filter: drop-shadow(0 2px var(--color-primary-alt));
+    top: 0;
+    z-index: 2;
+    background: var(--secondary-bg-gradient);
+    backdrop-filter: blur(6px);
+    border-bottom: 1px solid var(--ui-border);
 }
 
 .table__header {
-    text-align: center;
-    padding: 8px 0 8px 0;
-}
-
-.table__header-text {
-    position: relative;
-    display: inline-block;
-    height: 100%;
-    width: -webkit-fill-available;
-    margin-right: 12px;
-}
-
-.table__header-text:after {
-    position: absolute;
-    height: 100%;
-    content: "";
-    background-image: linear-gradient(90deg, var(--color-primary-gradient-start) 0%, #CE99FF 100%);
-    width: 2px;
-    left: 100%;
-    border-radius: 12px;
+    text-align: left;
+    padding: 12px 12px;
+    font-weight: 700;
+    color: var(--color-link);
+    white-space: nowrap;
+    border-right: 1px solid rgba(255, 255, 255, 0.04);
 }
 
 .table__header:last-child {
-    .table__header-text {
-        &:after {
-            content: none;
-        }
-    }
+    border-right: none;
+}
+
+.table__header-text {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+
+    width: 100%;
+    min-width: 0;
 }
 
 .table__row {
-    .input {
-        max-width: calc(100% - 6px);
-    }
+    transition: background .18s ease, filter .18s ease;
 }
 
-.table__row:nth-child(odd) {
-    .table__cell {
-        background-color: var(--color-blackest);
-    }
+.table__row:nth-child(odd) .table__cell {
+    background: rgba(255, 255, 255, 0.015);
+}
+
+.table__row:nth-child(even) .table__cell {
+    background: transparent;
+}
+
+.table__row:hover .table__cell {
+    background: rgba(128, 90, 245, 0.08);
 }
 
 .table__cell {
+    padding: 10px 12px;
     border-bottom: 1px solid var(--ui-border);
-    padding: 8px 0 8px 6px;
+    border-right: 1px solid rgba(255, 255, 255, 0.04);
     max-width: 350px;
+    vertical-align: middle;
 }
 
 .table__cell:last-child {
-    .table__cell-text {
-        &:after {
-            content: none;
-        }
-    }
+    border-right: none;
+}
+
+.table__row:last-child .table__cell {
+    border-bottom: none;
 }
 
 .table__cell-text {
-    position: relative;
-    width: -webkit-fill-available;
     display: inline-block;
-    height: 100%;
-    margin-right: 12px;
+    width: 100%;
+    min-width: 0;
+    color: var(--color-link);
+    line-height: 1.25;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
-.table__cell-text:after {
-    position: absolute;
-    height: 100%;
-    content: "";
-    background-color: var(--color-primary-alt);
-    width: 1px;
-    border-radius: 8px;
-    left: 100%;
-    top: 0;
+.table__row .field-holder {
+    gap: 6px;
+}
+
+.table__row textarea,
+.table__row input,
+.table__row .input,
+.table__row select {
+    width: 100%;
+    max-width: 100%;
+}
+
+.table__row textarea,
+.table__row input,
+.table__row .input,
+.table__row select {
+    background: rgba(0, 0, 0, 0.08);
+    border-color: rgba(255, 255, 255, 0.06);
+    border-radius: 12px;
+}
+
+.table__row textarea:focus,
+.table__row input:focus,
+.table__row select:focus {
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 2px rgba(128, 90, 245, 0.22);
+}
+
+.table__cell .button_icon {
+    padding: 0;
+}
+
+.table__header-inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.table__collapse-btn {
+    height: 28px;
+    width: 28px;
+    display: grid;
+    place-items: center;
+    border-radius: 10px;
+    background: var(--color-dark);
+    border: 1px solid var(--ui-border);
+    color: var(--color-link);
+    cursor: pointer;
+    transition: filter .2s ease, border-color .2s ease, transform .05s ease;
+}
+
+.table__collapse-btn:hover {
+    border-color: var(--color-primary);
+    filter: brightness(115%);
+}
+
+.table__collapse-btn:active {
+    transform: translateY(1px);
+}
+
+.table__header_collapsed {
+    padding: 10px 8px;
+    text-align: center;
+}
+
+.table__cell_collapsed {
+    padding: 0;
+    text-align: center;
+}
+
+.table__cell_collapsed .table__cell-text {
+    display: none;
 }

@@ -166,20 +166,25 @@ export default function FeatureCardsPage() {
 
     return (
         <div className="page" style={{padding: 24}}>
-            <div className="page__header">
-                <h1>Feature Cards</h1>
+            <div className="page__topbar page__topbar_sticky page__topbar_wrap">
+                <div className="page__topbar-col">
+                    <h1 className="page__header">Feature Cards</h1>
+                    <div className="page__topbar-title">
+                        Управление карточками особенностей
+                    </div>
+                </div>
 
                 {canEdit && (
-                    <div style={{display: "flex", gap: 12}}>
-                        <button className="button" onClick={() => setCreating(true)}>
-                            Создать
-                        </button>
+                    <div className="page__row page__row_wrap" style={{justifyContent: "flex-end"}}>
+                        <div style={{display: "flex", gap: 12}}>
+                            <button className="button" onClick={() => setCreating(true)}>
+                                Создать
+                            </button>
+                        </div>
                     </div>
                 )}
             </div>
-
             <CustomTable columns={columns} data={items}/>
-
             {creating && (
                 <FeatureCardDialog
                     mode="create"
@@ -189,7 +194,6 @@ export default function FeatureCardsPage() {
                     }}
                 />
             )}
-
             {editing && (
                 <FeatureCardDialog
                     mode="edit"

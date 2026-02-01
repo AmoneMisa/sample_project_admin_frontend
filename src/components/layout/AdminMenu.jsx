@@ -45,7 +45,8 @@ export default function AdminMenu() {
             {to: "/feature-cards", icon: FiGrid, label: "Feature Cards"},
             {to: "/contacts", icon: FiPhone, label: "Контакты"},
             {to: "/menu", icon: FiMenu, label: "Футер меню"},
-            {to: "/footer", icon: FiLayers, label: "Футер"}
+            {to: "/footer", icon: FiLayers, label: "Футер"},
+            {to: "/offer-cards", icon: FiGrid, label: "Карточки предложений"},
         ];
         if (isAdmin) base.push({to: "/users", icon: FiUsers, label: "Пользователи"});
         if (isAdmin || isModerator) base.push({to: "/admin", icon: FiMenu, label: "Админка"});

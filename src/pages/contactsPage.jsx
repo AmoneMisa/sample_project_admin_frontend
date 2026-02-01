@@ -15,7 +15,8 @@ const LS_COLLAPSE_KEY = "contactsPage.collapsedGroups.v1";
 
 export default function ContactsPage() {
     const API_URL = process.env.REACT_APP_API_URL || "/api";
-    const {accessToken} = useAuth();
+    const {accessToken, user} = useAuth();
+    const canEdit = !!user && (user.role === "admin" || user.role === "moderator");
     const {showToast} = useToast();
 
     const [contacts, setContacts] = useState([]);
@@ -23,13 +24,9 @@ export default function ContactsPage() {
     const [loading, setLoading] = useState(true);
     const [initialLoad, setInitialLoad] = useState(true);
 
-    // новый элемент — сюда пишем id, затем скроллимся на него
     const [scrollToId, setScrollToId] = useState(null);
-
-    // рефы карточек по id
     const cardRefs = useRef(new Map());
 
-    // сворачивание блоков
     const [collapsedGroups, setCollapsedGroups] = useState(() => {
         try {
             const raw = localStorage.getItem(LS_COLLAPSE_KEY);
@@ -58,36 +55,20 @@ export default function ContactsPage() {
     function makeLabelKey(type, id) {
         return `contacts.${type}.${id}.label`;
     }
+
     function createContact(type) {
         const id = uuid();
-        return {
-            id,
-            type,
-            value: "",
-            isVisible: true,
-            labelKey: makeLabelKey(type, id)
-        };
+        return {id, type, value: "", isVisible: true, labelKey: makeLabelKey(type, id)};
     }
+
     function createSocialContact() {
         const id = uuid();
-        return {
-            id,
-            type: "social",
-            socialType: "instagram",
-            value: "",
-            isVisible: true,
-            labelKey: makeLabelKey("social", id)
-        };
+        return {id, type: "social", socialType: "instagram", value: "", isVisible: true, labelKey: makeLabelKey("social", id)};
     }
+
     function createFooterInfo() {
         const id = uuid();
-        return {
-            id,
-            type: "other",
-            value: "",
-            isVisible: true,
-            labelKey: makeLabelKey("other", id)
-        };
+        return {id, type: "other", value: "", isVisible: true, labelKey: makeLabelKey("other", id)};
     }
 
     function normalizeContact(c) {
@@ -95,15 +76,13 @@ export default function ContactsPage() {
         if (!fixed.labelKey) fixed.labelKey = makeLabelKey(fixed.type, fixed.id);
 
         if ("label" in fixed) delete fixed.label;
-
         if (fixed.type === "social" && !fixed.socialType) fixed.socialType = "instagram";
+
         return fixed;
     }
 
     async function loadContacts() {
-        return apiFetch(`${API_URL}/contacts?all=true`, {
-            headers: {Authorization: `Bearer ${accessToken}`}
-        });
+        return apiFetch(`${API_URL}/contacts?all=true`);
     }
 
     useEffect(() => {
@@ -117,7 +96,8 @@ export default function ContactsPage() {
 
             let loaded = await loadContacts();
 
-            if (initialLoad) {
+            // дефолтные записи добавляем только в режиме редактирования
+            if (initialLoad && canEdit) {
                 if (!loaded.some(c => c.type === "phone")) loaded.push(createContact("phone"));
                 if (!loaded.some(c => c.type === "email")) loaded.push(createContact("email"));
                 if (!loaded.some(c => c.type === "address")) loaded.push(createContact("address"));
@@ -128,6 +108,7 @@ export default function ContactsPage() {
             loaded = loaded.map(normalizeContact);
             setContacts(loaded);
 
+            // подготовка карт переводов (чтобы MultilangInput / preview работали стабильно)
             const next = {};
             for (const c of loaded) {
                 const key = c.labelKey;
@@ -143,16 +124,14 @@ export default function ContactsPage() {
             setLoading(false);
         })();
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [accessToken, loadAllTranslations]);
+    }, [accessToken, loadAllTranslations, canEdit]);
 
-    // сохраняем сворачивание блоков
     useEffect(() => {
         try {
             localStorage.setItem(LS_COLLAPSE_KEY, JSON.stringify(collapsedGroups));
         } catch {}
     }, [collapsedGroups]);
 
-    // автоскролл к новому элементу
     useEffect(() => {
         if (!scrollToId) return;
 
@@ -180,6 +159,8 @@ export default function ContactsPage() {
     }
 
     function addContact(type) {
+        if (!canEdit) return;
+
         const newC =
             type === "social" ? createSocialContact() :
                 type === "other" ? createFooterInfo() :
@@ -190,10 +171,7 @@ export default function ContactsPage() {
         const empty = Object.fromEntries(languages.map(l => [l.code, ""]));
         updateTranslation(newC.labelKey, empty);
 
-        // раскрываем блок, куда добавили
         ensureGroupOpen(newC.type);
-
-        // после рендера скроллимся
         setScrollToId(newC.id);
     }
 
@@ -230,6 +208,8 @@ export default function ContactsPage() {
     }
 
     async function saveAll(contact) {
+        if (!canEdit) return;
+
         const err = validateContact(contact);
 
         if (err) {
@@ -250,11 +230,7 @@ export default function ContactsPage() {
         if (!contact.persisted) {
             await createKeysBatch([{key: labelKey, values}]);
         } else {
-            const batch = Object.entries(values).map(([lang, value]) => ({
-                key: labelKey,
-                lang,
-                value
-            }));
+            const batch = Object.entries(values).map(([lang, value]) => ({key: labelKey, lang, value}));
             await updateKeysBatch(batch);
         }
 
@@ -266,18 +242,16 @@ export default function ContactsPage() {
     }
 
     async function requestDelete(contact) {
-        const group = grouped[contact.type];
+        if (!canEdit) return;
 
+        const group = grouped[contact.type];
         if (contact.type !== "social" && group.length === 1) {
             showToast("Нельзя удалить последний элемент этого блока");
             return;
         }
 
         await deleteKeys([contact.labelKey]);
-        await apiFetch(`${API_URL}/contacts/${contact.id}`, {
-            method: "DELETE",
-            headers: {Authorization: `Bearer ${accessToken}`}
-        });
+        await apiFetch(`${API_URL}/contacts/${contact.id}`, {method: "DELETE"});
 
         setContacts(prev => prev.filter(c => c.id !== contact.id));
         showToast("Контакт удалён");
@@ -292,18 +266,44 @@ export default function ContactsPage() {
         return name;
     };
 
+    const getLabelPreview = (labelKey) => {
+        const map = translationMaps?.[labelKey] || {};
+        const ru = (map.ru ?? "").toString().trim();
+        if (ru) return ru;
+
+        for (const k of Object.keys(map)) {
+            const v = (map[k] ?? "").toString().trim();
+            if (v) return v;
+        }
+
+        return "";
+    };
+
+    const renderReadOnlyValue = (label, value, error) => (
+        <div className="field-holder">
+            <span className="field-holder__label">{label}</span>
+            <div className="contacts-card__text">
+                {value ? value : <span className="contacts-card__muted">—</span>}
+            </div>
+            {error && <div className="field-holder__error">{error}</div>}
+        </div>
+    );
+
     if (loading) return null;
 
     return (
         <div className="page contacts-page">
             <div className="page__topbar contacts-page__topbar">
                 <h1 className="page__header">Контакты</h1>
-                <div className="contacts-page__topbar-actions">
-                    <button className="button" onClick={() => addContact("phone")}>Добавить телефон</button>
-                    <button className="button" onClick={() => addContact("email")}>Добавить email</button>
-                    <button className="button" onClick={() => addContact("address")}>Добавить адрес</button>
-                    <button className="button" onClick={() => addContact("social")}>Добавить соцсеть</button>
-                </div>
+
+                {canEdit && (
+                    <div className="contacts-page__topbar-actions">
+                        <button className="button" onClick={() => addContact("phone")}>Добавить телефон</button>
+                        <button className="button" onClick={() => addContact("email")}>Добавить email</button>
+                        <button className="button" onClick={() => addContact("address")}>Добавить адрес</button>
+                        <button className="button" onClick={() => addContact("social")}>Добавить соцсеть</button>
+                    </div>
+                )}
             </div>
 
             {Object.entries(grouped).map(([groupName, list]) => {
@@ -342,7 +342,7 @@ export default function ContactsPage() {
                                                 else cardRefs.current.set(contact.id, el);
                                             }}
                                         >
-                                            {contact.type !== "other" && (
+                                            {canEdit && contact.type !== "other" && (
                                                 <div className="contacts-card__header">
                                                     <Toggle
                                                         label="Отображать"
@@ -373,68 +373,95 @@ export default function ContactsPage() {
                                                 </div>
                                             )}
 
-                                            {contact.type === "phone" ? (
+                                            {/* VALUE */}
+                                            {!canEdit ? (
                                                 <>
-                                                    <PhoneInput
-                                                        international
-                                                        withCountryCallingCode
-                                                        value={contact.value}
-                                                        className="contacts-page__field contacts-page__field_phone"
-                                                        placeholder="+1 555 123 45 67"
-                                                        onChange={v => {
-                                                            contact.value = v || "";
-                                                            setContacts([...contacts]);
-                                                        }}
-                                                    />
-                                                    {err.value && <div className="field-holder__error">{err.value}</div>}
-                                                </>
-                                            ) : contact.type === "social" ? (
-                                                <>
-                                                    <LabeledSelect
-                                                        label="Тип соцсети"
-                                                        value={contact.socialType}
-                                                        options={SOCIAL_TYPES.map(s => ({value: s, label: s}))}
-                                                        onChange={v => {
-                                                            contact.socialType = v;
-                                                            setContacts([...contacts]);
-                                                        }}
-                                                    />
-
-                                                    <LabeledInput
-                                                        label="Ссылка"
-                                                        placeholder="https://..."
-                                                        value={contact.value}
-                                                        error={err.value}
-                                                        onChange={v => {
-                                                            contact.value = v;
-                                                            setContacts([...contacts]);
-                                                        }}
-                                                    />
+                                                    {contact.type === "social" ? (
+                                                        <>
+                                                            {renderReadOnlyValue("Тип соцсети", contact.socialType || "—")}
+                                                            {renderReadOnlyValue("Ссылка", (contact.value ?? "").trim(), err.value)}
+                                                        </>
+                                                    ) : (
+                                                        renderReadOnlyValue(
+                                                            contact.type === "phone" ? "Телефон" :
+                                                                contact.type === "email" ? "Email" :
+                                                                    contact.type === "address" ? "Адрес" : "Значение",
+                                                            (contact.value ?? "").trim(),
+                                                            err.value
+                                                        )
+                                                    )}
                                                 </>
                                             ) : (
-                                                <LabeledInput
-                                                    label="Значение"
-                                                    placeholder={
-                                                        contact.type === "email" ? "support@site.com" :
-                                                            contact.type === "address" ? "Город, улица, дом" :
-                                                                "Введите значение"
-                                                    }
-                                                    value={contact.value}
-                                                    error={err.value}
-                                                    onChange={v => {
-                                                        contact.value = v;
-                                                        setContacts([...contacts]);
-                                                    }}
-                                                />
+                                                <>
+                                                    {contact.type === "phone" ? (
+                                                        <>
+                                                            <PhoneInput
+                                                                international
+                                                                withCountryCallingCode
+                                                                value={contact.value}
+                                                                className="contacts-page__field contacts-page__field_phone"
+                                                                placeholder="+1 555 123 45 67"
+                                                                onChange={v => {
+                                                                    contact.value = v || "";
+                                                                    setContacts([...contacts]);
+                                                                }}
+                                                            />
+                                                            {err.value && <div className="field-holder__error">{err.value}</div>}
+                                                        </>
+                                                    ) : contact.type === "social" ? (
+                                                        <>
+                                                            <LabeledSelect
+                                                                label="Тип соцсети"
+                                                                value={contact.socialType}
+                                                                options={SOCIAL_TYPES.map(s => ({value: s, label: s}))}
+                                                                onChange={v => {
+                                                                    contact.socialType = v;
+                                                                    setContacts([...contacts]);
+                                                                }}
+                                                            />
+
+                                                            <LabeledInput
+                                                                label="Ссылка"
+                                                                placeholder="https://..."
+                                                                value={contact.value}
+                                                                error={err.value}
+                                                                onChange={v => {
+                                                                    contact.value = v;
+                                                                    setContacts([...contacts]);
+                                                                }}
+                                                            />
+                                                        </>
+                                                    ) : (
+                                                        <LabeledInput
+                                                            label="Значение"
+                                                            placeholder={
+                                                                contact.type === "email" ? "support@site.com" :
+                                                                    contact.type === "address" ? "Город, улица, дом" :
+                                                                        "Введите значение"
+                                                            }
+                                                            value={contact.value}
+                                                            error={err.value}
+                                                            onChange={v => {
+                                                                contact.value = v;
+                                                                setContacts([...contacts]);
+                                                            }}
+                                                        />
+                                                    )}
+                                                </>
                                             )}
 
-                                            <MultilangInput
-                                                label="Label"
-                                                languages={languages.map(l => l.code)}
-                                                valueMap={labelMap}
-                                                errors={err.label}
-                                                onChange={next => updateTranslation(contact.labelKey, next)}
-                                            />
+                                            {/* LABEL */}
+                                            {canEdit ? (
+                                                <MultilangInput
+                                                    label="Label"
+                                                    languages={languages.map(l => l.code)}
+                                                    valueMap={labelMap}
+                                                    errors={err.label}
+                                                    onChange={next => updateTranslation(contact.labelKey, next)}
+                                                />
+                                            ) : (
+                                                renderReadOnlyValue("Label", getLabelPreview(contact.labelKey))
+                                            )}
                                         </div>
                                     );
                                 })}

@@ -1,75 +1,130 @@
 import {useEffect, useMemo, useState} from "react";
+import CustomTable from "../components/customElems/CustomTable";
 import {useAuth} from "../hooks/authContext";
 import {useToast} from "../components/layout/ToastContext";
-import FooterBlockDialog from "../components/modals/FooterBlockDialog";
 import ConfirmDialog from "../components/modals/ConfirmDialog";
+import OfferCardDialog from "../components/modals/OfferCardDialog";
 import Toggle from "../components/controls/Toggle";
 import {FiEdit, FiTrash} from "react-icons/fi";
-import CustomTable from "../components/customElems/CustomTable";
 import apiFetch from "../utils/apiFetch";
 
-export default function FooterPage() {
+function normalizeOfferCard(row) {
+    const visible =
+        typeof row?.visible === "boolean"
+            ? row.visible
+            : typeof row?.isVisible === "boolean"
+                ? row.isVisible
+                : true;
+
+    return {
+        ...row,
+        visible,
+        isVisible: visible,
+    };
+}
+
+export default function OfferCardsPage() {
     const API_URL = process.env.REACT_APP_API_URL || "/api";
     const {accessToken, user} = useAuth();
-    const canEdit = !!user && (user.role === "admin" || user.role === "moderator");
     const {showToast} = useToast();
 
-    const [blocks, setBlocks] = useState([]);
+    const canEdit = !!user && (user.role === "admin" || user.role === "moderator");
+
+    const [items, setItems] = useState([]);
     const [creating, setCreating] = useState(false);
     const [editing, setEditing] = useState(null);
     const [deleteTarget, setDeleteTarget] = useState(null);
 
     async function load() {
-        const data = await apiFetch(`${API_URL}/footer?all=true`);
-        setBlocks(data);
+        const data = await apiFetch(`${API_URL}/offer-cards`);
+
+        setItems((data || []).map(normalizeOfferCard));
     }
 
     useEffect(() => {
-        if (accessToken) load();
+        if (!accessToken) return;
+        load();
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [accessToken]);
 
-    async function toggleVisible(block) {
+    async function toggleVisible(row) {
         if (!canEdit) return;
 
-        const updated = await apiFetch(`${API_URL}/footer/${block.id}`, {
+        const updated = await apiFetch(`${API_URL}/offer-cards/${row.id}`, {
             method: "PATCH",
-            headers: {"Content-Type": "application/json"},
-            body: JSON.stringify({isVisible: !block.isVisible})
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({ visible: !row.visible })
         });
 
-        setBlocks(prev => prev.map(b => (b.id === block.id ? updated : b)));
+        const next = normalizeOfferCard(updated);
+        setItems(prev => prev.map(i => (i.id === row.id ? next : i)));
+        showToast(next.visible ? "Карточка включена" : "Карточка скрыта");
     }
 
-    async function deleteBlock(id) {
+    async function deleteItem(id) {
         if (!canEdit) return;
 
-        await apiFetch(`${API_URL}/footer/${id}`, {method: "DELETE"});
-        setBlocks(prev => prev.filter(b => b.id !== id));
-        showToast("Блок удалён");
+        await apiFetch(`${API_URL}/offer-cards/${id}`, {
+            method: "DELETE"
+        });
+
+        setItems(prev => prev.filter(i => i.id !== id));
+        showToast("Карточка удалена");
     }
 
     const columns = useMemo(() => {
         const base = [
             {
-                key: "type",
-                title: "Тип",
-                render: (value) => <strong>{value}</strong>
-            },
-            {
-                key: "isVisible",
-                title: "Видимость",
-                width: "160px",
+                key: "visible",
+                title: "Вкл",
+                width: "90px",
                 render: (_, row) => (
-                    <div style={{display: "flex", alignItems: "center", justifyContent: "center"}}>
+                    <div style={{display: "flex", justifyContent: "center"}}>
                         <Toggle
-                            checked={!!row.isVisible}
+                            checked={!!row.visible}
                             disabled={!canEdit}
                             onChange={() => toggleVisible(row)}
-                            title={canEdit ? "Показать / скрыть блок" : "Только просмотр"}
+                            title={canEdit ? "Показать / скрыть" : "Только просмотр"}
                         />
                     </div>
                 )
+            },
+            { key: "order", title: "Порядок", width: "110px", render: (v) => (v ?? 0) },
+            { key: "key", title: "Key", width: "220px", render: (v) => v || "-" },
+            { key: "name", title: "Название", width: "260px", render: (v) => v || "-" },
+            {
+                key: "description",
+                title: "Описание",
+                width: "320px",
+                render: (v) => v || "-"
+            },
+            {
+                key: "monthly",
+                title: "Monthly",
+                width: "180px",
+                render: (v) => v || "-"
+            },
+            {
+                key: "yearly",
+                title: "Yearly",
+                width: "180px",
+                render: (v) => v || "-"
+            },
+            {
+                key: "highlight",
+                title: "Highlight",
+                width: "120px",
+                render: (v) => (v ? "Да" : "Нет")
+            },
+            {
+                key: "features",
+                title: "Features",
+                render: (v) => {
+                    const s = (v ?? "").toString().trim();
+                    return s ? s : "-";
+                }
             }
         ];
 
@@ -77,14 +132,14 @@ export default function FooterPage() {
             base.push({
                 key: "actions",
                 title: "Действия",
-                width: "160px",
+                width: "140px",
                 render: (_, row) => (
                     <div style={{display: "flex", gap: 8, justifyContent: "center"}}>
                         <button
                             type="button"
                             className="button button_icon"
-                            onClick={() => setEditing(row)}
                             title="Редактировать"
+                            onClick={() => setEditing(row)}
                         >
                             <FiEdit size={16}/>
                         </button>
@@ -92,8 +147,8 @@ export default function FooterPage() {
                         <button
                             type="button"
                             className="button button_icon button_reject"
-                            onClick={() => setDeleteTarget(row.id)}
                             title="Удалить"
+                            onClick={() => setDeleteTarget(row.id)}
                         >
                             <FiTrash size={16}/>
                         </button>
@@ -104,15 +159,15 @@ export default function FooterPage() {
 
         return base;
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [canEdit, blocks]);
+    }, [canEdit, accessToken]);
 
     return (
-        <div className="page footer-page">
+        <div className="page offer-cards-page">
             <div className="page__topbar page__topbar_sticky page__topbar_wrap">
                 <div className="page__topbar-col">
-                    <h1 className="page__header">Footer</h1>
+                    <h1 className="page__header">Offer Cards</h1>
                     <div className="page__topbar-title">
-                        Управление блоками футера
+                        Управление карточками офферов
                     </div>
                 </div>
 
@@ -123,20 +178,19 @@ export default function FooterPage() {
                             className="button"
                             onClick={() => setCreating(true)}
                         >
-                            Создать блок
+                            Создать
                         </button>
                     </div>
                 )}
             </div>
 
             <div className="page__block page__block_card">
-                <CustomTable columns={columns} data={blocks}/>
+                <CustomTable columns={columns} data={items}/>
             </div>
 
             {canEdit && creating && (
-                <FooterBlockDialog
+                <OfferCardDialog
                     mode="create"
-                    index={blocks.length}
                     onClose={() => {
                         setCreating(false);
                         load();
@@ -145,10 +199,9 @@ export default function FooterPage() {
             )}
 
             {canEdit && editing && (
-                <FooterBlockDialog
+                <OfferCardDialog
                     mode="edit"
                     initial={editing}
-                    index={editing.order}
                     onClose={() => {
                         setEditing(null);
                         load();
@@ -159,10 +212,10 @@ export default function FooterPage() {
             {canEdit && deleteTarget && (
                 <ConfirmDialog
                     open={true}
-                    title="Удалить блок?"
+                    title="Удалить карточку?"
                     text="Вы уверены?"
                     onConfirm={() => {
-                        deleteBlock(deleteTarget);
+                        deleteItem(deleteTarget);
                         setDeleteTarget(null);
                     }}
                     onCancel={() => setDeleteTarget(null)}

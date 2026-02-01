@@ -1,4 +1,4 @@
-import {useEffect, useState} from "react";
+import {useEffect, useMemo, useState} from "react";
 import CustomTable from "../components/customElems/CustomTable";
 import {useAuth} from "../hooks/authContext";
 import {useToast} from "../components/layout/ToastContext";
@@ -11,7 +11,8 @@ import apiFetch from "../utils/apiFetch";
 
 export default function FooterMenuPage() {
     const API_URL = process.env.REACT_APP_API_URL || "/api";
-    const {accessToken} = useAuth();
+    const {accessToken, user} = useAuth();
+    const canEdit = !!user && (user.role === "admin" || user.role === "moderator");
     const {showToast} = useToast();
 
     const [menuBlock, setMenuBlock] = useState(null);
@@ -29,7 +30,8 @@ export default function FooterMenuPage() {
 
         let block = blocks.find(b => b.type === "menu");
 
-        if (!block) {
+        // observer не должен создавать блоки на сервере
+        if (!block && canEdit) {
             block = await apiFetch(`${API_URL}/footer`, {
                 method: "POST",
                 headers: {
@@ -46,13 +48,18 @@ export default function FooterMenuPage() {
             });
         }
 
-        setMenuBlock(block);
+        setMenuBlock(block || null);
 
-        const items = await apiFetch(`${API_URL}/footer/${block.id}/items`, {
+        if (!block?.id) {
+            setItems([]);
+            return;
+        }
+
+        const list = await apiFetch(`${API_URL}/footer/${block.id}/items`, {
             headers: {Authorization: `Bearer ${accessToken}`}
         });
 
-        setItems(items);
+        setItems(list);
     }
 
     useEffect(() => {
@@ -62,9 +69,12 @@ export default function FooterMenuPage() {
             await loadAllTranslations();
             await load();
         })();
-    }, [accessToken]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [accessToken, canEdit]);
 
     async function deleteItem(id) {
+        if (!canEdit) return;
+
         const item = items.find(i => i.id === id);
         if (!item) return;
 
@@ -83,6 +93,8 @@ export default function FooterMenuPage() {
     }
 
     async function toggleVisible(item) {
+        if (!canEdit) return;
+
         const updated = await apiFetch(`${API_URL}/footer/items/${item.id}`, {
             method: "PATCH",
             headers: {
@@ -95,68 +107,76 @@ export default function FooterMenuPage() {
         setItems(prev => prev.map(i => (i.id === updated.id ? updated : i)));
     }
 
-    const columns = [
-        {key: "id", title: "ID", width: "80px"},
-        {
-            key: "labelKey",
-            title: "Название (ru)",
-            render: (_, row) => {
-                const ru = translationMaps[row.labelKey]?.ru;
-                return ru?.trim() ? ru : "(нет перевода)";
+    const columns = useMemo(() => {
+        const base = [
+            {key: "id", title: "ID", width: "80px"},
+            {
+                key: "labelKey",
+                title: "Название (ru)",
+                render: (_, row) => {
+                    const ru = translationMaps[row.labelKey]?.ru;
+                    return ru?.trim() ? ru : "(нет перевода)";
+                }
+            },
+            {
+                key: "href",
+                title: "Ссылка",
+                render: (value) => value || "-"
+            },
+            {
+                key: "order",
+                title: "Порядок",
+                width: "120px",
+                render: (value) => value ?? "-"
+            },
+            {
+                key: "isVisible",
+                title: "Отображать",
+                width: "140px",
+                render: (value, row) => (
+                    <div style={{display: "flex", alignItems: "center", justifyContent: "center"}}>
+                        <Toggle
+                            checked={!!value}
+                            disabled={!canEdit}
+                            onChange={() => toggleVisible(row)}
+                            title={canEdit ? "Показать / скрыть" : "Только просмотр"}
+                        />
+                    </div>
+                )
             }
-        },
-        {
-            key: "href",
-            title: "Ссылка",
-            render: (value) => value || "-"
-        },
-        {
-            key: "order",
-            title: "Порядок",
-            width: "120px",
-            render: (value) => value ?? "-"
-        },
-        {
-            key: "isVisible",
-            title: "Отображать",
-            width: "140px",
-            render: (value, row) => (
-                <div style={{display: "flex", alignItems: "center", justifyContent: "center"}}>
-                    <Toggle
-                        checked={!!value}
-                        onChange={() => toggleVisible(row)}
-                        title="Показать / скрыть"
-                    />
-                </div>
-            )
-        },
-        {
-            key: "actions",
-            title: "Действия",
-            width: "140px",
-            render: (_, row) => (
-                <div style={{display: "flex", gap: 8, justifyContent: "center"}}>
-                    <button
-                        type="button"
-                        className="button button_icon"
-                        onClick={() => setEditing(row)}
-                        title="Редактировать"
-                    >
-                        <FiEdit size={16}/>
-                    </button>
+        ];
 
-                    <button
-                        type="button"
-                        className="button button_icon button_reject"
-                        onClick={() => setDeleteTarget(row.id)}
-                        title="Удалить"
-                    >
-                        <FiTrash size={16}/>
-                    </button>
-                </div>
-            )
+        if (canEdit) {
+            base.push({
+                key: "actions",
+                title: "Действия",
+                width: "140px",
+                render: (_, row) => (
+                    <div style={{display: "flex", gap: 8, justifyContent: "center"}}>
+                        <button
+                            type="button"
+                            className="button button_icon"
+                            onClick={() => setEditing(row)}
+                            title="Редактировать"
+                        >
+                            <FiEdit size={16}/>
+                        </button>
+
+                        <button
+                            type="button"
+                            className="button button_icon button_reject"
+                            onClick={() => setDeleteTarget(row.id)}
+                            title="Удалить"
+                        >
+                            <FiTrash size={16}/>
+                        </button>
+                    </div>
+                )
+            });
         }
-    ];
+
+        return base;
+    }, [canEdit, translationMaps]);
 
     return (
         <div className="page footer-menu-page">
@@ -168,24 +188,26 @@ export default function FooterMenuPage() {
                     </div>
                 </div>
 
-                <div className="page__row page__row_wrap" style={{justifyContent: "flex-end"}}>
-                    <button
-                        type="button"
-                        className="button"
-                        onClick={() => setCreating(true)}
-                        disabled={!menuBlock}
-                        title={!menuBlock ? "Блок меню ещё не загружен" : "Создать пункт"}
-                    >
-                        Создать пункт
-                    </button>
-                </div>
+                {canEdit && (
+                    <div className="page__row page__row_wrap" style={{justifyContent: "flex-end"}}>
+                        <button
+                            type="button"
+                            className="button"
+                            onClick={() => setCreating(true)}
+                            disabled={!menuBlock}
+                            title={!menuBlock ? "Блок меню ещё не загружен" : "Создать пункт"}
+                        >
+                            Создать пункт
+                        </button>
+                    </div>
+                )}
             </div>
 
             <div className="page__block page__block_card">
                 <CustomTable columns={columns} data={items}/>
             </div>
 
-            {creating && menuBlock && (
+            {canEdit && creating && menuBlock && (
                 <FooterMenuItemDialog
                     mode="create"
                     blockId={menuBlock.id}
@@ -196,7 +218,7 @@ export default function FooterMenuPage() {
                 />
             )}
 
-            {editing && menuBlock && (
+            {canEdit && editing && menuBlock && (
                 <FooterMenuItemDialog
                     mode="edit"
                     initial={editing}
@@ -208,7 +230,7 @@ export default function FooterMenuPage() {
                 />
             )}
 
-            {deleteTarget && (
+            {canEdit && deleteTarget && (
                 <ConfirmDialog
                     open={true}
                     title="Удалить пункт?"

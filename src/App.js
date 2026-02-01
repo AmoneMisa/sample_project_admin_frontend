@@ -14,6 +14,7 @@ import FeatureCardsPage from "./pages/featureCardsPage";
 import ContactsPage from "./pages/contactsPage";
 import FooterMenuPage from "./pages/footerMenuPage";
 import FooterPage from "./pages/footerPage";
+import OfferCardsPage from "./pages/offerCardsPage";
 
 export default function App() {
     return (
@@ -40,6 +41,7 @@ export default function App() {
                             <Route path="contacts" element={<ContactsPage/>}/>
                             <Route path="menu" element={<FooterMenuPage/>}/>
                             <Route path="feature-cards" element={<FeatureCardsPage/>}/>
+                            <Route path="offer-cards" element={<OfferCardsPage/>}/>
                             <Route
                                 path="admin"
                                 element={

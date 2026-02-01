@@ -170,3 +170,19 @@
 .contacts-card__actions {
     gap: 8px;
 }
+
+.contacts-card__text {
+    min-height: var(--control-height);
+    display: flex;
+    align-items: center;
+    padding: var(--control-pad-y) var(--control-pad-x);
+    border-radius: var(--control-radius);
+    border: 1px solid var(--ui-border);
+    background: rgba(255, 255, 255, 0.02);
+    color: var(--color-link);
+    box-shadow: var(--shadow-light);
+}
+
+.contacts-card__muted {
+    opacity: 0.65;
+}

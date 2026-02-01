@@ -188,70 +188,66 @@ export default function Testimonials() {
 
     return (
         <div className="page" style={{padding: 24}}>
-            <div className="page__header">
-                <h1>Отзывы</h1>
+            <div className="page__topbar page__topbar_sticky page__topbar_wrap">
+                <div className="page__topbar-col">
+                    <h1 className="page__header">Отзывы</h1>
+                    <div className="page__topbar-title">
+                        Управление отзывами
+                    </div>
+                </div>
 
                 {canEdit && (
-                    <div>
+                    <div className="page__row page__row_wrap" style={{justifyContent: "flex-end"}}>
                         <button className="button" onClick={() => setCreating(true)}>
                             Создать
                         </button>
                     </div>
                 )}
             </div>
-
-            {/* ФИЛЬТРЫ */}
             <div style={{display: "flex", gap: 12, marginBottom: 16}}>
-                {/* ФИЛЬТРЫ */}
-                <div style={{display: "flex", gap: 12, marginBottom: 16}}>
-
-                    <LabeledInput
-                        label="Имя"
-                        value={filters.name}
-                        onChange={v => setFilters({...filters, name: v})}
-                    />
-
-                    <LabeledInput
-                        label="Роль"
-                        value={filters.role}
-                        onChange={v => setFilters({...filters, role: v})}
-                    />
-
-                    <LabeledSelect
-                        label="Отображение"
-                        value={filters.visible}
-                        options={[
-                            {value: "all", label: "Все"},
-                            {value: "visible", label: "Только видимые"},
-                            {value: "hidden", label: "Только скрытые"},
-                        ]}
-                        onChange={v => setFilters({...filters, visible: v})}
-                    />
-
-                    <LabeledInput
-                        label="Рейтинг"
-                        type="number"
-                        value={filters.rating}
-                        error={filterErrors.rating}
-                        onChange={v => {
-                            setFilters({...filters, rating: v});
-                            validateFilters();
-                        }}
-                        style={{width: 100}}
-                    />
-
-                    <LabeledInput
-                        label="Поиск по тексту"
-                        value={filters.search}
-                        onChange={v => setFilters({...filters, search: v})}
-                        style={{flex: 1}}
-                    />
-                </div>
-
+                <LabeledInput
+                    label="Имя"
+                    placeholder={"Анна Логачева"}
+                    value={filters.name}
+                    onChange={v => setFilters({...filters, name: v})}
+                />
+                <LabeledInput
+                    label="Роль"
+                    placeholder={"Разработчик"}
+                    value={filters.role}
+                    onChange={v => setFilters({...filters, role: v})}
+                />
+                <LabeledSelect
+                    label="Отображение"
+                    value={filters.visible}
+                    options={[
+                        {value: "all", label: "Все"},
+                        {value: "visible", label: "Только видимые"},
+                        {value: "hidden", label: "Только скрытые"},
+                    ]}
+                    onChange={v => setFilters({...filters, visible: v})}
+                />
+                <LabeledInput
+                    label="Рейтинг"
+                    placeholder={"5"}
+                    type="number"
+                    value={filters.rating}
+                    error={filterErrors.rating}
+                    onChange={v => {
+                        setFilters({...filters, rating: v});
+                        validateFilters();
+                    }}
+                    style={{width: 100}}
+                />
+                <LabeledInput
+                    label="Поиск по тексту"
+                    placeholder="Этот товар невероятный..."
+                    value={filters.search}
+                    onChange={v => setFilters({...filters, search: v})}
+                    style={{flex: 1}}
+                />
             </div>
-
             <CustomTable columns={columns} data={sorted}/>
-
             {creating && canEdit && (
                 <TestimonialDialog
                     title="Создать отзыв"

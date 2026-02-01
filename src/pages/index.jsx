@@ -108,8 +108,13 @@ export default function Index() {
 
     return (
         <div className="page" style={{padding: 24}}>
-            <div className="page__header">
-                <h1>Переводы</h1>
+            <div className="page__topbar page__topbar_sticky page__topbar_wrap">
+                <div className="page__topbar-col">
+                    <h1 className="page__header">Переводы</h1>
+                    <div className="page__topbar-title">
+                        Управление переводами
+                    </div>
+                </div>
 
                 <div style={{display: "flex", gap: 12}}>
                     {canEdit && (

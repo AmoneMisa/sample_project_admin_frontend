@@ -200,20 +200,23 @@ export default function HeaderMenu() {
 
     return (
         <div className="page" style={{padding: 24}}>
-            <div className="page__header">
-                <h1>Хедер‑меню</h1>
+            <div className="page__topbar page__topbar_sticky page__topbar_wrap">
+                <div className="page__topbar-col">
+                    <h1 className="page__header">Главное меню</h1>
+                    <div className="page__topbar-title">
+                        Управление главным меню в хедере (шапке)
+                    </div>
+                </div>
 
                 {canEdit && (
-                    <div>
+                    <div className="page__row page__row_wrap" style={{justifyContent: "flex-end"}}>
                         <button className="button" onClick={() => setCreating(true)}>
                             Добавить
                         </button>
                     </div>
                 )}
             </div>
-
             <CustomTable columns={columns} data={menu}/>
-
             {creating && (() => {
                 const id = uuid();
 

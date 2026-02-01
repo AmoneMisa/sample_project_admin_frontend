@@ -9,8 +9,39 @@ export default function MultilangInput({
                                            placeholder,
                                            hint,
                                            className = "",
+                                           minLength,
+                                           maxLength,
+                                           forbidHtml = false
                                        }) {
     const [activeLang, setActiveLang] = useState(languages[0] || "ru");
+
+    function sanitize(value) {
+        let v = value;
+
+        const forbidden = /<\/?(script|style|code)[^>]*>/gi;
+        v = v.replace(forbidden, "");
+
+        if (forbidHtml) {
+            const anyTag = /<\/?[^>]+>/gi;
+            v = v.replace(anyTag, "");
+        }
+
+        if (maxLength && v.length > maxLength) {
+            v = v.slice(0, maxLength);
+        }
+
+        return v;
+    }
+
+    function handleChange(e) {
+        const raw = e.target.value;
+        const cleaned = sanitize(raw);
+
+        onChange({
+            ...valueMap,
+            [activeLang]: cleaned,
+        });
+    }
 
     return (
         <div className={`field-holder ${className}`}>
@@ -43,12 +74,9 @@ export default function MultilangInput({
                     (errors[activeLang] ? " field-holder__input_error" : "")
                 }
                 value={valueMap[activeLang] || ""}
-                onChange={e => {
-                    onChange({
-                        ...valueMap,
-                        [activeLang]: e.target.value,
-                    });
-                }}
+                onChange={handleChange}
+                minLength={minLength}
+                maxLength={maxLength}
             />
 
             {errors[activeLang] && (

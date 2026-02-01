@@ -2,11 +2,10 @@ import {useState} from "react";
 import LabeledSelect from "../controls/LabeledSelect";
 import LabeledInput from "../controls/LabeledInput";
 import MultilangInput from "../controls/MultilangInput";
-import {FiChevronDown, FiChevronRight, FiFolder, FiPlus, FiTrash} from "react-icons/fi";
+import {FiChevronDown, FiChevronRight, FiPlus, FiTrash} from "react-icons/fi";
 import Toggle from "../controls/Toggle";
-import {TbFileDots} from "react-icons/tb";
-import {BiCommentDots} from "react-icons/bi";
-import {LuFolderDot} from "react-icons/lu";
+
+const MAX_TITLE_LEN = 80;
 
 export default function MenuItemDropdownMega({
                                                  item,
@@ -29,18 +28,45 @@ export default function MenuItemDropdownMega({
     };
 
     const badgeOptions = [
-        {value: "", label: "Нет"},
-        ...badges.map(b => ({value: b.id, label: b.label}))
+        { value: "", label: "Нет" },
+        ...badges.map(b => ({ value: b.id, label: b.label }))
     ];
 
-    const [collapsedLists, setCollapsedLists] = useState(() => ({}));     // { [c]: true }
-    const [collapsedItems, setCollapsedItems] = useState(() => ({}));     // { ["c:s"]: true }
+    const [collapsedLists, setCollapsedLists] = useState(() => ({}));
+    const [collapsedItems, setCollapsedItems] = useState(() => ({}));
 
-    const toggleList = (c) => setCollapsedLists(prev => ({...prev, [c]: !prev[c]}));
+    const toggleList = (c) => setCollapsedLists(prev => ({ ...prev, [c]: !prev[c] }));
     const toggleItem = (c, s) => setCollapsedItems(prev => {
         const k = `${c}:${s}`;
-        return {...prev, [k]: !prev[k]};
+        return { ...prev, [k]: !prev[k] };
     });
+
+    const trimToMax = (value) => {
+        if (value == null) return "";
+        const s = String(value);
+        return s.length > MAX_TITLE_LEN ? s.slice(0, MAX_TITLE_LEN) : s;
+    };
+
+    const normalizeMapToMax = (map) => {
+        const next = { ...(map || {}) };
+        for (const lang of languages) {
+            if (typeof next[lang] === "string") next[lang] = trimToMax(next[lang]);
+        }
+        return next;
+    };
+
+    const getPreviewText = (key) => {
+        const map = translationMaps?.[key] || {};
+        for (const lang of languages) {
+            const v = (map?.[lang] ?? "").toString().trim();
+            if (v) return v;
+        }
+        for (const k of Object.keys(map)) {
+            const v = (map?.[k] ?? "").toString().trim();
+            if (v) return v;
+        }
+        return "Нет текста";
+    };
 
     const addList = () =>
         updateItem(n => {
@@ -49,7 +75,7 @@ export default function MenuItemDropdownMega({
                 titleKey: `headerMenu.${n.id}.dropdown-mega.column.${c}.title`,
                 items: []
             });
-            setCollapsedLists(prev => ({...prev, [c]: false}));
+            setCollapsedLists(prev => ({ ...prev, [c]: false }));
         });
 
     const removeList = (c) =>
@@ -66,8 +92,8 @@ export default function MenuItemDropdownMega({
                 visible: true,
                 badgeId: ""
             });
-            setCollapsedLists(prev => ({...prev, [c]: false}));
-            setCollapsedItems(prev => ({...prev, [`${c}:${s}`]: false}));
+            setCollapsedLists(prev => ({ ...prev, [c]: false }));
+            setCollapsedItems(prev => ({ ...prev, [`${c}:${s}`]: false }));
         });
 
     const removeCategory = (c, s) =>
@@ -108,29 +134,38 @@ export default function MenuItemDropdownMega({
 
             {item.columns.map((col, c) => {
                 const listCollapsed = collapsedLists[c] === true;
+                const listPreview = getPreviewText(col.titleKey);
 
                 return (
                     <div key={c} className="menu-modal__row">
                         <div className="menu-modal__row-item menu-modal__row_col">
                             <div className="menu-modal__sub-item-row menu-modal__sub-item-row_between">
                                 <div className="menu-modal__sub-item-row_grow">
-                                    <MultilangInput
-                                        placeholder={"Название списка"}
-                                        languages={languages}
-                                        valueMap={translationMaps[col.titleKey] || {}}
-                                        errors={extractErrors(`columns.${c}.title`)}
-                                        onChange={(next) => updateTranslation(col.titleKey, next)}
-                                    />
+                                    {!listCollapsed ? (
+                                        <MultilangInput
+                                            placeholder={"Название списка"}
+                                            languages={languages}
+                                            valueMap={translationMaps[col.titleKey] || {}}
+                                            errors={extractErrors(`columns.${c}.title`)}
+                                            onChange={(next) =>
+                                                updateTranslation(col.titleKey, normalizeMapToMax(next))
+                                            }
+                                        />
+                                    ) : (
+                                        <div className="menu-modal__collapsed-preview">
+                                            {listPreview}
+                                        </div>
+                                    )}
                                 </div>
 
-                                <div style={{alignSelf: "start", width: "auto"}} className={"menu-modal__sub-item-row"}>
+                                <div style={{ alignSelf: "start", width: "auto" }} className={"menu-modal__sub-item-row"}>
                                     <button
                                         type="button"
                                         className="button button_icon"
                                         title={listCollapsed ? "Развернуть список" : "Свернуть список"}
                                         onClick={() => toggleList(c)}
                                     >
-                                        {listCollapsed ? <FiChevronRight size={16}/> : <FiChevronDown size={16}/>}
+                                        {listCollapsed ? <FiChevronRight size={16} /> : <FiChevronDown size={16} />}
                                     </button>
 
                                     <Toggle
@@ -150,7 +185,7 @@ export default function MenuItemDropdownMega({
                                         title="Удалить список"
                                         onClick={() => removeList(c)}
                                     >
-                                        <FiTrash size={16}/>
+                                        <FiTrash size={16} />
                                     </button>
                                 </div>
                             </div>
@@ -161,22 +196,32 @@ export default function MenuItemDropdownMega({
                                         const labelErrors = extractErrors(`columns.${c}.items.${s}.label`);
                                         const itemKey = `${c}:${s}`;
                                         const itemCollapsed = collapsedItems[itemKey] === true;
+                                        const itemPreview = getPreviewText(sub.labelKey);
 
                                         return (
                                             <div key={s} className="menu-modal__sub-item menu-modal__sub-item_col">
-                                                <div
-                                                    className="menu-modal__sub-item-row menu-modal__sub-item-row_between">
+                                                <div className="menu-modal__sub-item-row menu-modal__sub-item-row_between">
                                                     <div className="menu-modal__sub-item-row_grow">
-                                                        <MultilangInput
-                                                            languages={languages}
-                                                            placeholder={"Название категории"}
-                                                            valueMap={translationMaps[sub.labelKey] || {}}
-                                                            errors={labelErrors}
-                                                            onChange={(next) => updateTranslation(sub.labelKey, next)}
-                                                        />
+                                                        {!itemCollapsed ? (
+                                                            <MultilangInput
+                                                                languages={languages}
+                                                                placeholder={"Название категории"}
+                                                                valueMap={translationMaps[sub.labelKey] || {}}
+                                                                errors={labelErrors}
+                                                                onChange={(next) =>
+                                                                    updateTranslation(sub.labelKey, normalizeMapToMax(next))
+                                                                }
+                                                            />
+                                                        ) : (
+                                                            <div className="menu-modal__collapsed-preview">
+                                                                {itemPreview}
+                                                            </div>
+                                                        )}
                                                     </div>
-                                                    <div className="menu-modal__sub-item-row"
-                                                         style={{width: "auto", alignSelf: "start"}}
+
+                                                    <div
+                                                        className="menu-modal__sub-item-row"
+                                                        style={{ width: "auto", alignSelf: "start" }}
                                                     >
                                                         <button
                                                             type="button"
@@ -184,8 +229,7 @@ export default function MenuItemDropdownMega({
                                                             title={itemCollapsed ? "Развернуть пункт" : "Свернуть пункт"}
                                                             onClick={() => toggleItem(c, s)}
                                                         >
-                                                            {itemCollapsed ? <FiChevronRight size={16}/> :
-                                                                <FiChevronDown size={16}/>}
+                                                            {itemCollapsed ? <FiChevronRight size={16} /> : <FiChevronDown size={16} />}
                                                         </button>
 
                                                         <Toggle
@@ -205,7 +249,7 @@ export default function MenuItemDropdownMega({
                                                             title="Удалить пункт"
                                                             onClick={() => removeCategory(c, s)}
                                                         >
-                                                            <FiTrash size={16}/>
+                                                            <FiTrash size={16} />
                                                         </button>
                                                     </div>
                                                 </div>
@@ -213,8 +257,7 @@ export default function MenuItemDropdownMega({
                                                 {!itemCollapsed && (
                                                     <>
                                                         <div className="menu-modal__sub-item-row">
-                                                            <div className="menu-modal__sub-item-row_fixed"
-                                                                 style={{alignSelf: "end"}}>
+                                                            <div className="menu-modal__sub-item-row_fixed" style={{ alignSelf: "end" }}>
                                                                 <LabeledSelect
                                                                     label="Бейдж"
                                                                     value={sub.badgeId ?? ""}
@@ -226,6 +269,7 @@ export default function MenuItemDropdownMega({
                                                                     options={badgeOptions}
                                                                 />
                                                             </div>
+
                                                             <div className="menu-modal__sub-item-row">
                                                                 <LabeledInput
                                                                     label="Ссылка"
@@ -251,19 +295,18 @@ export default function MenuItemDropdownMega({
                                         className="button button_border"
                                         onClick={() => addCategory(c)}
                                     >
-                                        <FiPlus style={{marginRight: 8}} size={16}/>
+                                        <FiPlus style={{ marginRight: 8 }} size={16} />
                                         Добавить категорию
                                     </button>
                                 </>
                             )}
                         </div>
                     </div>
-                )
-                    ;
+                );
             })}
 
             <button type="button" className="button button_secondary" onClick={addList}>
-                <FiPlus style={{marginRight: 8}} size={16}/>
+                <FiPlus style={{ marginRight: 8 }} size={16} />
                 Добавить список
             </button>
 
@@ -271,6 +314,7 @@ export default function MenuItemDropdownMega({
                 <div className="menu-modal__row-item">
                     <LabeledInput
                         label="Изображение (URL)"
+                        placeholder={"https://..."}
                         value={item.image?.src ?? ""}
                         onChange={(v) =>
                             updateItem(n => {
@@ -291,8 +335,8 @@ export default function MenuItemDropdownMega({
                             })
                         }
                         options={[
-                            {value: "right", label: "Справа"},
-                            {value: "left", label: "Слева"}
+                            { value: "right", label: "Справа" },
+                            { value: "left", label: "Слева" }
                         ]}
                     />
                 </div>

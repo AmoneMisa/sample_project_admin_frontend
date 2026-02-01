@@ -27,8 +27,7 @@ export default function UsersPage() {
         if (search.trim()) params.set("email", search.trim());
 
         const res = await apiFetch(`${API_URL}/users?${params.toString()}`);
-        const data = await res.json();
-        setUsers(data);
+        setUsers(res);
     }
 
     useEffect(() => {

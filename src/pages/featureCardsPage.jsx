@@ -4,7 +4,7 @@ import {useAuth} from "../hooks/authContext";
 import {useToast} from "../components/layout/ToastContext";
 import FeatureCardDialog from "../components/modals/FeatureCardDialog";
 import ConfirmDialog from "../components/modals/ConfirmDialog";
-import Checkbox from "../components/controls/Checkbox";
+import Toggle from "../components/controls/Toggle";
 import {FiEdit, FiTrash} from "react-icons/fi";
 import {useTranslations} from "../hooks/useTranslations";
 import apiFetch from "../utils/apiFetch";
@@ -28,9 +28,7 @@ export default function FeatureCardsPage() {
     } = useTranslations();
 
     async function load() {
-        const data = await apiFetch(`${API_URL}/feature-cards?all=true`, {
-            headers: {Authorization: `Bearer ${accessToken}`}
-        });
+        const data = await apiFetch(`${API_URL}/feature-cards?all=true`);
         setItems(data);
     }
 
@@ -47,8 +45,7 @@ export default function FeatureCardsPage() {
         const updated = await apiFetch(`${API_URL}/feature-cards/${row.id}`, {
             method: "PATCH",
             headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${accessToken}`
+                "Content-Type": "application/json"
             },
             body: JSON.stringify({isVisible: !row.isVisible})
         });
@@ -61,8 +58,7 @@ export default function FeatureCardsPage() {
         if (!item) return;
 
         await apiFetch(`${API_URL}/feature-cards/${id}`, {
-            method: "DELETE",
-            headers: {Authorization: `Bearer ${accessToken}`}
+            method: "DELETE"
         });
 
         const keysToDelete = [item.titleKey];
@@ -75,19 +71,59 @@ export default function FeatureCardsPage() {
     }
 
     const columns = [
-        {key: "id", title: "ID", width: "60px"},
+        {
+            key: "id",
+            title: "ID",
+            width: "110px",
+            render: (value, row) => (
+                <div className="table__cell-row">
+                    <span className="table__mono">{value}</span>
+
+                    <Toggle
+                        checked={row.isVisible}
+                        disabled={!canEdit}
+                        title={row.isVisible ? "Скрыть карточку" : "Показать карточку"}
+                        onChange={() => {
+                            if (!canEdit) return;
+                            toggleVisible(row);
+                        }}
+                    />
+                </div>
+            )
+        },
         {
             key: "image",
             title: "Изображение",
-            width: "120px",
-            render: (value) =>
-                value ? (
-                    <img
-                        src={value}
-                        alt=""
-                        style={{width: 80, height: "auto", borderRadius: 6}}
-                    />
-                ) : "-"
+            width: "140px",
+            render: (value) => {
+                if (!value) return <span className="table__muted">—</span>;
+
+                return (
+                    <a
+                        className="table__img"
+                        href={value}
+                        target="_blank"
+                        rel="noreferrer"
+                        title="Открыть изображение"
+                    >
+                        <img
+                            src={value}
+                            alt=""
+                            loading="lazy"
+                            onError={(e) => {
+                                e.currentTarget.style.display = "none";
+                                const parent = e.currentTarget.parentElement;
+                                if (parent && !parent.querySelector(".table__img-fallback")) {
+                                    const span = document.createElement("span");
+                                    span.className = "table__img-fallback";
+                                    span.textContent = "нет";
+                                    parent.appendChild(span);
+                                }
+                            }}
+                        />
+                    </a>
+                );
+            }
         },
         {
             key: "titleKey",
@@ -100,17 +136,6 @@ export default function FeatureCardsPage() {
             title: "Описание (ru)",
             width: "350px",
             render: (_, row) => translationMaps[row.descriptionKey]?.ru || ""
-        },
-        {
-            key: "isVisible",
-            title: "Отображать",
-            width: "120px",
-            render: (value, row) =>
-                canEdit ? (
-                    <Checkbox checked={value} onChange={() => toggleVisible(row)}/>
-                ) : (
-                    <Checkbox checked={value} disabled/>
-                )
         },
         {
             key: "actions",

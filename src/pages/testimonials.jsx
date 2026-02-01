@@ -1,7 +1,7 @@
 import ConfirmDialog from "../components/modals/ConfirmDialog";
 import TestimonialDialog from "../components/modals/TestimonialDialog";
 import {FiCopy, FiEdit, FiTrash} from "react-icons/fi";
-import Checkbox from "../components/controls/Checkbox";
+import Toggle from "../components/controls/Toggle";
 import CustomTable from "../components/customElems/CustomTable";
 import {useEffect, useMemo, useState} from "react";
 import {useToast} from "../components/layout/ToastContext";
@@ -44,9 +44,7 @@ export default function Testimonials() {
         async function load() {
             if (!accessToken) return;
 
-            const data = await apiFetch(`${API_URL}/testimonials`, {
-                headers: {Authorization: `Bearer ${accessToken}`}
-            });
+            const data = await apiFetch(`${API_URL}/testimonials`);
 
             setItems(data);
         }
@@ -58,8 +56,7 @@ export default function Testimonials() {
         const newItem = await apiFetch(`${API_URL}/testimonials`, {
             method: "POST",
             headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${accessToken}`
+                "Content-Type": "application/json"
             },
             body: JSON.stringify(payload)
         });
@@ -72,8 +69,7 @@ export default function Testimonials() {
         const updated = await apiFetch(`${API_URL}/testimonials/${id}`, {
             method: "PATCH",
             headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${accessToken}`
+                "Content-Type": "application/json"
             },
             body: JSON.stringify(payload)
         });
@@ -134,8 +130,30 @@ export default function Testimonials() {
 
     const columns = [{
         key: "id",
-        title: (<span onClick={() => handleSort("id")}
-                      className="sortable"> ID {sort.field === "id" ? (sort.direction === "asc" ? "↑" : "↓") : ""} </span>),
+        title: (
+            <span
+                onClick={() => handleSort("id")}
+                className="sortable"
+            >
+            ID {sort.field === "id" ? (sort.direction === "asc" ? "↑" : "↓") : ""}
+        </span>
+        ),
+
+        render: (value, row) => (
+            <div className="table__cell-row" style={{display: "flex", gap: 8, alignItems: "center"}}>
+                <span>{value}</span>
+
+                <Toggle
+                    checked={row.isVisible}
+                    disabled={!canEdit}
+                    title={row.isVisible ? "Скрыть отзыв" : "Показать отзыв"}
+                    onChange={() => {
+                        if (!canEdit) return;
+                        updateItem(row.id, {isVisible: !row.isVisible});
+                    }}
+                />
+            </div>
+        ),
     }, {
         key: "name",
         title: (<span onClick={() => handleSort("name")}
@@ -153,13 +171,6 @@ export default function Testimonials() {
         width: "100px",
         title: (<span onClick={() => handleSort("rating")}
                       className="sortable"> Рейтинг {sort.field === "rating" ? (sort.direction === "asc" ? "↑" : "↓") : ""} </span>),
-    }, {
-        key: "isVisible",
-        title: "Отображать",
-        width: "120px",
-        render: (value, row) => canEdit ? (
-            <Checkbox checked={value} onChange={() => updateItem(row.id, {isVisible: !value})}/>) : (
-            <Checkbox checked={value} disabled/>),
     }, {
         key: "actions",
         title: "Действия",

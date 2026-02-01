@@ -126,7 +126,7 @@ export default function MenuItemDropdownMega({
                                 <div style={{alignSelf: "start", width: "auto"}} className={"menu-modal__sub-item-row"}>
                                     <button
                                         type="button"
-                                        className="button button_border"
+                                        className="button button_icon"
                                         title={listCollapsed ? "Развернуть список" : "Свернуть список"}
                                         onClick={() => toggleList(c)}
                                     >
@@ -180,7 +180,7 @@ export default function MenuItemDropdownMega({
                                                     >
                                                         <button
                                                             type="button"
-                                                            className="button button_icon button_border"
+                                                            className="button button_icon"
                                                             title={itemCollapsed ? "Развернуть пункт" : "Свернуть пункт"}
                                                             onClick={() => toggleItem(c, s)}
                                                         >

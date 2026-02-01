@@ -24,7 +24,6 @@ export default function LabeledInput({
                     " field-holder__input" +
                     (error ? " field-holder__input_error" : "")
                 }
-                style={{ padding: 6 }}
                 max={max}
                 min={1}
                 title={title}

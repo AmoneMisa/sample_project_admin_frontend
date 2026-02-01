@@ -1,79 +1,64 @@
-import Checkbox from "../controls/Checkbox";
+import Toggle from "../controls/Toggle";
 import LabeledInput from "../controls/LabeledInput";
-import MultilangInput from "../controls/MultilangInput";
+import LabeledSelect from "../controls/LabeledSelect";
 
 export default function MenuItemSimple({
                                            item,
                                            updateItem,
-                                           translationMaps,
-                                           updateTranslation,
-                                           languages,
-                                           fieldErrors
+                                           fieldErrors,
+                                           badges = []
                                        }) {
-    const extractErrors = (prefix) => {
-        const result = {};
-        for (const key in fieldErrors) {
-            if (key.startsWith(prefix)) {
-                const lang = key.split(".").pop();
-                result[lang] = fieldErrors[key];
-            }
-        }
-        return result;
-    };
-
-    const badgeErrors = extractErrors("badge");
+    const badgeOptions = [
+        { value: "", label: "Нет" },
+        ...badges.map(b => ({ value: b.id, label: b.label }))
+    ];
 
     return (
-        <div className="menu-modal__row">
-            <div className="menu-modal__row-item">
-                <Checkbox
-                    label="Отображать пункт меню"
-                    checked={item.visible !== false}
-                    onChange={() =>
-                        updateItem(n => {
-                            n.visible = n.visible === false ? true : !n.visible;
-                        })
-                    }
-                />
-            </div>
-
-            <div className="menu-modal__row-item">
-                <LabeledInput
-                    label="Ссылка"
-                    value={item.href}
-                    onChange={(v) =>
-                        updateItem(n => {
-                            n.href = v;
-                        })
-                    }
-                    error={fieldErrors["href"] ?? ""}
-                />
-            </div>
-            <div className="menu-modal__row-item">
-                <Checkbox
-                    label="Бейдж"
-                    checked={item.showBadge === true}
-                    onChange={() =>
-                        updateItem(n => {
-                            if (!n.badgeKey) {
-                                n.badgeKey = `headerMenu.${n.id}.simple.badge`;
-                            }
-                            n.showBadge = !n.showBadge;
-                            if (!n.showBadge) n.badgeKey = null;
-                        })
-                    }
-                />
-
-                {item.showBadge && item.badgeKey && (
-                    <MultilangInput
-                        label="Бейдж"
-                        languages={languages}
-                        valueMap={translationMaps[item.badgeKey] || {}}
-                        errors={badgeErrors}
-                        onChange={(next) => updateTranslation(item.badgeKey, next)}
+        <>
+            <div className="menu-modal__row">
+                <div className="menu-modal__row-item">
+                    <Toggle
+                        label="Отображать пункт меню"
+                        checked={item.visible !== false}
+                        onChange={() =>
+                            updateItem(n => {
+                                n.visible = n.visible === false ? true : !n.visible;
+                            })
+                        }
                     />
-                )}
+                </div>
             </div>
-        </div>
+
+            <div className="menu-modal__row">
+                <div className="menu-modal__row-item">
+                    <LabeledInput
+                        label="Ссылка"
+                        placeholder="/category"
+                        value={item.href}
+                        onChange={(v) =>
+                            updateItem(n => {
+                                n.href = v;
+                            })
+                        }
+                        error={fieldErrors["href"] ?? ""}
+                    />
+                </div>
+            </div>
+
+            <div className="menu-modal__row">
+                <div className="menu-modal__row-item">
+                    <LabeledSelect
+                        label="Бейдж"
+                        value={item.badgeId ?? ""}
+                        onChange={(v) =>
+                            updateItem(n => {
+                                n.badgeId = v || "";
+                            })
+                        }
+                        options={badgeOptions}
+                    />
+                </div>
+            </div>
+        </>
     );
 }

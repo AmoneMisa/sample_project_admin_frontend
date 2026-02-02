@@ -90,6 +90,7 @@
     display: flex;
     gap: 12px;
     align-items: flex-end;
+    width: -webkit-fill-available;
 }
 
 .page__row_wrap {

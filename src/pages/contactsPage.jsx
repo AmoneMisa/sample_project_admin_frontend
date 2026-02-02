@@ -58,21 +58,31 @@ export default function ContactsPage() {
 
     function createContact(type) {
         const id = uuid();
-        return {id, type, value: "", isVisible: true, labelKey: makeLabelKey(type, id)};
+        return {id, type, value: "", isVisible: true, labelKey: makeLabelKey(type, id), persisted: false};
     }
 
     function createSocialContact() {
         const id = uuid();
-        return {id, type: "social", socialType: "instagram", value: "", isVisible: true, labelKey: makeLabelKey("social", id)};
+        return {
+            id,
+            type: "social",
+            socialType: "instagram",
+            value: "",
+            isVisible: true,
+            labelKey: makeLabelKey("social", id),
+            persisted: false
+        };
     }
 
     function createFooterInfo() {
         const id = uuid();
-        return {id, type: "other", value: "", isVisible: true, labelKey: makeLabelKey("other", id)};
+        return {id, type: "other", value: "", isVisible: true, labelKey: makeLabelKey("other", id), persisted: false};
     }
 
     function normalizeContact(c) {
         const fixed = {...c};
+        fixed.persisted = true;
+
         if (!fixed.labelKey) fixed.labelKey = makeLabelKey(fixed.type, fixed.id);
 
         if ("label" in fixed) delete fixed.label;
@@ -96,7 +106,6 @@ export default function ContactsPage() {
 
             let loaded = await loadContacts();
 
-            // дефолтные записи добавляем только в режиме редактирования
             if (initialLoad && canEdit) {
                 if (!loaded.some(c => c.type === "phone")) loaded.push(createContact("phone"));
                 if (!loaded.some(c => c.type === "email")) loaded.push(createContact("email"));
@@ -108,7 +117,6 @@ export default function ContactsPage() {
             loaded = loaded.map(normalizeContact);
             setContacts(loaded);
 
-            // подготовка карт переводов (чтобы MultilangInput / preview работали стабильно)
             const next = {};
             for (const c of loaded) {
                 const key = c.labelKey;
@@ -129,7 +137,8 @@ export default function ContactsPage() {
     useEffect(() => {
         try {
             localStorage.setItem(LS_COLLAPSE_KEY, JSON.stringify(collapsedGroups));
-        } catch {}
+        } catch {
+        }
     }, [collapsedGroups]);
 
     useEffect(() => {
@@ -235,8 +244,23 @@ export default function ContactsPage() {
         }
 
         await saveContact(contact);
-        const updated = await loadContacts();
+        const updatedRaw = await loadContacts();
+
+        let updated = updatedRaw.map(normalizeContact);
+
+        if (canEdit && !updated.some(c => c.type === "other")) {
+            updated = [...updated, createFooterInfo()];
+        }
+
         setContacts(updated);
+
+        for (const c of updated) {
+            const key = c.labelKey;
+            const map =
+                translationMaps[key] ||
+                Object.fromEntries(languages.map(l => [l.code, ""]));
+            updateTranslation(key, map);
+        }
 
         showToast("Контакт сохранён");
     }
@@ -373,7 +397,6 @@ export default function ContactsPage() {
                                                 </div>
                                             )}
 
-                                            {/* VALUE */}
                                             {!canEdit ? (
                                                 <>
                                                     {contact.type === "social" ? (
@@ -406,7 +429,8 @@ export default function ContactsPage() {
                                                                     setContacts([...contacts]);
                                                                 }}
                                                             />
-                                                            {err.value && <div className="field-holder__error">{err.value}</div>}
+                                                            {err.value &&
+                                                                <div className="field-holder__error">{err.value}</div>}
                                                         </>
                                                     ) : contact.type === "social" ? (
                                                         <>
@@ -449,8 +473,7 @@ export default function ContactsPage() {
                                                     )}
                                                 </>
                                             )}
-
-                                            {/* LABEL */}
+                                            --
                                             {canEdit ? (
                                                 <MultilangInput
                                                     label="Label"

@@ -25,8 +25,6 @@ export default function OfferCardDialog({mode = "create", initial = null, onClos
 
     const languageCodes = useMemo(() => (languages || []).map((l) => l.code), [languages]);
 
-    const [loading, setLoading] = useState(true);
-
     const [form, setForm] = useState(() => {
         if (initial) return structuredClone(initial);
 

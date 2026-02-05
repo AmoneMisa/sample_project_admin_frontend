@@ -1,19 +1,18 @@
-import {useEffect, useMemo, useState} from "react";
 import Modal from "./Modal";
-import LabeledInput from "../controls/LabeledInput";
-import Toggle from "../controls/Toggle";
-import MultilangInput from "../controls/MultilangInput";
 import apiFetch from "../../utils/apiFetch";
-import {useToast} from "../layout/ToastContext";
-import {useTranslations} from "../../hooks/useTranslations";
-import {FiArrowDown, FiArrowUp, FiChevronDown, FiChevronRight, FiPlus, FiTrash} from "react-icons/fi";
-import {v4 as uuid} from "uuid";
+import Toggle from "../controls/Toggle";
+import LabeledInput from "../controls/LabeledInput";
 import LabeledNumberInput from "../controls/LabeledNumberInput";
+import {FiArrowDown, FiArrowUp, FiChevronDown, FiChevronRight, FiPlus, FiTrash} from "react-icons/fi";
+import MultilangInput from "../controls/MultilangInput";
+import {useEffect, useMemo, useState} from "react";
+import {useTranslations} from "../../hooks/useTranslations";
+import {useToast} from "../layout/ToastContext";
+import {v4 as uuid} from "uuid";
 
 export default function OfferCardDialog({mode = "create", initial = null, onClose}) {
     const API_URL = process.env.REACT_APP_API_URL || "/api";
     const {showToast} = useToast();
-
     const isEdit = mode === "edit";
 
     const {
@@ -65,10 +64,6 @@ export default function OfferCardDialog({mode = "create", initial = null, onClos
             next.features = next.features.map((x, i) => ({...x, order: i}));
             return next;
         });
-    };
-
-    const toggleFeatureCollapse = (featureId) => {
-        setCollapsedFeatures((prev) => ({...prev, [featureId]: !prev[featureId]}));
     };
 
     const addFeature = () => {
@@ -150,7 +145,7 @@ export default function OfferCardDialog({mode = "create", initial = null, onClos
             await loadAllTranslations();
 
             if (isEdit && initial?.id) {
-                const nameKey = initial.labelKey;
+                const nameKey = initial.nameKey;
                 const descKey = initial.descriptionKey;
 
                 if (nameKey) setNameTranslations({...(translationMaps[nameKey] || {})});
@@ -161,6 +156,7 @@ export default function OfferCardDialog({mode = "create", initial = null, onClos
                     nextFeatureTranslations[f.id] = {...(translationMaps[f.labelKey] || {})};
                 }
                 setFeatureTranslations(nextFeatureTranslations);
+
                 const collapsed = {};
                 for (const f of initial.features || []) collapsed[f.id] = true;
                 setCollapsedFeatures(collapsed);
@@ -179,14 +175,14 @@ export default function OfferCardDialog({mode = "create", initial = null, onClos
 
         const validatePrice = (value) => {
             if (!value) return "Обязательное поле";
-
             if (value < 0.01) return "Минимум 0.01";
-
             return null;
         };
 
-        if (!form.nameKey.trim()) e.nameKey = "Обязательное поле";
-        if (!form.descriptionKey.trim()) e.descriptionKey = "Обязательное поле";
+        if (isEdit) {
+            if (!form.nameKey.trim()) e.nameKey = "Обязательное поле";
+            if (!form.descriptionKey.trim()) e.descriptionKey = "Обязательное поле";
+        }
 
         const monthlyError = validatePrice(form.monthly);
         if (monthlyError) e.monthly = monthlyError;
@@ -218,23 +214,23 @@ export default function OfferCardDialog({mode = "create", initial = null, onClos
     };
 
     const saveCard = async () => {
-        const payload = {
-            nameKey: form.nameKey.trim(),
-            descriptionKey: form.descriptionKey.trim(),
-            monthly: form.monthly,
-            yearly: form.yearly,
-            highlight: !!form.highlight,
-            order: Number(form.order) || 0,
-            isVisible: !!form.isVisible,
-            features: (form.features || []).map((f, i) => ({
-                id: f.id,
-                labelKey: f.labelKey,
-                order: i,
-                isVisible: !!f.isVisible,
-            })),
-        };
-
         if (isEdit) {
+            const payload = {
+                nameKey: form.nameKey.trim(),
+                descriptionKey: form.descriptionKey.trim(),
+                monthly: form.monthly,
+                yearly: form.yearly,
+                highlight: !!form.highlight,
+                order: Number(form.order) || 0,
+                isVisible: !!form.isVisible,
+                features: form.features.map((f, i) => ({
+                    id: f.id,
+                    labelKey: f.labelKey,
+                    order: i,
+                    isVisible: !!f.isVisible,
+                })),
+            };
+
             await apiFetch(`${API_URL}/offer-cards/${initial.id}`, {
                 method: "PATCH",
                 headers: {"Content-Type": "application/json"},
@@ -243,6 +239,21 @@ export default function OfferCardDialog({mode = "create", initial = null, onClos
 
             return initial.id;
         }
+
+        const payload = {
+            nameKey: "tmp",
+            descriptionKey: "tmp",
+            monthly: form.monthly,
+            yearly: form.yearly,
+            highlight: !!form.highlight,
+            order: Number(form.order) || 0,
+            isVisible: !!form.isVisible,
+            features: form.features.map((f, i) => ({
+                id: f.id,
+                order: i,
+                isVisible: !!f.isVisible,
+            })),
+        };
 
         const card = await apiFetch(`${API_URL}/offer-cards`, {
             method: "POST",
@@ -280,14 +291,8 @@ export default function OfferCardDialog({mode = "create", initial = null, onClos
         }));
 
         const translationsPayload = [
-            {
-                key: nameKey,
-                values: nameTranslations,
-            },
-            {
-                key: descriptionKey,
-                values: descriptionTranslations,
-            },
+            {key: nameKey, values: nameTranslations},
+            {key: descriptionKey, values: descriptionTranslations},
             ...finalFeatures.map(f => ({
                 key: f.labelKey,
                 values: featureTranslations[f.id],
@@ -331,6 +336,10 @@ export default function OfferCardDialog({mode = "create", initial = null, onClos
 
         showToast(isEdit ? "Карточка обновлена" : "Карточка создана");
         onClose();
+    };
+
+    const toggleFeatureCollapse = (featureId) => {
+        setCollapsedFeatures((prev) => ({...prev, [featureId]: !prev[featureId]}));
     };
 
     if (loading) {

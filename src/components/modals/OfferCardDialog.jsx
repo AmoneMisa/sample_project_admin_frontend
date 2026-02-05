@@ -34,8 +34,8 @@ export default function OfferCardDialog({mode = "create", initial = null, onClos
 
         return {
             id: null,
-            name: "",
-            description: "",
+            nameKey: "",
+            descriptionKey: "",
             monthly: "",
             yearly: "",
             features: [],
@@ -185,8 +185,8 @@ export default function OfferCardDialog({mode = "create", initial = null, onClos
             return null;
         };
 
-        if (!form.name.trim()) e.name = "Обязательное поле";
-        if (!form.description.trim()) e.description = "Обязательное поле";
+        if (!form.nameKey.trim()) e.nameKey = "Обязательное поле";
+        if (!form.descriptionKey.trim()) e.descriptionKey = "Обязательное поле";
 
         const monthlyError = validatePrice(form.monthly);
         if (monthlyError) e.monthly = monthlyError;
@@ -219,8 +219,8 @@ export default function OfferCardDialog({mode = "create", initial = null, onClos
 
     const saveCard = async () => {
         const payload = {
-            name: form.name.trim(),
-            description: form.description.trim(),
+            nameKey: form.nameKey.trim(),
+            descriptionKey: form.descriptionKey.trim(),
             monthly: form.monthly,
             yearly: form.yearly,
             highlight: !!form.highlight,
@@ -270,16 +270,29 @@ export default function OfferCardDialog({mode = "create", initial = null, onClos
             return;
         }
 
+        const nameKey = `offerCard.${id}.name`;
+        const descriptionKey = `offerCard.${id}.description`;
+
         const finalFeatures = form.features.map((f, idx) => ({
             ...f,
             labelKey: `offerCard.${id}.feature.${f.id}.title`,
             order: idx,
         }));
 
-        const translationsPayload = finalFeatures.map(f => ({
-            key: f.labelKey,
-            values: featureTranslations[f.id],
-        }));
+        const translationsPayload = [
+            {
+                key: nameKey,
+                values: nameTranslations,
+            },
+            {
+                key: descriptionKey,
+                values: descriptionTranslations,
+            },
+            ...finalFeatures.map(f => ({
+                key: f.labelKey,
+                values: featureTranslations[f.id],
+            })),
+        ];
 
         if (isEdit) {
             await updateKeysBatch(
@@ -300,6 +313,8 @@ export default function OfferCardDialog({mode = "create", initial = null, onClos
                 method: "PATCH",
                 headers: {"Content-Type": "application/json"},
                 body: JSON.stringify({
+                    nameKey,
+                    descriptionKey,
                     features: finalFeatures.map(f => ({
                         id: f.id,
                         labelKey: f.labelKey,
@@ -309,7 +324,7 @@ export default function OfferCardDialog({mode = "create", initial = null, onClos
                 }),
             });
         } catch (err) {
-            showToast("Ошибка при обновлении фичей");
+            showToast("Ошибка при обновлении карточки");
             console.error(err);
             return;
         }

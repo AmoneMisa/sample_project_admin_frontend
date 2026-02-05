@@ -58,7 +58,7 @@ export default function OfferCardsPage() {
             headers: {
                 "Content-Type": "application/json"
             },
-            body: JSON.stringify({ visible: !row.visible })
+            body: JSON.stringify({visible: !row.visible})
         });
 
         const next = normalizeOfferCard(updated);
@@ -107,36 +107,26 @@ export default function OfferCardsPage() {
                     </div>
                 )
             },
-            { key: "order", title: "Порядок", width: "110px", render: (v) => (v ?? 0) },
+            {key: "order", title: "Порядок", width: "110px", render: (v) => (v ?? 0)},
             {
-                key: "name",
+                key: "nameKey",
                 title: "Название",
                 width: "260px",
                 render: (_, row) => {
-                    const text = getPreviewTextByKey(row.labelKey);
+                    const text = getPreviewTextByKey(row.nameKey);
                     return (
-                        <span
-                            style={{cursor: "pointer", color: "#007bff"}}
-                            onClick={() => window.location.href = `/admin/${row.labelKey}`}
-                        >
-                {text || "-"}
-            </span>
+                        <a href={`/admin?key=${row.nameKey}`}>{text || "-"}</a>
                     );
                 }
             },
             {
-                key: "description",
+                key: "descriptionKey",
                 title: "Описание",
                 width: "320px",
                 render: (_, row) => {
                     const text = getPreviewTextByKey(row.descriptionKey);
                     return (
-                        <span
-                            style={{cursor: "pointer", color: "#007bff"}}
-                            onClick={() => window.location.href = `/admin/${row.descriptionKey}`}
-                        >
-                {text || "-"}
-            </span>
+                        <a href={`/admin?key=${row.descriptionKey}`}>{text || "-"}</a>
                     );
                 }
             },
@@ -169,13 +159,7 @@ export default function OfferCardsPage() {
                             {row.features.map(f => {
                                 const text = getPreviewTextByKey(f.labelKey);
                                 return (
-                                    <span
-                                        key={f.id}
-                                        style={{cursor: "pointer", color: "#007bff"}}
-                                        onClick={() => window.location.href = `/admin/${f.labelKey}`}
-                                    >
-                            {text || "-"}
-                        </span>
+                                    <a key={f.id} href={`/admin?key=${f.labelKey}`}>{text || "-"}</a>
                                 );
                             })}
                         </div>
@@ -215,7 +199,7 @@ export default function OfferCardsPage() {
 
         return base;
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    },[canEdit, accessToken, translationMaps, languages]);
+    }, [canEdit, accessToken, translationMaps, languages]);
 
     return (
         <div className="page offer-cards-page">

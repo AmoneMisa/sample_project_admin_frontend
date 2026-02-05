@@ -7,6 +7,7 @@ import OfferCardDialog from "../components/modals/OfferCardDialog";
 import Toggle from "../components/controls/Toggle";
 import {FiEdit, FiTrash} from "react-icons/fi";
 import apiFetch from "../utils/apiFetch";
+import {useTranslations} from "../hooks/useTranslations";
 
 function normalizeOfferCard(row) {
     const visible =
@@ -27,6 +28,8 @@ export default function OfferCardsPage() {
     const API_URL = process.env.REACT_APP_API_URL || "/api";
     const {accessToken, user} = useAuth();
     const {showToast} = useToast();
+    const {translationMaps, languages} = useTranslations();
+
 
     const canEdit = !!user && (user.role === "admin" || user.role === "moderator");
 
@@ -74,6 +77,19 @@ export default function OfferCardsPage() {
         showToast("Карточка удалена");
     }
 
+    const getPreviewTextByKey = (key) => {
+        const map = translationMaps?.[key] || {};
+        for (const lang of languages) {
+            const v = (map?.[lang.code] ?? "").toString().trim();
+            if (v) return v;
+        }
+        for (const k of Object.keys(map)) {
+            const v = (map?.[k] ?? "").toString().trim();
+            if (v) return v;
+        }
+        return "";
+    };
+
     const columns = useMemo(() => {
         const base = [
             {
@@ -92,13 +108,37 @@ export default function OfferCardsPage() {
                 )
             },
             { key: "order", title: "Порядок", width: "110px", render: (v) => (v ?? 0) },
-            { key: "key", title: "Key", width: "220px", render: (v) => v || "-" },
-            { key: "name", title: "Название", width: "260px", render: (v) => v || "-" },
+            {
+                key: "name",
+                title: "Название",
+                width: "260px",
+                render: (_, row) => {
+                    const text = getPreviewTextByKey(row.labelKey);
+                    return (
+                        <span
+                            style={{cursor: "pointer", color: "#007bff"}}
+                            onClick={() => window.location.href = `/admin/${row.labelKey}`}
+                        >
+                {text || "-"}
+            </span>
+                    );
+                }
+            },
             {
                 key: "description",
                 title: "Описание",
                 width: "320px",
-                render: (v) => v || "-"
+                render: (_, row) => {
+                    const text = getPreviewTextByKey(row.descriptionKey);
+                    return (
+                        <span
+                            style={{cursor: "pointer", color: "#007bff"}}
+                            onClick={() => window.location.href = `/admin/${row.descriptionKey}`}
+                        >
+                {text || "-"}
+            </span>
+                    );
+                }
             },
             {
                 key: "monthly",
@@ -121,9 +161,25 @@ export default function OfferCardsPage() {
             {
                 key: "features",
                 title: "Features",
-                render: (v) => {
-                    const s = (v ?? "").toString().trim();
-                    return s ? s : "-";
+                render: (_, row) => {
+                    if (!row.features?.length) return "-";
+
+                    return (
+                        <div style={{display: "flex", flexDirection: "column", gap: 4}}>
+                            {row.features.map(f => {
+                                const text = getPreviewTextByKey(f.labelKey);
+                                return (
+                                    <span
+                                        key={f.id}
+                                        style={{cursor: "pointer", color: "#007bff"}}
+                                        onClick={() => window.location.href = `/admin/${f.labelKey}`}
+                                    >
+                            {text || "-"}
+                        </span>
+                                );
+                            })}
+                        </div>
+                    );
                 }
             }
         ];
@@ -159,7 +215,7 @@ export default function OfferCardsPage() {
 
         return base;
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [canEdit, accessToken]);
+    },[canEdit, accessToken, translationMaps, languages]);
 
     return (
         <div className="page offer-cards-page">

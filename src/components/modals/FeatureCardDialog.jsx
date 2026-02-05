@@ -1,7 +1,6 @@
 import {useEffect, useState} from "react";
 import Modal from "./Modal";
 import {v4 as uuid} from "uuid";
-import {useAuth} from "../../hooks/authContext";
 import {useToast} from "../layout/ToastContext";
 import LabeledInput from "../controls/LabeledInput";
 import MultilangInput from "../controls/MultilangInput";
@@ -10,7 +9,6 @@ import apiFetch from "../../utils/apiFetch";
 
 export default function FeatureCardDialog({initial, mode, onClose}) {
     const API_URL = process.env.REACT_APP_API_URL || "/api";
-    const {accessToken} = useAuth();
     const {showToast} = useToast();
 
     const {
@@ -96,7 +94,6 @@ export default function FeatureCardDialog({initial, mode, onClose}) {
                 method: "PATCH",
                 headers: {
                     "Content-Type": "application/json",
-                    Authorization: `Bearer ${accessToken}`
                 },
                 body: JSON.stringify(form)
             });
@@ -108,7 +105,6 @@ export default function FeatureCardDialog({initial, mode, onClose}) {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
-                Authorization: `Bearer ${accessToken}`
             },
             body: JSON.stringify(form)
         });
@@ -157,7 +153,6 @@ export default function FeatureCardDialog({initial, mode, onClose}) {
             method: "PATCH",
             headers: {
                 "Content-Type": "application/json",
-                Authorization: `Bearer ${accessToken}`
             },
             body: JSON.stringify({
                 titleKey: finalTitleKey,

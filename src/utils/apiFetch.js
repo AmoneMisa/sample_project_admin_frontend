@@ -14,15 +14,17 @@ export default async function apiFetch(url, options = {}) {
 
         if (!res.ok) {
             console.error(`Ошибка запроса: ${res.status}`);
+            return null;
         }
 
         try {
-            return await res.json();
+            return res.json();
         } catch {
             return null;
         }
 
     } catch (err) {
+        console.error(err);
         throw new Error(err.message || "Неизвестная ошибка");
     }
 }

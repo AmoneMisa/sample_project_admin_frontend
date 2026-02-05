@@ -1,7 +1,6 @@
 import Modal from "./Modal";
 import apiFetch from "../../utils/apiFetch";
 import Toggle from "../controls/Toggle";
-import LabeledInput from "../controls/LabeledInput";
 import LabeledNumberInput from "../controls/LabeledNumberInput";
 import {FiArrowDown, FiArrowUp, FiChevronDown, FiChevronRight, FiPlus, FiTrash} from "react-icons/fi";
 import MultilangInput from "../controls/MultilangInput";
@@ -290,6 +289,13 @@ export default function OfferCardDialog({mode = "create", initial = null, onClos
             order: idx,
         }));
 
+        setForm(prev => ({
+            ...prev,
+            nameKey,
+            descriptionKey,
+            features: finalFeatures
+        }));
+
         const translationsPayload = [
             {key: nameKey, values: nameTranslations},
             {key: descriptionKey, values: descriptionTranslations},
@@ -375,22 +381,24 @@ export default function OfferCardDialog({mode = "create", initial = null, onClos
 
             <div className="page__row page__row_wrap" style={{alignItems: "flex-end"}}>
                 <div style={{flex: 1, minWidth: 260}}>
-                    <LabeledInput
+                    <MultilangInput
                         label="Название"
-                        placeholder="Например: Pro / Basic / Enterprise"
-                        value={form.name}
-                        onChange={(v) => updateField("name", v)}
-                        error={errors.name}
+                        placeholder="Название"
+                        languages={languageCodes}
+                        valueMap={nameTranslations}
+                        onChange={(translationsObj) => setNameTranslations(translationsObj)}
+                        errors={errors.nameKey}
                     />
                 </div>
 
                 <div style={{flex: 1, minWidth: 260}}>
-                    <LabeledInput
+                    <MultilangInput
                         label="Описание"
-                        placeholder="Например: Лучший выбор для команды"
-                        value={form.description}
-                        onChange={(v) => updateField("description", v)}
-                        error={errors.description}
+                        placeholder="Лучший выбор для команды"
+                        languages={languageCodes}
+                        valueMap={descriptionTranslations}
+                        onChange={(translationsObj) => setDescriptionTranslations(translationsObj)}
+                        errors={errors.descriptionKey}
                     />
                 </div>
             </div>
@@ -451,8 +459,11 @@ export default function OfferCardDialog({mode = "create", initial = null, onClos
                                                         Object.fromEntries(languageCodes.map((c) => [c, ""]))
                                                     }
                                                     errors={perFeatureErrors}
-                                                    onChange={(nextMap) => {
-                                                        setFeatureTranslations((prev) => ({...prev, [f.id]: nextMap}));
+                                                    onChange={(translationsObj) => {
+                                                        setFeatureTranslations(prev => ({
+                                                            ...prev,
+                                                            [f.id]: translationsObj
+                                                        }));
                                                     }}
                                                 />
                                             </div>

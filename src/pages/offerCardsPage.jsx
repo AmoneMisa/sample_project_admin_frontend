@@ -30,7 +30,6 @@ export default function OfferCardsPage() {
     const {showToast} = useToast();
     const {translationMaps, languages} = useTranslations();
 
-
     const canEdit = !!user && (user.role === "admin" || user.role === "moderator");
 
     const [items, setItems] = useState([]);
@@ -45,10 +44,9 @@ export default function OfferCardsPage() {
     }
 
     useEffect(() => {
-        if (!accessToken) return;
         load();
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [accessToken]);
+    }, );
 
     async function toggleVisible(row) {
         if (!canEdit) return;

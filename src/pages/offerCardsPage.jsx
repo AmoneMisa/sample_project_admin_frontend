@@ -28,7 +28,7 @@ export default function OfferCardsPage() {
     const API_URL = process.env.REACT_APP_API_URL || "/api";
     const {accessToken, user} = useAuth();
     const {showToast} = useToast();
-    const {translationMaps, languages} = useTranslations();
+    const {translationMaps, languages, loadAllTranslations} = useTranslations();
 
     const canEdit = !!user && (user.role === "admin" || user.role === "moderator");
 
@@ -241,9 +241,10 @@ export default function OfferCardsPage() {
                 <OfferCardDialog
                     mode="edit"
                     initial={editing}
-                    onClose={() => {
+                    onClose={async () => {
                         setEditing(null);
-                        load();
+                        await loadAllTranslations();
+                        await load();
                     }}
                 />
             )}

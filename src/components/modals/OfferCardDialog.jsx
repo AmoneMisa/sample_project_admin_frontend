@@ -139,35 +139,26 @@ export default function OfferCardDialog({mode = "create", initial = null, onClos
     };
 
     useEffect(() => {
-        (async () => {
-            await loadLanguages();
-            await loadAllTranslations();
-
-            if (isEdit && initial?.id) {
-                const nameKey = initial.nameKey;
-                const descKey = initial.descriptionKey;
-
-                if (nameKey) setNameTranslations({...(translationMaps[nameKey] || {})});
-                if (descKey) setDescriptionTranslations({...(translationMaps[descKey] || {})});
-
-                const nextFeatureTranslations = {};
-                for (const f of initial.features || []) {
-                    nextFeatureTranslations[f.id] = {...(translationMaps[f.labelKey] || {})};
-                }
-                setFeatureTranslations(nextFeatureTranslations);
-
-                const collapsed = {};
-                for (const f of initial.features || []) collapsed[f.id] = true;
-                setCollapsedFeatures(collapsed);
-            } else {
-                const empty = Object.fromEntries((languages || []).map((l) => [l.code, ""]));
-                setNameTranslations(empty);
-                setDescriptionTranslations(empty);
-            }
-
-            setLoading(false);
-        })();
+        loadLanguages();
+        loadAllTranslations();
     }, []);
+
+    useEffect(() => {
+        if (!isEdit || !initial?.id) return;
+
+        const nameKey = initial.nameKey;
+        const descKey = initial.descriptionKey;
+
+        setNameTranslations(translationMaps[nameKey] || {});
+        setDescriptionTranslations(translationMaps[descKey] || {});
+
+        const ft = {};
+        for (const f of initial.features || []) {
+            ft[f.id] = translationMaps[f.labelKey] || {};
+        }
+        setFeatureTranslations(ft);
+
+    }, [translationMaps, isEdit, initial]);
 
     const validate = () => {
         const e = {};

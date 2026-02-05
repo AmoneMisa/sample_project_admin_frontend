@@ -261,7 +261,7 @@ export default function OfferCardDialog({mode = "create", initial = null, onClos
             body: JSON.stringify(payload),
         });
 
-        return card.id;
+        return card.card.id;
     };
 
     const save = async () => {

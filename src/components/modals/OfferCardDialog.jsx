@@ -340,14 +340,6 @@ export default function OfferCardDialog({mode = "create", initial = null, onClos
         setCollapsedFeatures((prev) => ({...prev, [featureId]: !prev[featureId]}));
     };
 
-    if (loading) {
-        return (
-            <Modal open={true} onClose={onClose} width={860}>
-                <div style={{padding: 20}}>Загрузка…</div>
-            </Modal>
-        );
-    }
-
     return (
         <Modal open={true} onClose={onClose} width={860}>
             <h2 className="modal__header gradient-text">

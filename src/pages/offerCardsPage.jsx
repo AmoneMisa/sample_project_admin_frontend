@@ -44,9 +44,10 @@ export default function OfferCardsPage() {
     }
 
     useEffect(() => {
+        if (!accessToken) return;
         load();
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, );
+    }, [accessToken]);
 
     async function toggleVisible(row) {
         if (!canEdit) return;

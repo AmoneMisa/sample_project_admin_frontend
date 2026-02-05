@@ -167,7 +167,7 @@ export default function OfferCardDialog({mode = "create", initial = null, onClos
 
             setLoading(false);
         })();
-    }, [translationMaps]);
+    }, []);
 
     const validate = () => {
         const e = {};
@@ -339,6 +339,7 @@ export default function OfferCardDialog({mode = "create", initial = null, onClos
             console.error(err);
             return;
         }
+        await loadAllTranslations();
 
         showToast(isEdit ? "Карточка обновлена" : "Карточка создана");
         onClose();

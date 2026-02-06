@@ -1,15 +1,14 @@
-import {useEffect, useMemo, useState} from "react";
+import {useEffect, useState} from "react";
 import Modal from "./Modal";
 import {v4 as uuid} from "uuid";
 import {useToast} from "../layout/ToastContext";
-import LabeledInput from "../controls/LabeledInput";
 import MultilangInput from "../controls/MultilangInput";
 import Toggle from "../controls/Toggle";
+import LabeledInput from "../controls/LabeledInput";
 import {useTranslations} from "../../hooks/useTranslations";
 import apiFetch from "../../utils/apiFetch";
-import LabeledSelect from "../controls/LabeledSelect";
 
-export default function ServiceDialog({initial, mode, onClose}) {
+export default function ServiceCategoryDialog({initial, mode, onClose}) {
     const API_URL = process.env.REACT_APP_API_URL || "/api";
     const {showToast} = useToast();
 
@@ -30,13 +29,10 @@ export default function ServiceDialog({initial, mode, onClose}) {
         const id = uuid();
         return {
             id,
-            link: "",
-            image: "",
-            categoryId: "",
             order: 0,
             isVisible: true,
-            titleKey: `service.${id}.title`,
-            descriptionKey: `service.${id}.description`
+            titleKey: `serviceCategory.${id}.title`,
+            descriptionKey: `serviceCategory.${id}.description`
         };
     });
 
@@ -44,45 +40,32 @@ export default function ServiceDialog({initial, mode, onClose}) {
     const [descriptionTranslations, setDescriptionTranslations] = useState({});
     const [errors, setErrors] = useState({});
     const [loading, setLoading] = useState(true);
-    const [categories, setCategories] = useState([]);
 
-    async function loadCategories() {
-        const data = await apiFetch(`${API_URL}/service-categories`);
-        setCategories(data || []);
-    }
-
-    const updateField = (key, value) => {
-        setForm(prev => ({...prev, [key]: value}));
-    };
+    const updateField = (key, value) => setForm(prev => ({...prev, [key]: value}));
 
     useEffect(() => {
         (async () => {
             await loadLanguages();
             await loadAllTranslations();
-            await loadCategories();
 
             if (isEdit) {
                 const titleMap = translationMaps[form.titleKey] || {};
                 const descMap = translationMaps[form.descriptionKey] || {};
-
                 setTitleTranslations({...titleMap});
                 setDescriptionTranslations({...descMap});
             } else {
-                const empty = Object.fromEntries(
-                    languages.map(l => [l.code, ""])
-                );
+                const empty = Object.fromEntries(languages.map(l => [l.code, ""]));
                 setTitleTranslations(empty);
                 setDescriptionTranslations(empty);
             }
 
             setLoading(false);
         })();
+        // важно: зависимость как и у вас — через translationMaps
     }, [translationMaps]);
 
     function validate() {
         const e = {};
-
-        if (!String(form.categoryId || "").trim()) e.categoryId = "Обязательное поле";
 
         for (const lang of languages) {
             const code = lang.code;
@@ -102,18 +85,17 @@ export default function ServiceDialog({initial, mode, onClose}) {
         return Object.keys(e).length === 0;
     }
 
-    async function saveService() {
+    async function saveCategory() {
         if (isEdit) {
-            await apiFetch(`${API_URL}/services/${form.id}`, {
+            await apiFetch(`${API_URL}/service-categories/${form.id}`, {
                 method: "PATCH",
                 headers: {"Content-Type": "application/json"},
                 body: JSON.stringify(form)
             });
-
             return form.id;
         }
 
-        const created = await apiFetch(`${API_URL}/services`, {
+        const created = await apiFetch(`${API_URL}/service-categories`, {
             method: "POST",
             headers: {"Content-Type": "application/json"},
             body: JSON.stringify(form)
@@ -125,10 +107,10 @@ export default function ServiceDialog({initial, mode, onClose}) {
     async function save() {
         if (!validate()) return;
 
-        const id = await saveService();
+        const id = await saveCategory();
 
-        const finalTitleKey = `service.${id}.title`;
-        const finalDescriptionKey = `service.${id}.description`;
+        const finalTitleKey = `serviceCategory.${id}.title`;
+        const finalDescriptionKey = `serviceCategory.${id}.description`;
 
         const payload = [
             {
@@ -159,7 +141,7 @@ export default function ServiceDialog({initial, mode, onClose}) {
             await createKeysBatch(payload);
         }
 
-        await apiFetch(`${API_URL}/services/${id}`, {
+        await apiFetch(`${API_URL}/service-categories/${id}`, {
             method: "PATCH",
             headers: {"Content-Type": "application/json"},
             body: JSON.stringify({
@@ -168,35 +150,16 @@ export default function ServiceDialog({initial, mode, onClose}) {
             })
         });
 
-        showToast("Сервис сохранён");
+        showToast("Категория сохранена");
         onClose();
     }
-
-    const getPreviewTextByKey = (key) => {
-        const map = translationMaps?.[key] || {};
-        for (const lang of languages) {
-            const v = (map?.[lang.code] ?? "").trim();
-            if (v) return v;
-        }
-        return "";
-    };
-
-    const categoryOptions = useMemo(() => {
-        return (categories || [])
-            .slice()
-            .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
-            .map(c => ({
-                value: c.id,
-                label: getPreviewTextByKey(c.titleKey) || c.id
-            }));
-    }, [categories, translationMaps, languages]);
 
     if (loading) return null;
 
     return (
         <Modal open={true} onClose={onClose}>
             <h2 className="modal__header gradient-text">
-                {isEdit ? "Редактировать сервис" : "Создать сервис"}
+                {isEdit ? "Редактировать категорию" : "Создать категорию"}
             </h2>
 
             <Toggle
@@ -222,30 +185,6 @@ export default function ServiceDialog({initial, mode, onClose}) {
                 errors={errors.description}
                 onChange={setDescriptionTranslations}
                 textarea
-            />
-
-            <LabeledSelect
-                label="Категория"
-                value={form.categoryId}
-                onChange={(v) => updateField("categoryId", v)}
-                options={categoryOptions}
-                placeholder="Выберите категорию…"
-                error={errors.categoryId}
-                hint={!categoryOptions.length ? "Сначала создайте категорию сервисов" : ""}
-            />
-
-            <LabeledInput
-                label="Ссылка на сервис"
-                placeholder="https://..."
-                value={form.link}
-                onChange={(v) => updateField("link", v)}
-            />
-
-            <LabeledInput
-                label="URL изображения"
-                placeholder="/img/services/layout.png"
-                value={form.image}
-                onChange={(v) => updateField("image", v)}
             />
 
             <LabeledInput

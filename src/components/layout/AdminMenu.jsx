@@ -9,7 +9,7 @@ import {
     FiPhone,
     FiUsers,
     FiChevronRight,
-    FiChevronLeft
+    FiChevronLeft, FiSettings
 } from "react-icons/fi";
 import {useAuth} from "../../hooks/authContext";
 import {useEffect, useMemo, useRef, useState} from "react";
@@ -47,6 +47,7 @@ export default function AdminMenu() {
             {to: "/menu", icon: FiMenu, label: "Футер меню"},
             {to: "/footer", icon: FiLayers, label: "Футер"},
             {to: "/offer-cards", icon: FiGrid, label: "Карточки предложений"},
+            {to: "/services", icon: FiSettings, label: "Сервисы"},
         ];
         if (isAdmin) base.push({to: "/users", icon: FiUsers, label: "Пользователи"});
         if (isAdmin || isModerator) base.push({to: "/admin", icon: FiMenu, label: "Админка"});

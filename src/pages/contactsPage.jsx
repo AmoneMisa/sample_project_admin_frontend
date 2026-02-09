@@ -92,7 +92,8 @@ export default function ContactsPage() {
     }
 
     async function loadContacts() {
-        return apiFetch(`${API_URL}/contacts?all=true`);
+        const res = await apiFetch(`${API_URL}/contacts?all=true`);
+        return res?.contacts ?? [];
     }
 
     useEffect(() => {
@@ -202,16 +203,20 @@ export default function ContactsPage() {
         const isNew = !contact.persisted;
         const method = isNew ? "POST" : "PATCH";
         const url = isNew ? `${API_URL}/contacts` : `${API_URL}/contacts/${contact.id}`;
+        const payload = {...contact};
+        delete payload.persisted;
 
-        const data = await apiFetch(url, {
+        const res = await apiFetch(url, {
             method,
             headers: {"Content-Type": "application/json"},
-            body: JSON.stringify(contact)
+            body: JSON.stringify(payload)
         });
 
-        if (isNew && data.id) {
+        const saved = res?.contact;
+
+        if (saved?.id) {
             setContacts(prev =>
-                prev.map(c => (c.id === contact.id ? {...data, persisted: true} : c))
+                prev.map(c => (c.id === contact.id ? {...saved, persisted: true} : c))
             );
         }
     }

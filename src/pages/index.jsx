@@ -9,6 +9,7 @@ import CustomTable from "../components/customElems/CustomTable";
 import TranslationDialog from "../components/modals/TranslationDialog";
 import {useTranslations} from "../hooks/useTranslations";
 import {useAuditLog} from "../hooks/useAuditLog";
+import { useSearchParams } from "react-router-dom";
 
 export default function Index() {
     const [editingCell, setEditingCell] = useState(null);
@@ -17,6 +18,7 @@ export default function Index() {
     const [filterStatus, setFilterStatus] = useState("all");
     const [deleteTarget, setDeleteTarget] = useState(null);
     const [historyOpen, setHistoryOpen] = useState(false);
+    const [searchParams, setSearchParams] = useSearchParams();
 
     const {accessToken, user, loading} = useAuth();
     const canEdit = user && (user.role === "moderator" || user.role === "admin");
@@ -60,6 +62,11 @@ export default function Index() {
             loadAllTranslations();
         }
     }, [loading, accessToken, loadAllTranslations]);
+
+    useEffect(() => {
+        const keyFromUrl = searchParams.get("key") || "";
+        setSearch(keyFromUrl);
+    }, [searchParams]);
 
     function requestDeleteKey(key) {
         setDeleteTarget(key);

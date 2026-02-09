@@ -45,7 +45,6 @@ export default function AdminMenu() {
             {to: "/feature-cards", icon: FiGrid, label: "Feature Cards"},
             {to: "/contacts", icon: FiPhone, label: "Контакты"},
             {to: "/menu", icon: FiMenu, label: "Футер меню"},
-            {to: "/footer", icon: FiLayers, label: "Футер"},
             {to: "/offer-cards", icon: FiGrid, label: "Карточки предложений"},
             {to: "/services", icon: FiSettings, label: "Сервисы"},
         ];

@@ -129,27 +129,7 @@ export default function FooterMenuPage() {
     const adminKeyHref = (key) => `/admin?key=${encodeURIComponent(key || "")}`;
 
     const columns = useMemo(() => {
-        const base = [
-            {
-                key: "exp",
-                title: "",
-                width: "40px",
-                render: (_, row) => (
-                    <button
-                        type="button"
-                        className="button button_icon"
-                        onClick={() => toggleExpanded(row.id)}
-                        title={expanded[row.id] ? "Свернуть пункты" : "Развернуть пункты"}
-                    >
-                        {expanded[row.id] ? (
-                            <FiChevronDown size={16}/>
-                        ) : (
-                            <FiChevronRight size={16}/>
-                        )}
-                    </button>
-                ),
-            },
-            {key: "id", title: "ID", width: "90px"},
+        const base = [{key: "id", title: "ID", width: "90px"},
             {
                 key: "titleKey",
                 title: "Название блока",
@@ -221,83 +201,6 @@ export default function FooterMenuPage() {
         return base;
     }, [canEdit, expanded, translationMaps]);
 
-    // Рендер списка пунктов меню (links) для раскрытого блока
-    const renderLinks = (block) => {
-        const links = (block.links || []).slice().sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
-
-        return (
-            <div
-                key={block.id}
-                style={{padding: 12, borderTop: "1px solid var(--light-grey)"}}
-            >
-                <div style={{fontWeight: 600, marginBottom: 8}}>Пункты меню</div>
-
-                {links.length === 0 ? (
-                    <div style={{opacity: 0.7}}>Пунктов нет</div>
-                ) : (
-                    <div style={{display: "grid", gap: 8}}>
-                        {links.map((l) => (
-                            <div
-                                key={l.id}
-                                style={{
-                                    display: "grid",
-                                    gridTemplateColumns: "80px 1fr 2fr 140px",
-                                    alignItems: "center",
-                                    gap: 8,
-                                }}
-                            >
-                                <div style={{opacity: 0.8}}>#{l.order ?? 0}</div>
-
-                                <div style={{display: "grid", gap: 2}}>
-                                    <a
-                                        href={adminKeyHref(l.labelKey)}
-                                        className="link"
-                                        title="Открыть перевод пункта"
-                                    >
-                                        {getRu(l.labelKey)}
-                                    </a>
-                                    <div style={{fontSize: 12, opacity: 0.7}}>{l.labelKey}</div>
-                                </div>
-
-                                <div style={{opacity: 0.85}}>{l.href || "-"}</div>
-
-                                <div style={{display: "flex", justifyContent: "flex-end", gap: 8}}>
-                                    <div style={{display: "flex", alignItems: "center", gap: 8}}>
-                                        <div style={{fontSize: 12, opacity: 0.75}}>Показывать</div>
-                                        <Toggle
-                                            checked={l.isVisible !== false}
-                                            disabled={true}
-                                            title="Видимость пункта меняется в модалке блока"
-                                        />
-                                    </div>
-
-                                    {canEdit && (
-                                        <>
-                                            <button
-                                                className="button button_icon"
-                                                title="Редактировать блок (пункты внутри)"
-                                                onClick={() => setEditingBlock(block)}
-                                            >
-                                                <FiEdit size={16}/>
-                                            </button>
-                                            <button
-                                                className="button button_icon button_reject"
-                                                title="Удалить блок"
-                                                onClick={() => setDeleteTarget(block.id)}
-                                            >
-                                                <FiTrash size={16}/>
-                                            </button>
-                                        </>
-                                    )}
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                )}
-            </div>
-        );
-    };
-
     return (
         <div className="page footer-menu-page">
             <div className="page__topbar page__topbar_sticky page__topbar_wrap">
@@ -321,11 +224,6 @@ export default function FooterMenuPage() {
 
             <div className="page__block page__block_card">
                 <CustomTable columns={columns} data={blocks}/>
-
-                {blocks.map((b) => {
-                    if (!expanded[b.id]) return null;
-                    return renderLinks(b);
-                })}
             </div>
 
             {canEdit && creatingBlock && (

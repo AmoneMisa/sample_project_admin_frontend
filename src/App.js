@@ -13,7 +13,6 @@ import AdminPage from "./pages/adminPage";
 import FeatureCardsPage from "./pages/featureCardsPage";
 import ContactsPage from "./pages/contactsPage";
 import FooterMenuPage from "./pages/footerMenuPage";
-import FooterPage from "./pages/footerPage";
 import OfferCardsPage from "./pages/offerCardsPage";
 import ScrollTopButton from "./components/controls/ScrollTopButton";
 import ContactMeButton from "./components/controls/ContactMeButton";
@@ -38,7 +37,6 @@ export default function App() {
                             <Route index element={<Index/>}/>
                             <Route path="testimonials" element={<Testimonials/>}/>
                             <Route path="header-menu" element={<HeaderMenu/>}/>
-                            <Route path="footer" element={<FooterPage/>}/>
                             <Route path="contacts" element={<ContactsPage/>}/>
                             <Route path="menu" element={<FooterMenuPage/>}/>
                             <Route path="feature-cards" element={<FeatureCardsPage/>}/>

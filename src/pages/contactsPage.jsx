@@ -81,10 +81,9 @@ export default function ContactsPage() {
 
     function normalizeContact(c) {
         const fixed = {...c};
-        fixed.persisted = true;
+        fixed.persisted = c.persisted ?? true;
 
         if (!fixed.labelKey) fixed.labelKey = makeLabelKey(fixed.type, fixed.id);
-
         if ("label" in fixed) delete fixed.label;
         if (fixed.type === "social" && !fixed.socialType) fixed.socialType = "instagram";
 
@@ -200,24 +199,37 @@ export default function ContactsPage() {
     }
 
     async function saveContact(contact) {
-        const isNew = !contact.persisted;
-        const method = isNew ? "POST" : "PATCH";
-        const url = isNew ? `${API_URL}/contacts` : `${API_URL}/contacts/${contact.id}`;
         const payload = {...contact};
         delete payload.persisted;
 
-        const res = await apiFetch(url, {
-            method,
-            headers: {"Content-Type": "application/json"},
-            body: JSON.stringify(payload)
-        });
+        const doRequest = (method, url) =>
+            apiFetch(url, {
+                method,
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify(payload)
+            });
 
-        const saved = res?.contact;
-
-        if (saved?.id) {
-            setContacts(prev =>
-                prev.map(c => (c.id === contact.id ? {...saved, persisted: true} : c))
+        try {
+            const isNew = !contact.persisted;
+            const res = await doRequest(
+                isNew ? "POST" : "PATCH",
+                isNew ? `${API_URL}/contacts` : `${API_URL}/contacts/${contact.id}`
             );
+
+            const saved = res?.contact;
+            if (saved?.id) {
+                setContacts(prev => prev.map(c => (c.id === contact.id ? {...saved, persisted: true} : c)));
+            }
+        } catch (e) {
+            if (contact.persisted && (e?.status === 404 || e?.response?.status === 404)) {
+                const res = await doRequest("POST", `${API_URL}/contacts`);
+                const saved = res?.contact;
+                if (saved?.id) {
+                    setContacts(prev => prev.map(c => (c.id === contact.id ? {...saved, persisted: true} : c)));
+                }
+                return;
+            }
+            throw e;
         }
     }
 

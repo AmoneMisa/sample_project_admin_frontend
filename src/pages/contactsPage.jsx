@@ -371,7 +371,7 @@ export default function ContactsPage() {
                                                 else cardRefs.current.set(contact.id, el);
                                             }}
                                         >
-                                            {canEdit && contact.type !== "other" && (
+                                            {canEdit && (
                                                 <div className="contacts-card__header">
                                                     <Toggle
                                                         label="Отображать"
@@ -390,14 +390,15 @@ export default function ContactsPage() {
                                                         >
                                                             <FiSave size={16}/>
                                                         </button>
-
-                                                        <button
-                                                            className="button button_icon"
-                                                            onClick={() => requestDelete(contact)}
-                                                            title="Удалить"
-                                                        >
-                                                            <FiTrash size={16}/>
-                                                        </button>
+                                                        {contact.type !== "other" && (
+                                                            <button
+                                                                className="button button_icon"
+                                                                onClick={() => requestDelete(contact)}
+                                                                title="Удалить"
+                                                            >
+                                                                <FiTrash size={16}/>
+                                                            </button>
+                                                        )}
                                                     </div>
                                                 </div>
                                             )}

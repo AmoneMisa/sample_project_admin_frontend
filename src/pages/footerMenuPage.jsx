@@ -1,20 +1,30 @@
-import { useEffect, useMemo, useState } from "react";
-import { useAuth } from "../hooks/authContext";
-import { useToast } from "../components/layout/ToastContext";
-import { useTranslations } from "../hooks/useTranslations";
+import {useEffect, useMemo, useState} from "react";
+import {useAuth} from "../hooks/authContext";
+import {useToast} from "../components/layout/ToastContext";
+import {useTranslations} from "../hooks/useTranslations";
 import apiFetch from "../utils/apiFetch";
 import Toggle from "../components/controls/Toggle";
 import CustomTable from "../components/customElems/CustomTable";
-import { FiChevronDown, FiChevronRight, FiEdit, FiTrash } from "react-icons/fi";
+import {FiChevronDown, FiChevronRight, FiEdit, FiTrash} from "react-icons/fi";
 import ConfirmDialog from "../components/modals/ConfirmDialog";
 import FooterMenuBlockDialog from "../components/footerMenuCreateComponents/FooterMenuBlockDialog";
 
 export default function FooterMenuPage() {
     const API_URL = process.env.REACT_APP_API_URL || "/api";
-    const { accessToken, user } = useAuth();
+    const {accessToken, user} = useAuth();
     const canEdit = !!user && (user.role === "admin" || user.role === "moderator");
-    const { showToast } = useToast();
-    const { translationMaps, loadAllTranslations } = useTranslations();
+    const {showToast} = useToast();
+    const {
+        languages,
+        translationMaps,
+        updateTranslation,
+        loadLanguages,
+        loadAllTranslations,
+        createKeysBatch,
+        updateKeysBatch,
+        deleteKeys,
+    } = useTranslations();
+
 
     const [blocks, setBlocks] = useState([]);
     const [expanded, setExpanded] = useState({}); // { [blockId]: boolean }
@@ -24,11 +34,11 @@ export default function FooterMenuPage() {
     const [deleteTarget, setDeleteTarget] = useState(null); // blockId
 
     const toggleExpanded = (blockId) =>
-        setExpanded((p) => ({ ...p, [blockId]: !p[blockId] }));
+        setExpanded((p) => ({...p, [blockId]: !p[blockId]}));
 
     const load = async () => {
         const list = await apiFetch(`${API_URL}/footer/menu/blocks?all=true`, {
-            headers: { Authorization: `Bearer ${accessToken}` },
+            headers: {Authorization: `Bearer ${accessToken}`},
         });
 
         setBlocks(list);
@@ -38,6 +48,7 @@ export default function FooterMenuPage() {
     useEffect(() => {
         if (!accessToken) return;
         (async () => {
+            await loadLanguages();
             await loadAllTranslations();
             await load();
         })();
@@ -47,16 +58,56 @@ export default function FooterMenuPage() {
     async function saveBlockAggregate(block) {
         await apiFetch(`${API_URL}/footer/menu/blocks`, {
             method: "PATCH",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ blocks: [block] }),
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({blocks: [block]}),
         });
 
         await load();
     }
 
+    async function handleSaveFromDialog({ block, translationPayload }) {
+        if (!block) return;
+
+        if (creatingBlock) {
+            await createKeysBatch(translationPayload);
+
+            await apiFetch(`${API_URL}/footer/menu/blocks`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ blocks: [block] }),
+            });
+        } else {
+            await updateKeysBatch(
+                translationPayload.flatMap((it) =>
+                    Object.entries(it.values).map(([lang, value]) => ({
+                        key: it.key,
+                        lang,
+                        value,
+                    }))
+                )
+            );
+
+            const prev = blocks.find((b) => b.id === block.id);
+            const prevKeys = (prev?.links || []).map((l) => l.labelKey).filter(Boolean);
+            const nextKeys = (block.links || []).map((l) => l.labelKey).filter(Boolean);
+
+            const removed = prevKeys.filter((k) => !nextKeys.includes(k));
+            if (removed.length) await deleteKeys(removed);
+
+            await apiFetch(`${API_URL}/footer/menu/blocks`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ blocks: [block] }),
+            });
+        }
+
+        await load();
+        showToast("Сохранено");
+    }
+
     async function toggleBlockVisible(block) {
         if (!canEdit) return;
-        const next = { ...block, isVisible: !block.isVisible };
+        const next = {...block, isVisible: !block.isVisible};
         await saveBlockAggregate(next);
     }
 
@@ -65,8 +116,8 @@ export default function FooterMenuPage() {
 
         await apiFetch(`${API_URL}/footer/menu/blocks`, {
             method: "DELETE",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ ids: [blockId] }),
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({ids: [blockId]}),
         });
 
         await load();
@@ -91,21 +142,21 @@ export default function FooterMenuPage() {
                         title={expanded[row.id] ? "Свернуть пункты" : "Развернуть пункты"}
                     >
                         {expanded[row.id] ? (
-                            <FiChevronDown size={16} />
+                            <FiChevronDown size={16}/>
                         ) : (
-                            <FiChevronRight size={16} />
+                            <FiChevronRight size={16}/>
                         )}
                     </button>
                 ),
             },
-            { key: "id", title: "ID", width: "90px" },
+            {key: "id", title: "ID", width: "90px"},
             {
                 key: "titleKey",
                 title: "Название блока",
                 render: (_, row) => {
                     const text = getRu(row.titleKey);
                     return (
-                        <div style={{ display: "grid", gap: 4 }}>
+                        <div style={{display: "grid", gap: 4}}>
                             <a
                                 href={adminKeyHref(row.titleKey)}
                                 className="link"
@@ -113,7 +164,7 @@ export default function FooterMenuPage() {
                             >
                                 {text}
                             </a>
-                            <div style={{ fontSize: 12, opacity: 0.7 }}>{row.titleKey}</div>
+                            <div style={{fontSize: 12, opacity: 0.7}}>{row.titleKey}</div>
                         </div>
                     );
                 },
@@ -129,7 +180,7 @@ export default function FooterMenuPage() {
                 title: "Отображать",
                 width: "140px",
                 render: (value, row) => (
-                    <div style={{ display: "flex", justifyContent: "center" }}>
+                    <div style={{display: "flex", justifyContent: "center"}}>
                         <Toggle
                             checked={!!value}
                             disabled={!canEdit}
@@ -147,20 +198,20 @@ export default function FooterMenuPage() {
                 title: "Действия",
                 width: "140px",
                 render: (_, row) => (
-                    <div style={{ display: "flex", gap: 8, justifyContent: "center" }}>
+                    <div style={{display: "flex", gap: 8, justifyContent: "center"}}>
                         <button
                             className="button button_icon"
                             title="Редактировать блок"
                             onClick={() => setEditingBlock(row)}
                         >
-                            <FiEdit size={16} />
+                            <FiEdit size={16}/>
                         </button>
                         <button
                             className="button button_icon button_reject"
                             title="Удалить блок"
                             onClick={() => setDeleteTarget(row.id)}
                         >
-                            <FiTrash size={16} />
+                            <FiTrash size={16}/>
                         </button>
                     </div>
                 ),
@@ -177,14 +228,14 @@ export default function FooterMenuPage() {
         return (
             <div
                 key={block.id}
-                style={{ padding: 12, borderTop: "1px solid var(--light-grey)" }}
+                style={{padding: 12, borderTop: "1px solid var(--light-grey)"}}
             >
-                <div style={{ fontWeight: 600, marginBottom: 8 }}>Пункты меню</div>
+                <div style={{fontWeight: 600, marginBottom: 8}}>Пункты меню</div>
 
                 {links.length === 0 ? (
-                    <div style={{ opacity: 0.7 }}>Пунктов нет</div>
+                    <div style={{opacity: 0.7}}>Пунктов нет</div>
                 ) : (
-                    <div style={{ display: "grid", gap: 8 }}>
+                    <div style={{display: "grid", gap: 8}}>
                         {links.map((l) => (
                             <div
                                 key={l.id}
@@ -195,9 +246,9 @@ export default function FooterMenuPage() {
                                     gap: 8,
                                 }}
                             >
-                                <div style={{ opacity: 0.8 }}>#{l.order ?? 0}</div>
+                                <div style={{opacity: 0.8}}>#{l.order ?? 0}</div>
 
-                                <div style={{ display: "grid", gap: 2 }}>
+                                <div style={{display: "grid", gap: 2}}>
                                     <a
                                         href={adminKeyHref(l.labelKey)}
                                         className="link"
@@ -205,14 +256,14 @@ export default function FooterMenuPage() {
                                     >
                                         {getRu(l.labelKey)}
                                     </a>
-                                    <div style={{ fontSize: 12, opacity: 0.7 }}>{l.labelKey}</div>
+                                    <div style={{fontSize: 12, opacity: 0.7}}>{l.labelKey}</div>
                                 </div>
 
-                                <div style={{ opacity: 0.85 }}>{l.href || "-"}</div>
+                                <div style={{opacity: 0.85}}>{l.href || "-"}</div>
 
-                                <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
-                                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                                        <div style={{ fontSize: 12, opacity: 0.75 }}>Показывать</div>
+                                <div style={{display: "flex", justifyContent: "flex-end", gap: 8}}>
+                                    <div style={{display: "flex", alignItems: "center", gap: 8}}>
+                                        <div style={{fontSize: 12, opacity: 0.75}}>Показывать</div>
                                         <Toggle
                                             checked={l.isVisible !== false}
                                             disabled={true}
@@ -227,14 +278,14 @@ export default function FooterMenuPage() {
                                                 title="Редактировать блок (пункты внутри)"
                                                 onClick={() => setEditingBlock(block)}
                                             >
-                                                <FiEdit size={16} />
+                                                <FiEdit size={16}/>
                                             </button>
                                             <button
                                                 className="button button_icon button_reject"
                                                 title="Удалить блок"
                                                 onClick={() => setDeleteTarget(block.id)}
                                             >
-                                                <FiTrash size={16} />
+                                                <FiTrash size={16}/>
                                             </button>
                                         </>
                                     )}
@@ -256,7 +307,7 @@ export default function FooterMenuPage() {
                 </div>
 
                 {canEdit && (
-                    <div className="page__row page__row_wrap" style={{ justifyContent: "flex-end" }}>
+                    <div className="page__row page__row_wrap" style={{justifyContent: "flex-end"}}>
                         <button
                             type="button"
                             className="button"
@@ -269,7 +320,7 @@ export default function FooterMenuPage() {
             </div>
 
             <div className="page__block page__block_card">
-                <CustomTable columns={columns} data={blocks} />
+                <CustomTable columns={columns} data={blocks}/>
 
                 {blocks.map((b) => {
                     if (!expanded[b.id]) return null;
@@ -281,9 +332,12 @@ export default function FooterMenuPage() {
                 <FooterMenuBlockDialog
                     open={true}
                     mode="create"
+                    languages={languages.map((l) => l.code)}
+                    translationMaps={translationMaps}
+                    updateTranslation={updateTranslation}
+                    onSave={handleSaveFromDialog}
                     onClose={() => {
                         setCreatingBlock(false);
-                        load();
                     }}
                 />
             )}
@@ -293,9 +347,12 @@ export default function FooterMenuPage() {
                     open={true}
                     mode="edit"
                     initial={editingBlock}
+                    languages={languages.map((l) => l.code)}
+                    translationMaps={translationMaps}
+                    updateTranslation={updateTranslation}
+                    onSave={handleSaveFromDialog}
                     onClose={() => {
                         setEditingBlock(null);
-                        load();
                     }}
                 />
             )}

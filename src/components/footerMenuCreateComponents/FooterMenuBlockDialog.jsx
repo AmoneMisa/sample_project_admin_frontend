@@ -5,42 +5,10 @@ import Toggle from "../controls/Toggle";
 import {FiChevronDown, FiChevronRight, FiPlus, FiTrash} from "react-icons/fi";
 import {v4 as uuid} from "uuid";
 import Modal from "../modals/Modal";
+import LabeledNumberInput from "../controls/LabeledNumberInput";
 
 const MAX_TITLE_LEN = 80;
 
-/**
- * FooterMenuBlockDialog
- * - Цельная модалка редактирования агрегата "Блок меню" + "ссылки"
- * - Без одиночных запросов: onSave получает готовый блок целиком (и переводы по ключам)
- *
- * Props:
- *  open: boolean
- *  mode: "create" | "edit"
- *  initial?: MenuBlockDraft
- *  languages: string[]                       // ["ru","en",...]
- *  translationMaps: Record<string, Record<string,string>>
- *  updateTranslation: (key: string, map: Record<string,string>) => void
- *  onSave: (result: { block: MenuBlockDraft, translationPayload: TranslationBatchItem[] }) => Promise<void> | void
- *  onClose: () => void
- *
- * MenuBlockDraft:
- *  {
- *    id: string,
- *    titleKey: string,
- *    order: number,
- *    isVisible: boolean,
- *    links: Array<{
- *      id: string,
- *      labelKey: string,
- *      href: string,
- *      order: number,
- *      isVisible: boolean
- *    }>
- *  }
- *
- * TranslationBatchItem:
- *  { key: string, values: Record<string,string> }
- */
 export default function FooterMenuBlockDialog({
                                                   open = true,
                                                   mode,
@@ -67,13 +35,31 @@ export default function FooterMenuBlockDialog({
         };
     });
 
-    // при смене initial (редактирование другой записи)
     useEffect(() => {
         if (!initial) return;
         setForm(structuredClone(initial));
         setErrors({});
         setCollapsedLinks({});
     }, [initial?.id]);
+
+    useEffect(() => {
+        if (!open) return;
+        if (!languages?.length) return;
+        if (!form?.titleKey) return;
+
+        const ensureKey = (key) => {
+            if (!key) return;
+            if (translationMaps?.[key]) return;
+
+            const empty = Object.fromEntries(languages.map((l) => [l, ""]));
+            updateTranslation?.(key, empty);
+        };
+
+        ensureKey(form.titleKey);
+        for (const l of form.links || []) ensureKey(l.labelKey);
+
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [open, form.titleKey, (form.links || []).length, languages.length]);
 
     const toggleLinkCollapsed = (i) =>
         setCollapsedLinks((p) => ({...p, [i]: !p[i]}));
@@ -126,24 +112,28 @@ export default function FooterMenuBlockDialog({
     const titleMap = translationMaps?.[form.titleKey] || {};
     const titleErrors = extractLangErrors("title.");
 
-    const addLink = () =>
-        updateBlock((b) => {
-            const linkId = uuid();
-            const i = b.links.length;
+    const addLink = () => {
+        const linkId = uuid();
+        const labelKey = `footer.menu.blocks.${form.id}.links.${linkId}.label`;
+        const nextIndex = (form.links || []).length;
 
+        updateBlock((b) => {
             b.links.push({
                 id: linkId,
-                labelKey: `footer.menu.blocks.${b.id}.links.${linkId}.label`,
+                labelKey,
                 href: "",
-                order: i,
+                order: nextIndex,
                 isVisible: true,
             });
-
-            const empty = Object.fromEntries(languages.map((l) => [l, ""]));
-            updateTranslation?.(b.links[i].labelKey, empty);
-
-            setCollapsedLinks((p) => ({...p, [i]: false}));
         });
+
+        if (!translationMaps?.[labelKey]) {
+            const empty = Object.fromEntries(languages.map((l) => [l, ""]));
+            updateTranslation?.(labelKey, empty);
+        }
+
+        setCollapsedLinks((p) => ({...p, [nextIndex]: false}));
+    };
 
     const removeLink = (i) =>
         updateBlock((b) => {
@@ -277,7 +267,6 @@ export default function FooterMenuBlockDialog({
                 </div>
             </div>
 
-            {/* LINKS */}
             <div className="menu-modal__row">
                 <div className="menu-modal__row-item menu-modal__row_col">
                     <div style={{
@@ -286,7 +275,6 @@ export default function FooterMenuBlockDialog({
                         justifyContent: "space-between",
                         marginBottom: 8
                     }}>
-                        <div style={{fontWeight: 600}}>Ссылки</div>
                         <button type="button" className="button button_secondary" onClick={addLink}>
                             <FiPlus style={{marginRight: 8}} size={16}/>
                             Добавить ссылку
@@ -352,11 +340,11 @@ export default function FooterMenuBlockDialog({
                                     <>
                                         <div className="menu-modal__sub-item-row">
                                             <div className="menu-modal__sub-item-row_fixed" style={{maxWidth: 220}}>
-                                                <LabeledInput
+                                                <LabeledNumberInput
                                                     label="Порядок"
-                                                    type="number"
                                                     value={link.order}
                                                     error={errors[`links.${i}.order`] ?? ""}
+                                                    min={0}
                                                     onChange={(v) =>
                                                         updateBlock((b) => {
                                                             b.links[i].order = Number(v);

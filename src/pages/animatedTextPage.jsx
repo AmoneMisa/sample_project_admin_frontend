@@ -1,9 +1,10 @@
 import {useEffect, useMemo, useState} from "react";
 import {v4 as uuid} from "uuid";
-import {FiCopy, FiTrash, FiEdit, FiSave, FiX} from "react-icons/fi";
+import {FiCopy, FiTrash, FiEdit} from "react-icons/fi";
 import CustomTable from "../components/customElems/CustomTable";
 import Toggle from "../components/controls/Toggle";
 import ConfirmDialog from "../components/modals/ConfirmDialog";
+import MultilangInput from "../components/controls/MultilangInput";
 import {useAuth} from "../hooks/authContext";
 import {useToast} from "../components/layout/ToastContext";
 import apiFetch from "../utils/apiFetch";
@@ -29,13 +30,12 @@ function buildTitleKey(id) {
     return `animatedText.${id}.title`;
 }
 
-function makeEmptyMap(languages) {
-    return Object.fromEntries((languages || []).map((l) => [l.code, ""]));
+function emptyMapByLangCodes(langCodes) {
+    return Object.fromEntries((langCodes || []).map((c) => [c, ""]));
 }
 
 export default function AnimatedTextPage() {
     const API_URL = process.env.REACT_APP_API_URL || "/api";
-
     const {accessToken, user} = useAuth();
     const {showToast} = useToast();
 
@@ -49,21 +49,19 @@ export default function AnimatedTextPage() {
     } = useTranslations();
 
     const canEdit = !!user && (user.role === "admin" || user.role === "moderator");
-
+    const langCodes = useMemo(() => (languages || []).map((l) => l.code), [languages]);
     const [items, setItems] = useState([]);
     const [deleteTarget, setDeleteTarget] = useState(null);
-    const [createId, setCreateId] = useState(() => uuid());
     const [createVisible, setCreateVisible] = useState(true);
     const [createTranslations, setCreateTranslations] = useState({});
     const [editingId, setEditingId] = useState(null);
     const [editingTranslations, setEditingTranslations] = useState({});
 
-    const createTitleKey = useMemo(() => buildTitleKey(createId), [createId]);
-
     async function load() {
         const data = await apiFetch(`${API_URL}/animated-text`, {
             headers: accessToken ? {Authorization: `Bearer ${accessToken}`} : undefined,
         });
+
         setItems((data || []).map(normalizeAnimatedText));
     }
 
@@ -79,15 +77,14 @@ export default function AnimatedTextPage() {
     }, [accessToken]);
 
     useEffect(() => {
-        if (!languages?.length) return;
-        setCreateTranslations(makeEmptyMap(languages));
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [languages?.length]);
+        if (!langCodes.length) return;
+        setCreateTranslations(emptyMapByLangCodes(langCodes));
+    }, [langCodes]);
 
     const getPreviewTextByKey = (key) => {
         const map = translationMaps?.[key] || {};
-        for (const lang of languages) {
-            const v = (map?.[lang.code] ?? "").toString().trim();
+        for (const code of langCodes) {
+            const v = (map?.[code] ?? "").toString().trim();
             if (v) return v;
         }
         for (const k of Object.keys(map)) {
@@ -99,8 +96,8 @@ export default function AnimatedTextPage() {
 
     const getMapByKey = (key) => {
         const map = translationMaps?.[key] || {};
-        const result = makeEmptyMap(languages);
-        for (const lang of languages) result[lang.code] = (map?.[lang.code] ?? "").toString();
+        const result = emptyMapByLangCodes(langCodes);
+        for (const code of langCodes) result[code] = (map?.[code] ?? "").toString();
         return result;
     };
 
@@ -110,7 +107,7 @@ export default function AnimatedTextPage() {
         const updated = await apiFetch(`${API_URL}/animated-text/${row.id}`, {
             method: "PATCH",
             headers: {
-                "Content-Type": "application/json",
+                "Content-Type": "application/json"
             },
             body: JSON.stringify({isVisible: !row.visible}),
         });
@@ -124,7 +121,7 @@ export default function AnimatedTextPage() {
         if (!canEdit) return;
 
         await apiFetch(`${API_URL}/animated-text/${id}`, {
-            method: "DELETE",
+            method: "DELETE"
         });
 
         setItems((prev) => prev.filter((i) => i.id !== id));
@@ -134,23 +131,25 @@ export default function AnimatedTextPage() {
     async function createItem() {
         if (!canEdit) return;
 
-        const titleKey = buildTitleKey(createId);
+        const id = uuid();
+        const titleKey = buildTitleKey(id);
 
         await createKeysBatch([
             {
                 key: titleKey,
-                values: Object.fromEntries(languages.map((l) => [l.code, createTranslations?.[l.code] || ""])),
+                values: Object.fromEntries(langCodes.map((c) => [c, createTranslations?.[c] || ""])),
             },
         ]);
 
         const maxOrder = items.length ? Math.max(...items.map((x) => x.order ?? 0)) : 0;
+
         const created = await apiFetch(`${API_URL}/animated-text`, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json"
             },
             body: JSON.stringify({
-                id: createId,
+                id,
                 titleKey,
                 isVisible: createVisible,
                 order: maxOrder + 1,
@@ -158,11 +157,8 @@ export default function AnimatedTextPage() {
         });
 
         setItems((prev) => [...prev, normalizeAnimatedText(created.animatedText ?? created)]);
-
-        const nextId = uuid();
-        setCreateId(nextId);
         setCreateVisible(true);
-        setCreateTranslations(makeEmptyMap(languages));
+        setCreateTranslations(emptyMapByLangCodes(langCodes));
 
         showToast("Элемент создан");
     }
@@ -175,15 +171,16 @@ export default function AnimatedTextPage() {
     async function saveEdit(row) {
         if (!canEdit) return;
 
-        const payload = Object.entries(editingTranslations || {}).map(([lang, value]) => ({
-            key: row.titleKey,
-            lang,
-            value: value ?? "",
-        }));
+        await updateKeysBatch(
+            Object.entries(editingTranslations || {}).map(([lang, value]) => ({
+                key: row.titleKey,
+                lang,
+                value: value ?? "",
+            }))
+        );
 
-        await updateKeysBatch(payload);
         setEditingId(null);
-        showToast("Сохранено");
+        setEditingTranslations({});
     }
 
     function cancelEdit() {
@@ -201,10 +198,9 @@ export default function AnimatedTextPage() {
         await createKeysBatch([
             {
                 key: newKey,
-                values: Object.fromEntries(languages.map((l) => [l.code, originalMap?.[l.code] || ""])),
+                values: Object.fromEntries(langCodes.map((c) => [c, originalMap?.[c] || ""])),
             },
         ]);
-
         const maxOrder = items.length ? Math.max(...items.map((x) => x.order ?? 0)) : 0;
 
         const created = await apiFetch(`${API_URL}/animated-text`, {
@@ -241,17 +237,11 @@ export default function AnimatedTextPage() {
                     </div>
                 ),
             },
-            {key: "order", title: "Порядок", width: "110px", render: (v) => (v ?? 0)},
+            {key: "order", title: "Порядок", width: "110px", render: (v) => v ?? 0},
             {
-                key: "titleKey",
-                title: "titleKey",
-                width: "360px",
-                render: (_, row) => <a href={`/admin?key=${row.titleKey}`}>{row.titleKey}</a>,
-            },
-            {
-                key: "preview",
-                title: "Превью",
-                render: (_, row) => <span>{getPreviewTextByKey(row.titleKey) || "-"}</span>,
+                key: "text",
+                title: "Текст",
+                render: (_, row) => getPreviewTextByKey(row.titleKey) || "-",
             },
         ];
 
@@ -259,13 +249,13 @@ export default function AnimatedTextPage() {
             base.push({
                 key: "actions",
                 title: "Действия",
-                width: "180px",
+                width: "190px",
                 render: (_, row) => (
                     <div style={{display: "flex", gap: 8, justifyContent: "center"}}>
                         <button
                             type="button"
                             className="button button_icon"
-                            title="Редактировать переводы"
+                            title="Редактировать"
                             onClick={() => startEdit(row)}
                         >
                             <FiEdit size={16}/>
@@ -295,7 +285,7 @@ export default function AnimatedTextPage() {
 
         return base;
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [canEdit, accessToken, translationMaps, languages, items]);
+    }, [canEdit, translationMaps, langCodes, items]);
 
     const editingRow = editingId ? items.find((x) => x.id === editingId) : null;
 
@@ -303,8 +293,8 @@ export default function AnimatedTextPage() {
         <div className="page animated-text-page">
             <div className="page__topbar page__topbar_sticky page__topbar_wrap">
                 <div className="page__topbar-col">
-                    <h1 className="page__header">Animated Text</h1>
-                    <div className="page__topbar-title">Управление animatedText</div>
+                    <h1 className="page__header">Анимированный текст</h1>
+                    <div className="page__topbar-title">Управление анимированным текстом</div>
                 </div>
 
                 {canEdit && (
@@ -315,129 +305,57 @@ export default function AnimatedTextPage() {
                     </div>
                 )}
             </div>
-
             <div className="page__block page__block_card" style={{display: "flex", flexDirection: "column", gap: 12}}>
-                <div style={{display: "flex", gap: 12, flexWrap: "wrap", alignItems: "flex-end"}}>
-                    <div style={{minWidth: 260}}>
-                        <div className="form__label">id</div>
-                        <input className="input" value={createId} disabled/>
+                <div style={{display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12}}>
+                    <div className="page__topbar-title" style={{margin: 0}}>
+                        Переводы (создание)
                     </div>
 
-                    <div style={{minWidth: 420, flex: 1}}>
-                        <div className="form__label">titleKey</div>
-                        <input className="input" value={createTitleKey} disabled/>
-                        <div style={{marginTop: 6, opacity: 0.7, fontSize: 12}}>
-                            (формируется автоматически)
-                        </div>
-                    </div>
-
-                    <div style={{width: 120}}>
-                        <div className="form__label">Вкл</div>
-                        <div style={{display: "flex", height: 40, alignItems: "center"}}>
-                            <Toggle checked={!!createVisible} disabled={!canEdit}
-                                    onChange={() => setCreateVisible((v) => !v)}/>
-                        </div>
-                    </div>
-
-                    {canEdit && (
-                        <button
-                            type="button"
-                            className="button button_border"
-                            onClick={() => {
-                                const nextId = uuid();
-                                setCreateId(nextId);
-                                setCreateTranslations(makeEmptyMap(languages));
-                            }}
-                            title="Сгенерировать новый id"
-                        >
-                            Новый id
-                        </button>
-                    )}
-                </div>
-
-                <div>
-                    <div className="form__label">Переводы (создание)</div>
-                    <div
-                        style={{display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 10}}>
-                        {(languages || []).map((lang) => (
-                            <div key={lang.code}>
-                                <div className="form__label" style={{opacity: 0.8}}>
-                                    {lang.code}
-                                </div>
-                                <input
-                                    className="input"
-                                    value={createTranslations?.[lang.code] ?? ""}
-                                    onChange={(e) =>
-                                        setCreateTranslations((prev) => ({
-                                            ...(prev || {}),
-                                            [lang.code]: e.target.value,
-                                        }))
-                                    }
-                                    disabled={!canEdit}
-                                    placeholder={`Текст (${lang.code})`}
-                                />
-                            </div>
-                        ))}
+                    <div style={{display: "flex", alignItems: "center", gap: 10}}>
+                        <div style={{opacity: 0.8}}>Вкл</div>
+                        <Toggle
+                            checked={!!createVisible}
+                            disabled={!canEdit}
+                            onChange={() => setCreateVisible((v) => !v)}
+                        />
                     </div>
                 </div>
+                <MultilangInput
+                    label="Текст"
+                    placeholder="Текст"
+                    languages={langCodes}
+                    valueMap={createTranslations}
+                    onChange={setCreateTranslations}
+                />
             </div>
-
             <div className="page__block page__block_card">
                 <CustomTable columns={columns} data={items}/>
             </div>
-
             {canEdit && editingRow && (
                 <div className="page__block page__block_card"
                      style={{display: "flex", flexDirection: "column", gap: 12}}>
                     <div style={{display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap"}}>
-                        <div>
-                            <div className="form__label">Редактирование</div>
-                            <div style={{opacity: 0.8}}>
-                                <a href={`/admin?key=${editingRow.titleKey}`}>{editingRow.titleKey}</a>
-                            </div>
+                        <div className="page__topbar-title" style={{margin: 0}}>
+                            Редактирование текста
                         </div>
 
-                        <div style={{display: "flex", gap: 8, alignItems: "flex-end"}}>
-                            <button type="button" className="button" onClick={() => saveEdit(editingRow)}
-                                    title="Сохранить">
-                                <FiSave size={16} style={{marginRight: 8}}/>
+                        <div style={{display: "flex", gap: 8}}>
+                            <button type="button" className="button" onClick={() => saveEdit(editingRow)}>
                                 Сохранить
                             </button>
-
-                            <button type="button" className="button button_border" onClick={cancelEdit} title="Отмена">
-                                <FiX size={16} style={{marginRight: 8}}/>
+                            <button type="button" className="button button_border" onClick={cancelEdit}>
                                 Отмена
                             </button>
                         </div>
                     </div>
 
-                    <div>
-                        <div className="form__label">Переводы</div>
-                        <div style={{
-                            display: "grid",
-                            gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
-                            gap: 10
-                        }}>
-                            {(languages || []).map((lang) => (
-                                <div key={lang.code}>
-                                    <div className="form__label" style={{opacity: 0.8}}>
-                                        {lang.code}
-                                    </div>
-                                    <input
-                                        className="input"
-                                        value={editingTranslations?.[lang.code] ?? ""}
-                                        onChange={(e) =>
-                                            setEditingTranslations((prev) => ({
-                                                ...(prev || {}),
-                                                [lang.code]: e.target.value,
-                                            }))
-                                        }
-                                        placeholder={`Текст (${lang.code})`}
-                                    />
-                                </div>
-                            ))}
-                        </div>
-                    </div>
+                    <MultilangInput
+                        label={null}
+                        placeholder="Текст"
+                        languages={langCodes}
+                        valueMap={editingTranslations}
+                        onChange={setEditingTranslations}
+                    />
                 </div>
             )}
 

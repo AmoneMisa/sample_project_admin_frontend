@@ -1,21 +1,83 @@
-import {useState, useMemo} from "react";
+import {useEffect, useMemo, useState} from "react";
 import Modal from "./Modal";
 import LabeledInput from "../controls/LabeledInput";
 import Toggle from "../controls/Toggle";
 import LabeledNumberInput from "../controls/LabeledNumberInput";
+import MultilangInput from "../controls/MultilangInput";
+import {useTranslations} from "../../hooks/useTranslations";
+import {useToast} from "../layout/ToastContext";
+import {v4 as uuid} from "uuid";
 
 export default function TestimonialDialog({title, initial, onSave, onClose}) {
-    const [form, setForm] = useState({
-        name: initial?.name || "",
-        role: initial?.role || "",
-        quote: initial?.quote || "",
-        rating: initial?.rating ?? 5,
-        avatar: initial?.avatar || "",
-        logo: initial?.logo || "",
-        isVisible: initial?.isVisible ?? true,
+    const {showToast} = useToast();
+
+    const {
+        languages,
+        loadLanguages,
+        translationMaps,
+        loadAllTranslations,
+        createKeysBatch,
+        updateKeysBatch
+    } = useTranslations();
+
+    const [loading, setLoading] = useState(true);
+
+    const [form, setForm] = useState(() => {
+        if (initial) {
+            return {
+                nameKey: initial?.nameKey || "",
+                roleKey: initial?.roleKey || "",
+                quoteKey: initial?.quoteKey || "",
+                rating: initial?.rating ?? 5,
+                avatar: initial?.avatar || "",
+                logo: initial?.logo || "",
+                isVisible: initial?.isVisible ?? true,
+            };
+        }
+
+        const id = uuid();
+        return {
+            nameKey: `testimonial.${id}.name`,
+            roleKey: `testimonial.${id}.role`,
+            quoteKey: `testimonial.${id}.quote`,
+            rating: 5,
+            avatar: "",
+            logo: "",
+            isVisible: true,
+        };
     });
 
     const [errors, setErrors] = useState({});
+
+    const langCodes = useMemo(() => languages.map(l => l.code), [languages]);
+    const makeEmptyMap = () => Object.fromEntries(langCodes.map(c => [c, ""]));
+
+    const [nameTranslations, setNameTranslations] = useState({});
+    const [roleTranslations, setRoleTranslations] = useState({});
+    const [quoteTranslations, setQuoteTranslations] = useState({});
+
+    useEffect(() => {
+        (async () => {
+            await loadLanguages();
+            await loadAllTranslations();
+            setLoading(false);
+        })();
+    }, []);
+
+    useEffect(() => {
+        if (loading) return;
+
+        if (initial) {
+            setNameTranslations({...((translationMaps[form.nameKey]) || {})});
+            setRoleTranslations({...((translationMaps[form.roleKey]) || {})});
+            setQuoteTranslations({...((translationMaps[form.quoteKey]) || {})});
+        } else {
+            const empty = makeEmptyMap();
+            setNameTranslations({...empty});
+            setRoleTranslations({...empty});
+            setQuoteTranslations({...empty});
+        }
+    }, [loading, translationMaps]);
 
     const updateField = (field, value) => {
         setForm((prev) => ({...prev, [field]: value}));
@@ -35,13 +97,22 @@ export default function TestimonialDialog({title, initial, onSave, onClose}) {
     const validate = () => {
         const next = {};
 
-        if (!form.name.trim()) next.name = "Введите имя";
-        if (!form.role.trim()) next.role = "Введите роль";
-        if (!form.quote.trim()) next.quote = "Введите текст отзыва";
+        for (const code of langCodes) {
+            if (!(nameTranslations?.[code] || "").trim()) {
+                next.name = next.name || {};
+                next.name[code] = "Обязательное поле";
+            }
+            if (!(roleTranslations?.[code] || "").trim()) {
+                next.role = next.role || {};
+                next.role[code] = "Обязательное поле";
+            }
+            if (!(quoteTranslations?.[code] || "").trim()) {
+                next.quote = next.quote || {};
+                next.quote[code] = "Обязательное поле";
+            }
+        }
 
-        if (!form.rating || form.rating < 1 || form.rating > 5)
-            next.rating = "Рейтинг должен быть от 1 до 5";
-
+        if (!form.rating || form.rating < 1 || form.rating > 5) next.rating = "Рейтинг должен быть от 1 до 5";
         if (!isValidUrl(form.avatar)) next.avatar = "Некорректный URL";
         if (!isValidUrl(form.logo)) next.logo = "Некорректный URL";
 
@@ -49,9 +120,47 @@ export default function TestimonialDialog({title, initial, onSave, onClose}) {
         return Object.keys(next).length === 0;
     };
 
-    const handleSave = () => {
+    function toKeyPayload(key, values) {
+        return {
+            key,
+            values: Object.fromEntries(langCodes.map(c => [c, (values?.[c] || "")]))
+        };
+    }
+
+    async function saveTranslations() {
+        const payload = [
+            toKeyPayload(form.nameKey, nameTranslations),
+            toKeyPayload(form.roleKey, roleTranslations),
+            toKeyPayload(form.quoteKey, quoteTranslations),
+        ];
+
+        if (initial) {
+            await updateKeysBatch(
+                payload.flatMap(item =>
+                    Object.entries(item.values).map(([lang, value]) => ({
+                        key: item.key,
+                        lang,
+                        value
+                    }))
+                )
+            );
+            return;
+        }
+
+        await createKeysBatch(payload);
+    }
+
+    const handleSave = async () => {
         if (!validate()) return;
-        onSave(form);
+
+        await saveTranslations();
+
+        await onSave({
+            ...form,
+            rating: Number(form.rating),
+        });
+
+        showToast("Отзыв сохранён");
         onClose();
     };
 
@@ -60,8 +169,6 @@ export default function TestimonialDialog({title, initial, onSave, onClose}) {
 
     return (
         <Modal open title={title} onClose={onClose} width={560}>
-
-            {/* Toggle */}
             <div className="menu-modal__row">
                 <div className="menu-modal__row-item">
                     <Toggle
@@ -72,53 +179,34 @@ export default function TestimonialDialog({title, initial, onSave, onClose}) {
                 </div>
             </div>
 
-            {/* Имя + роль */}
-            <div className="menu-modal__row">
-                <div className="menu-modal__row-item">
-                    <LabeledInput
-                        label="Имя"
-                        placeholder="Анна Иванова"
-                        value={form.name}
-                        onChange={(v) => updateField("name", v)}
-                        error={errors.name}
-                    />
-                </div>
+            <MultilangInput
+                label="Имя"
+                placeholder="Анна Иванова"
+                languages={langCodes}
+                valueMap={nameTranslations}
+                errors={errors.name}
+                onChange={setNameTranslations}
+            />
 
-                <div className="menu-modal__row-item">
-                    <LabeledInput
-                        label="Роль"
-                        placeholder="CEO / Designer"
-                        value={form.role}
-                        onChange={(v) => updateField("role", v)}
-                        error={errors.role}
-                    />
-                </div>
-            </div>
+            <MultilangInput
+                label="Роль"
+                placeholder="CEO / Designer"
+                languages={langCodes}
+                valueMap={roleTranslations}
+                errors={errors.role}
+                onChange={setRoleTranslations}
+            />
 
-            {/* Отзыв */}
-            <div className="menu-modal__row">
-                <div className="menu-modal__row-item">
-
-                    <label className="field-holder">
-                        <span className="field-holder__label">Отзыв</span>
-
-                        <textarea
-                            className={
-                                "field-holder__input" +
-                                (errors.quote ? " field-holder__input_error" : "")
-                            }
-                            placeholder="Напишите отзыв…"
-                            style={{minHeight: 110}}
-                            value={form.quote}
-                            onChange={(e) => updateField("quote", e.target.value)}
-                        />
-
-                        {errors.quote && (
-                            <div className="field-holder__error">{errors.quote}</div>
-                        )}
-                    </label>
-                </div>
-            </div>
+            <MultilangInput
+                label="Отзыв"
+                placeholder="Напишите отзыв…"
+                languages={langCodes}
+                valueMap={quoteTranslations}
+                errors={errors.quote}
+                onChange={setQuoteTranslations}
+                textarea
+                textareaMinHeight={110}
+            />
 
             <div className="menu-modal__row">
                 <div className="menu-modal__row-item">
@@ -133,6 +221,7 @@ export default function TestimonialDialog({title, initial, onSave, onClose}) {
                     />
                 </div>
             </div>
+
             <div className="menu-modal__row">
                 <div className="menu-modal__row-item">
                     <LabeledInput
@@ -148,6 +237,7 @@ export default function TestimonialDialog({title, initial, onSave, onClose}) {
                         </div>
                     )}
                 </div>
+
                 <div className="menu-modal__row-item">
                     <LabeledInput
                         label="Лого URL"
@@ -163,6 +253,7 @@ export default function TestimonialDialog({title, initial, onSave, onClose}) {
                     )}
                 </div>
             </div>
+
             <div className="modal__actions">
                 <button className="button button_accept" onClick={handleSave}>
                     Сохранить
@@ -171,7 +262,6 @@ export default function TestimonialDialog({title, initial, onSave, onClose}) {
                     Отмена
                 </button>
             </div>
-
         </Modal>
     );
 }

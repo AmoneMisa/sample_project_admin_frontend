@@ -47,6 +47,7 @@ export default function AdminMenu() {
             {to: "/menu", icon: FiMenu, label: "Футер меню"},
             {to: "/offer-cards", icon: FiGrid, label: "Карточки предложений"},
             {to: "/services", icon: FiSettings, label: "Сервисы"},
+            {to: "/tabs", icon: FiSettings, label: "Табы"},
         ];
         if (isAdmin) base.push({to: "/users", icon: FiUsers, label: "Пользователи"});
         if (isAdmin || isModerator) base.push({to: "/admin", icon: FiMenu, label: "Админка"});

@@ -17,6 +17,7 @@ import OfferCardsPage from "./pages/offerCardsPage";
 import ScrollTopButton from "./components/controls/ScrollTopButton";
 import ContactMeButton from "./components/controls/ContactMeButton";
 import ServicesPage from "./pages/servicePages";
+import TabsPage from "./pages/tabsPage";
 
 export default function App() {
     return (
@@ -42,6 +43,7 @@ export default function App() {
                             <Route path="feature-cards" element={<FeatureCardsPage/>}/>
                             <Route path="offer-cards" element={<OfferCardsPage/>}/>
                             <Route path="services" element={<ServicesPage/>}/>
+                            <Route path="tabs" element={<TabsPage/>}/>
                             <Route
                                 path="admin"
                                 element={

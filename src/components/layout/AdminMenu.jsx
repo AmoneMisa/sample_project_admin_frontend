@@ -1,15 +1,17 @@
 import {NavLink, useNavigate} from "react-router-dom";
 import {
+    FiChevronLeft,
+    FiChevronRight,
+    FiFileText,
     FiGrid,
     FiHome,
-    FiLayers,
     FiLogOut,
     FiMenu,
     FiMessageSquare,
     FiPhone,
-    FiUsers,
-    FiChevronRight,
-    FiChevronLeft, FiSettings
+    FiSettings,
+    FiTable,
+    FiUsers
 } from "react-icons/fi";
 import {useAuth} from "../../hooks/authContext";
 import {useEffect, useMemo, useRef, useState} from "react";
@@ -47,7 +49,8 @@ export default function AdminMenu() {
             {to: "/menu", icon: FiMenu, label: "Футер меню"},
             {to: "/offer-cards", icon: FiGrid, label: "Карточки предложений"},
             {to: "/services", icon: FiSettings, label: "Сервисы"},
-            {to: "/tabs", icon: FiSettings, label: "Табы"},
+            {to: "/tabs", icon: FiTable, label: "Табы"},
+            {to: "/animated-text", icon: FiFileText, label: "Анимированный текст"},
         ];
         if (isAdmin) base.push({to: "/users", icon: FiUsers, label: "Пользователи"});
         if (isAdmin || isModerator) base.push({to: "/admin", icon: FiMenu, label: "Админка"});
@@ -91,7 +94,7 @@ export default function AdminMenu() {
 
         try {
             localStorage.setItem(LS_KEY, JSON.stringify({collapsed, pos}));
-        } catch (e){
+        } catch (e) {
             console.error("Trying to parse localStorage:", e);
         }
     }, [hydrated, collapsed, pos]);

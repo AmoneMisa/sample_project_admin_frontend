@@ -6,6 +6,8 @@ import {useEffect, useMemo, useState} from "react";
 import {useTranslations} from "../../hooks/useTranslations";
 import {useToast} from "../layout/ToastContext";
 import {v4 as uuid} from "uuid";
+import {FiChevronDown, FiChevronRight, FiPlus, FiTrash} from "react-icons/fi";
+import Toggle from "../controls/Toggle";
 
 export default function TabsWithBackgroundDialog({initial, mode, onClose}) {
     const API_URL = process.env.REACT_APP_API_URL || "/api";
@@ -22,7 +24,14 @@ export default function TabsWithBackgroundDialog({initial, mode, onClose}) {
     } = useTranslations();
 
     const [form, setForm] = useState(() => {
-        if (initial) return structuredClone(initial);
+        if (initial) {
+            const next = structuredClone(initial);
+            next.list = (next.list || []).map(x => ({
+                textKey: x.textKey,
+                isVisible: x.isVisible !== false
+            }));
+            return next;
+        }
 
         const id = uuid();
         return {
@@ -35,17 +44,16 @@ export default function TabsWithBackgroundDialog({initial, mode, onClose}) {
             image: "",
             order: 0,
             isVisible: true,
-            list: [
-                {textKey: `tabs.withBg.${id}.feature.1`},
-                {textKey: `tabs.withBg.${id}.feature.2`},
-                {textKey: `tabs.withBg.${id}.feature.3`}
-            ]
+            list: []
         };
     });
 
     const [initialFeatureKeys] = useState(() =>
         mode === "edit" ? (initial?.list || []).map(x => x.textKey) : []
     );
+
+    const [collapsedItems, setCollapsedItems] = useState(() => ({}));
+    const toggleItem = (i) => setCollapsedItems(prev => ({...prev, [i]: !prev[i]}));
 
     const [loading, setLoading] = useState(true);
     const [errors, setErrors] = useState({});
@@ -57,10 +65,9 @@ export default function TabsWithBackgroundDialog({initial, mode, onClose}) {
     const [featureTranslations, setFeatureTranslations] = useState({});
 
     const langCodes = useMemo(() => languages.map(l => l.code), [languages]);
+    const makeEmptyMap = () => Object.fromEntries(langCodes.map(c => [c, ""]));
 
     const updateField = (key, value) => setForm(prev => ({...prev, [key]: value}));
-
-    const makeEmptyMap = () => Object.fromEntries(langCodes.map(c => [c, ""]));
 
     useEffect(() => {
         (async () => {
@@ -90,12 +97,22 @@ export default function TabsWithBackgroundDialog({initial, mode, onClose}) {
             setTitleTranslations({...empty});
             setTextTranslations({...empty});
             setButtonTranslations({...empty});
-
-            const ft = {};
-            for (const f of (form.list || [])) ft[f.textKey] = {...empty};
-            setFeatureTranslations(ft);
+            setFeatureTranslations({});
         }
     }, [loading, translationMaps]);
+
+    const getPreviewText = (key) => {
+        const map = translationMaps?.[key] || {};
+        for (const lang of langCodes) {
+            const v = (map?.[lang] ?? "").toString().trim();
+            if (v) return v;
+        }
+        for (const k of Object.keys(map)) {
+            const v = (map?.[k] ?? "").toString().trim();
+            if (v) return v;
+        }
+        return "Нет текста";
+    };
 
     function validate() {
         const e = {};
@@ -118,16 +135,14 @@ export default function TabsWithBackgroundDialog({initial, mode, onClose}) {
             }
         }
 
-        const list = form.list || [];
-        if (!list.length) e.list = "Добавьте хотя бы одну фичу";
-
-        for (const f of list) {
+        for (let i = 0; i < (form.list || []).length; i++) {
+            const f = form.list[i];
             const map = featureTranslations[f.textKey] || {};
             for (const code of langCodes) {
                 if (!map[code]?.trim()) {
                     if (!e.features) e.features = {};
-                    if (!e.features[f.textKey]) e.features[f.textKey] = {};
-                    e.features[f.textKey][code] = "Обязательное поле";
+                    if (!e.features[i]) e.features[i] = {};
+                    e.features[i][code] = "Обязательное поле";
                 }
             }
         }
@@ -136,21 +151,69 @@ export default function TabsWithBackgroundDialog({initial, mode, onClose}) {
         return Object.keys(e).length === 0;
     }
 
+    function nextFeatureIndex(list, base) {
+        let max = 0;
+        for (const it of list) {
+            const k = it.textKey || "";
+            if (!k.startsWith(base + ".")) continue;
+            const tail = k.slice((base + ".").length);
+            const n = Number(tail);
+            if (Number.isFinite(n)) max = Math.max(max, n);
+        }
+        return max + 1;
+    }
+
     function addFeature() {
         const base = `tabs.withBg.${form.id}.feature`;
         const current = form.list || [];
-        const nextIndex = current.length ? current.length + 1 : 1;
-        const textKey = `${base}.${nextIndex}`;
+        const idx = nextFeatureIndex(current, base);
+        const textKey = `${base}.${idx}`;
 
-        setForm(prev => ({...prev, list: [...(prev.list || []), {textKey}]}));
+        setForm(prev => ({
+            ...prev,
+            list: [...(prev.list || []), {textKey, isVisible: true}]
+        }));
+
+        setCollapsedItems(prev => ({...prev, [current.length]: false}));
         setFeatureTranslations(prev => ({...prev, [textKey]: makeEmptyMap()}));
     }
 
-    function removeFeature(textKey) {
-        setForm(prev => ({...prev, list: (prev.list || []).filter(x => x.textKey !== textKey)}));
+    function removeFeature(i) {
+        const textKey = form.list?.[i]?.textKey;
+        if (!textKey) return;
+
+        setForm(prev => {
+            const next = structuredClone(prev);
+            next.list.splice(i, 1);
+            return next;
+        });
+
         setFeatureTranslations(prev => {
             const next = {...prev};
             delete next[textKey];
+            return next;
+        });
+
+        setCollapsedItems(prev => {
+            const next = {};
+            const entries = Object.entries(prev).map(([k, v]) => [Number(k), v]).sort((a, b) => a[0] - b[0]);
+            let shift = false;
+            for (const [idx, val] of entries) {
+                if (idx === i) {
+                    shift = true;
+                    continue;
+                }
+                next[shift ? idx - 1 : idx] = val;
+            }
+            return next;
+        });
+    }
+
+    function toggleFeatureVisible(i) {
+        setForm(prev => {
+            const next = structuredClone(prev);
+            const cur = next.list[i]?.isVisible;
+            next.list[i].isVisible = cur === false ? true : !cur;
             return next;
         });
     }
@@ -176,7 +239,6 @@ export default function TabsWithBackgroundDialog({initial, mode, onClose}) {
                     }]
                 })
             });
-
             return form.id;
         }
 
@@ -201,8 +263,7 @@ export default function TabsWithBackgroundDialog({initial, mode, onClose}) {
 
         return {
             added: newKeys.filter(k => !oldSet.has(k)),
-            removed: oldKeys.filter(k => !newSet.has(k)),
-            stayed: newKeys.filter(k => oldSet.has(k))
+            removed: oldKeys.filter(k => !newSet.has(k))
         };
     }
 
@@ -353,33 +414,67 @@ export default function TabsWithBackgroundDialog({initial, mode, onClose}) {
                 onChange={setButtonTranslations}
             />
 
-            <div style={{display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 12}}>
-                <div className="table__muted">Features</div>
-                <button className="button button_border" onClick={addFeature}>+ Добавить фичу</button>
-            </div>
+            <div className="menu-modal__row">
+                <div className="menu-modal__row-item menu-modal__row_col">
+                    {(form.list || []).map((f, i) => {
+                        const itemCollapsed = collapsedItems[i] === true;
+                        const preview = getPreviewText(f.textKey);
 
-            {(form.list || []).map((f) => (
-                <div key={f.textKey} style={{marginTop: 12, borderTop: "1px solid var(--light-grey)", paddingTop: 12}}>
-                    <div style={{display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12}}>
-                        <div className="table__mono" style={{fontSize: 12}}>{f.textKey}</div>
-                        <button className="button button_icon button_reject" title="Удалить фичу"
-                                onClick={() => removeFeature(f.textKey)}>
-                            ✕
-                        </button>
-                    </div>
+                        return (
+                            <div key={f.textKey} className="menu-modal__sub-item menu-modal__sub-item_col">
+                                <div className="menu-modal__sub-item-row menu-modal__sub-item-row_between">
+                                    <div className="menu-modal__sub-item-row_grow">
+                                        {!itemCollapsed ? (
+                                            <MultilangInput
+                                                placeholder={`Преимущество ${i + 1}`}
+                                                languages={langCodes}
+                                                valueMap={featureTranslations[f.textKey] || {}}
+                                                errors={errors.features?.[i]}
+                                                onChange={(nextMap) =>
+                                                    setFeatureTranslations(prev => ({...prev, [f.textKey]: nextMap}))
+                                                }
+                                            />
+                                        ) : (
+                                            <div className="menu-modal__collapsed-preview">{preview}</div>
+                                        )}
+                                    </div>
 
-                    <MultilangInput
-                        label="Feature text"
-                        placeholder="Например: Автогенерация ролика"
-                        languages={langCodes}
-                        valueMap={featureTranslations[f.textKey] || {}}
-                        errors={errors.features?.[f.textKey]}
-                        onChange={(nextMap) =>
-                            setFeatureTranslations(prev => ({...prev, [f.textKey]: nextMap}))
-                        }
-                    />
+                                    <div className="menu-modal__sub-item-row" style={{width: "auto", alignSelf: "start"}}>
+                                        <button
+                                            type="button"
+                                            className="button button_icon"
+                                            title={itemCollapsed ? "Развернуть" : "Свернуть"}
+                                            onClick={() => toggleItem(i)}
+                                        >
+                                            {itemCollapsed ? <FiChevronRight size={16}/> : <FiChevronDown size={16}/>}
+                                        </button>
+
+                                        <Toggle
+                                            title="Отображать преимущество"
+                                            checked={f.isVisible !== false}
+                                            onChange={() => toggleFeatureVisible(i)}
+                                        />
+
+                                        <button
+                                            type="button"
+                                            className="button button_icon button_reject"
+                                            title="Удалить"
+                                            onClick={() => removeFeature(i)}
+                                        >
+                                            <FiTrash size={16}/>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        );
+                    })}
+
+                    <button type="button" className="button button_secondary" onClick={addFeature}>
+                        <FiPlus style={{marginRight: 8}} size={16}/>
+                        Добавить преимущество
+                    </button>
                 </div>
-            ))}
+            </div>
 
             <div className="modal__actions">
                 <button className="button" onClick={save}>Сохранить</button>

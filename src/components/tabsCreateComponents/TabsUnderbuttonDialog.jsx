@@ -114,7 +114,7 @@ export default function TabsUnderbuttonDialog({initial, mode, onClose}) {
 
     async function saveEntity() {
         if (mode === "edit") {
-            await apiFetch(`${API_URL}/tabs/mass`, {
+            await apiFetch(`${API_URL}/tabs`, {
                 method: "PATCH",
                 headers: {"Content-Type": "application/json"},
                 body: JSON.stringify({

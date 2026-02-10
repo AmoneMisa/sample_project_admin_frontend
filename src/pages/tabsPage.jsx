@@ -133,37 +133,37 @@ export default function TabsPage() {
         },
         {
             key: "icon",
-            title: "Icon",
+            title: "Иконка",
             width: "170px",
             render: (v) => v ? <span className="table__mono">{v}</span> : <span className="table__muted">—</span>
         },
         {
             key: "labelKey",
-            title: "Label (ru)",
+            title: "Лейбл",
             width: "220px",
             render: (_, row) => translationMaps[row.labelKey]?.ru || ""
         },
         {
             key: "titleKey",
-            title: "Title (ru)",
+            title: "Заголовок",
             width: "260px",
             render: (_, row) => translationMaps[row.titleKey]?.ru || ""
         },
         {
             key: "textKey",
-            title: "Text (ru)",
+            title: "Текст",
             width: "320px",
             render: (_, row) => translationMaps[row.textKey]?.ru || ""
         },
         {
             key: "btn",
-            title: "Button (ru)",
+            title: "Кнопка",
             width: "220px",
             render: (_, row) => row.buttonTextKey ? (translationMaps[row.buttonTextKey]?.ru || "") : ""
         },
         {
             key: "features",
-            title: "Features",
+            title: "Преимущества",
             width: "110px",
             render: (_, row) => <span className="table__mono">{(row.list || []).length}</span>
         },
@@ -217,25 +217,25 @@ export default function TabsPage() {
         },
         {
             key: "labelKey",
-            title: "Label (ru)",
+            title: "Лейбл",
             width: "220px",
             render: (_, row) => translationMaps[row.labelKey]?.ru || ""
         },
         {
             key: "titleKey",
-            title: "Title (ru)",
+            title: "Заголовок",
             width: "260px",
             render: (_, row) => translationMaps[row.titleKey]?.ru || ""
         },
         {
             key: "descriptionKey",
-            title: "Description (ru)",
+            title: "Описание",
             width: "340px",
             render: (_, row) => translationMaps[row.descriptionKey]?.ru || ""
         },
         {
             key: "buttonTextKey",
-            title: "Button (ru)",
+            title: "Кнопка",
             width: "240px",
             render: (_, row) => row.buttonTextKey ? (translationMaps[row.buttonTextKey]?.ru || "") : ""
         },
@@ -278,7 +278,6 @@ export default function TabsPage() {
                 <div className="page__row" style={{justifyContent: "space-between", alignItems: "center"}}>
                     <div>
                         <h2 className="page__header" style={{fontSize: 20}}>Tabs: with-background</h2>
-                        <div className="table__muted">label/title/text + features(list)</div>
                     </div>
 
                     {canEdit && (
@@ -294,7 +293,6 @@ export default function TabsPage() {
                 <div className="page__row" style={{justifyContent: "space-between", alignItems: "center"}}>
                     <div>
                         <h2 className="page__header" style={{fontSize: 20}}>Tabs: underbutton</h2>
-                        <div className="table__muted">label/title/description/headline/button</div>
                     </div>
 
                     {canEdit && (

@@ -45,8 +45,15 @@ export default function Testimonials() {
             if (!accessToken) return;
 
             await loadAllTranslations();
+
             const data = await apiFetch(`${API_URL}/testimonials`);
-            setItems(data);
+            const list = Array.isArray(data)
+                ? data
+                : Array.isArray(data?.testimonials)
+                    ? data.testimonials
+                    : [];
+
+            setItems(list);
         }
 
         load();

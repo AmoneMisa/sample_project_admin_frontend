@@ -180,13 +180,15 @@ export function useTranslations() {
             formData.append("files", file);
         }
 
-        const data = await apiFetch(`${API_URL}/translations/import`, {
+        const res = await apiFetch(`${API_URL}/translations/import`, {
             method: "POST",
             body: formData
         });
 
+        const data = res?.data || {};
+
         setTranslationMaps(prev => {
-            const next = {...prev};
+            const next = { ...prev };
 
             for (const [lang, entries] of Object.entries(data)) {
                 for (const [key, value] of Object.entries(entries)) {

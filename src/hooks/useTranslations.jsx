@@ -149,7 +149,7 @@ export function useTranslations() {
 
         if (enabledOnly) params.set("enabledOnly", "true");
 
-        const res = await fetch(`${API_URL}/export?${params.toString()}`, {
+        const res = await fetch(`${API_URL}/translations/export?${params.toString()}`, {
             headers: { Authorization: `Bearer ${accessToken}` }
         });
 

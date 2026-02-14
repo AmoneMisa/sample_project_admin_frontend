@@ -8,6 +8,7 @@ import {useTranslations} from "../hooks/useTranslations";
 import apiFetch from "../utils/apiFetch";
 import Toggle from "../components/controls/Toggle";
 import {FiChevronDown, FiChevronRight} from "react-icons/fi";
+import Checkbox from "../components/controls/Checkbox";
 
 const ISO_LANGUAGES = {
     en: "English",
@@ -48,19 +49,45 @@ export default function AdminPage() {
         updateLanguage,
         createLanguage,
         importTranslations,
-        initLanguages
+        initLanguages,
+        exportTranslations
     } = useTranslations();
 
     const [newCode, setNewCode] = useState("");
     const [newName, setNewName] = useState("");
     const [suggestions, setSuggestions] = useState([]);
+    const [exportSelected, setExportSelected] = useState(() => new Set());
+    const [exportEnabledOnly, setExportEnabledOnly] = useState(false);
 
     const [collapsed, setCollapsed] = useState(() => ({
         upload: false,
         cleanup: false,
         languages: false,
-        addLang: false
+        addLang: false,
+        export: false
     }));
+
+    const toggleExportLang = (code, checked) => {
+        setExportSelected(prev => {
+            const next = new Set(prev);
+            if (checked) next.add(code);
+            else next.delete(code);
+            return next;
+        });
+    };
+
+    const exportAll = async () => {
+        try {
+            await exportTranslations({
+                codes: Array.from(exportSelected),
+                enabledOnly: exportEnabledOnly
+            });
+            showToast("Экспорт начался 👌");
+        } catch (e) {
+            showToast("Не удалось скачать архив");
+            console.error(e);
+        }
+    };
 
     const toggleSection = (key) =>
         setCollapsed(prev => ({...prev, [key]: !prev[key]}));
@@ -187,8 +214,62 @@ export default function AdminPage() {
                     </div>
                 </div>
             </div>
+            <div className="admin-page__card">
+                <button
+                    type="button"
+                    className="admin-page__card-head"
+                    onClick={() => toggleSection("export")}
+                >
+                    <span className="admin-page__card-title gradient-text">Экспорт переводов</span>
+                    <span className="admin-page__chev" aria-hidden="true">
+            {collapsed.export ? <FiChevronRight size={18}/> : <FiChevronDown size={18}/>}
+        </span>
+                </button>
 
-            {/* Languages section */}
+                {!collapsed.export && (
+                    <div className="admin-page__card-body">
+                        <div className="admin-page__row" style={{display: "flex", gap: 12, flexWrap: "wrap"}}>
+                            <Checkbox
+                                label="Только включённые языки"
+                                checked={exportEnabledOnly}
+                                onChange={(e) => setExportEnabledOnly(e.target.checked)}
+                            />
+                        </div>
+
+                        <div className="admin-page__row" style={{marginTop: 12}}>
+                            <div className="admin-page__suggest-title" style={{marginBottom: 8}}>
+                                Выбери языки (если не выбрать ни одного — скачаются все):
+                            </div>
+
+                            <div style={{display: "flex", gap: 10, flexWrap: "wrap"}}>
+                                {languages.map(l => (
+                                    <Checkbox
+                                        key={l.code}
+                                        label={`${l.code} — ${l.name}`}
+                                        checked={exportSelected.has(l.code)}
+                                        onChange={(e) => toggleExportLang(l.code, e.target.checked)}
+                                        disabled={exportEnabledOnly && !l.isEnabled}
+                                    />
+                                ))}
+                            </div>
+                        </div>
+
+                        <div className="admin-page__actions" style={{marginTop: 16, display: "flex", gap: 10, flexWrap: "wrap"}}>
+                            <button className="button" onClick={exportAll}>
+                                Скачать ZIP
+                            </button>
+
+                            <button
+                                className="button button_border"
+                                onClick={() => setExportSelected(new Set())}
+                                disabled={exportSelected.size === 0}
+                            >
+                                Сбросить выбор
+                            </button>
+                        </div>
+                    </div>
+                )}
+            </div>
             <div className="admin-page__card">
                 <button
                     type="button"

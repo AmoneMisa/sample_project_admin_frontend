@@ -138,6 +138,41 @@ export function useTranslations() {
         showToast("Язык создан");
     }, [API_URL, accessToken, showToast]);
 
+    const exportTranslations = useCallback(async ({ codes = [], enabledOnly = false } = {}) => {
+        if (!accessToken) return;
+
+        const list = (codes && codes.length ? codes : languages.map(l => l.code)).join(",");
+
+        const params = new URLSearchParams({
+            langKey: list
+        });
+
+        if (enabledOnly) params.set("enabledOnly", "true");
+
+        const res = await fetch(`${API_URL}/export?${params.toString()}`, {
+            headers: { Authorization: `Bearer ${accessToken}` }
+        });
+
+        if (!res.ok) {
+            const text = await res.text().catch(() => "");
+            throw new Error(text || `Export failed (${res.status})`);
+        }
+
+        const blob = await res.blob();
+        const cd = res.headers.get("Content-Disposition") || "";
+        const match = cd.match(/filename="([^"]+)"/i);
+        const filename = match?.[1] || "translations.zip";
+
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        window.URL.revokeObjectURL(url);
+    }, [API_URL, accessToken, languages]);
+
     const importTranslations = useCallback(async (files) => {
         const formData = new FormData();
 
@@ -177,6 +212,7 @@ export function useTranslations() {
         deleteKeys,
         updateLanguage,
         createLanguage,
-        importTranslations
+        importTranslations,
+        exportTranslations
     };
 }

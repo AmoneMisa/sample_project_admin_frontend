@@ -45,16 +45,6 @@ button:disabled,
     filter: none;
 }
 
-.button_primary {
-    background: var(--color-primary-alt);
-    border-color: var(--color-primary-alt);
-}
-
-.button_primary:hover {
-    background: var(--color-primary);
-    border-color: var(--color-primary);
-}
-
 .button_accept {
     background: var(--color-accept);
     border-color: var(--color-accept);
@@ -114,16 +104,6 @@ button:disabled,
 .button_icon svg {
     width: 18px;
     height: 18px;
-}
-
-.button_ghost {
-    background: transparent;
-    border: none;
-    color: var(--color-link);
-}
-
-.button_ghost:hover {
-    background: var(--color-dark);
 }
 
 .fab {

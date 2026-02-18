@@ -36,7 +36,7 @@ export default function FeatureCardDialog({initial, mode, onClose}) {
     const [titleTranslations, setTitleTranslations] = useState({});
     const [descriptionTranslations, setDescriptionTranslations] = useState({});
     const [errors, setErrors] = useState({});
-    const [loading, setLoading] = useState(true);
+    const [, setLoading] = useState(true);
 
     const updateField = (key, value) => {
         setForm(prev => ({...prev, [key]: value}));

@@ -18,7 +18,7 @@ export default function Index() {
     const [filterStatus, setFilterStatus] = useState("all");
     const [deleteTarget, setDeleteTarget] = useState(null);
     const [historyOpen, setHistoryOpen] = useState(false);
-    const [searchParams, setSearchParams] = useSearchParams();
+    const [searchParams,] = useSearchParams();
 
     const {accessToken, user, loading} = useAuth();
     const canEdit = user && (user.role === "moderator" || user.role === "admin");
@@ -146,7 +146,7 @@ export default function Index() {
                             <HistoryDialog
                                 open={historyOpen}
                                 history={audit.getHistory()}
-                                onRestore={async (i) => {
+                                onRestore={async () => {
                                 }}
                                 onClose={() => setHistoryOpen(false)}
                             />

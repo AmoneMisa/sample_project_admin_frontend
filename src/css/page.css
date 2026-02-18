@@ -35,19 +35,6 @@
     padding-bottom: 16px;
 }
 
-.page__block_actions:not(.page__block_actions_noborder) {
-    border-bottom: 1px solid var(--color-primary-alt);
-}
-
-.page__block_actions_between {
-    justify-content: space-between;
-    align-items: center;
-}
-
-.page__block_actions_end {
-    justify-content: flex-end;
-}
-
 .page__topbar {
     z-index: 20;
     padding: 14px;

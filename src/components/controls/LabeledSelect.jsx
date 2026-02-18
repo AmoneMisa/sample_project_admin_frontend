@@ -188,6 +188,7 @@ export default function LabeledSelect({
                                 role="option"
                                 aria-selected={isSelected}
                                 data-idx={idx}
+                                tabIndex={isActive ? 0 : -1}
                                 className={
                                     "selectx__option" +
                                     (isSelected ? " selectx__option_selected" : "") +
@@ -196,11 +197,22 @@ export default function LabeledSelect({
                                 onMouseEnter={() => onOptionMouseEnter(idx)}
                                 onMouseDown={onOptionMouseDown}
                                 onClick={() => commitIndex(idx)}
+                                onKeyDown={(e) => {
+                                    if (e.key === "Enter" || e.key === " ") {
+                                        e.preventDefault();
+                                        commitIndex(idx);
+                                    }
+                                }}
                                 title={opt.label}
                             >
                                 <span className="selectx__option-label">{opt.label}</span>
-                                {isSelected && <span className="selectx__option-mark"><FiCheck size={16}/></span>}
+                                {isSelected && (
+                                    <span className="selectx__option-mark">
+                                        <FiCheck size={16}/>
+                                    </span>
+                                )}
                             </div>
+
                         );
                     })}
                 </div>

@@ -18,18 +18,6 @@
     }
 }
 
-.admin-page__section-title {
-    margin-bottom: 8px;
-}
-
-.admin-page__topbar-row {
-    gap: 12px;
-}
-
-.admin-page__topbar-row_wrap {
-    flex-wrap: wrap;
-}
-
 .admin-page__card {
     background: rgba(255, 255, 255, 0.02);
     border: 1px solid rgba(255, 255, 255, 0.06);

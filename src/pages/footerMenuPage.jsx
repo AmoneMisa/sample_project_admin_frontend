@@ -5,7 +5,7 @@ import {useTranslations} from "../hooks/useTranslations";
 import apiFetch from "../utils/apiFetch";
 import Toggle from "../components/controls/Toggle";
 import CustomTable from "../components/customElems/CustomTable";
-import {FiChevronDown, FiChevronRight, FiEdit, FiTrash} from "react-icons/fi";
+import {FiEdit, FiTrash} from "react-icons/fi";
 import ConfirmDialog from "../components/modals/ConfirmDialog";
 import FooterMenuBlockDialog from "../components/footerMenuCreateComponents/FooterMenuBlockDialog";
 
@@ -31,10 +31,7 @@ export default function FooterMenuPage() {
 
     const [creatingBlock, setCreatingBlock] = useState(false);
     const [editingBlock, setEditingBlock] = useState(null);
-    const [deleteTarget, setDeleteTarget] = useState(null); // blockId
-
-    const toggleExpanded = (blockId) =>
-        setExpanded((p) => ({...p, [blockId]: !p[blockId]}));
+    const [deleteTarget, setDeleteTarget] = useState(null);
 
     const load = async () => {
         const list = await apiFetch(`${API_URL}/footer/menu/blocks?all=true`, {

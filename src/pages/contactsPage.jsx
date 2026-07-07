@@ -10,11 +10,11 @@ import PhoneInput from "react-phone-number-input";
 import LabeledSelect from "../components/controls/LabeledSelect";
 import apiFetch from "../utils/apiFetch";
 import Toggle from "../components/controls/Toggle";
+import { API_URL } from "../config";
 
 const LS_COLLAPSE_KEY = "contactsPage.collapsedGroups.v1";
 
 export default function ContactsPage() {
-    const API_URL = process.env.REACT_APP_API_URL || "/api";
     const {accessToken, user} = useAuth();
     const canEdit = !!user && (user.role === "admin" || user.role === "moderator");
     const {showToast} = useToast();
@@ -389,8 +389,7 @@ export default function ContactsPage() {
                                                         label="Отображать"
                                                         checked={contact.isVisible}
                                                         onChange={() => {
-                                                            contact.isVisible = !contact.isVisible;
-                                                            setContacts([...contacts]);
+                                                            setContacts(prev => prev.map(c => c.id === contact.id ? {...c, isVisible: !c.isVisible} : c));
                                                         }}
                                                     />
 
@@ -443,8 +442,7 @@ export default function ContactsPage() {
                                                                 className="contacts-page__field contacts-page__field_phone"
                                                                 placeholder="+1 555 123 45 67"
                                                                 onChange={v => {
-                                                                    contact.value = v || "";
-                                                                    setContacts([...contacts]);
+                                                                    setContacts(prev => prev.map(c => c.id === contact.id ? {...c, value: v || ""} : c));
                                                                 }}
                                                             />
                                                             {err.value &&
@@ -457,8 +455,7 @@ export default function ContactsPage() {
                                                                 value={contact.socialType}
                                                                 options={SOCIAL_TYPES.map(s => ({value: s, label: s}))}
                                                                 onChange={v => {
-                                                                    contact.socialType = v;
-                                                                    setContacts([...contacts]);
+                                                                    setContacts(prev => prev.map(c => c.id === contact.id ? {...c, socialType: v} : c));
                                                                 }}
                                                             />
 
@@ -468,8 +465,7 @@ export default function ContactsPage() {
                                                                 value={contact.value}
                                                                 error={err.value}
                                                                 onChange={v => {
-                                                                    contact.value = v;
-                                                                    setContacts([...contacts]);
+                                                                    setContacts(prev => prev.map(c => c.id === contact.id ? {...c, value: v} : c));
                                                                 }}
                                                             />
                                                         </>
@@ -484,8 +480,7 @@ export default function ContactsPage() {
                                                             value={contact.value}
                                                             error={err.value}
                                                             onChange={v => {
-                                                                contact.value = v;
-                                                                setContacts([...contacts]);
+                                                                setContacts(prev => prev.map(c => c.id === contact.id ? {...c, value: v} : c));
                                                             }}
                                                         />
                                                     )}

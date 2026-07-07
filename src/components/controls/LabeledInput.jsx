@@ -16,11 +16,8 @@ export default function LabeledInput({
         let v = e.target.value;
 
         const forbidden = /<\/?(script|style|code)[^>]*>/gi;
-        // const anyTag = /<\/?[^>]+>/gi;
 
         v = v.replace(forbidden, "");
-
-        // v = v.replace(anyTag, "");
 
         if (maxLength && v.length > maxLength) {
             v = v.slice(0, maxLength);

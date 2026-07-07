@@ -8,9 +8,9 @@ import {useEffect, useMemo, useState} from "react";
 import {useTranslations} from "../../hooks/useTranslations";
 import {useToast} from "../layout/ToastContext";
 import {v4 as uuid} from "uuid";
+import { API_URL } from "../../config";
 
 export default function OfferCardDialog({mode = "create", initial = null, onClose}) {
-    const API_URL = process.env.REACT_APP_API_URL || "/api";
     const {showToast} = useToast();
     const isEdit = mode === "edit";
 

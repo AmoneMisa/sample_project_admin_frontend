@@ -9,6 +9,7 @@ import apiFetch from "../utils/apiFetch";
 import Toggle from "../components/controls/Toggle";
 import {FiChevronDown, FiChevronRight} from "react-icons/fi";
 import Checkbox from "../components/controls/Checkbox";
+import { API_URL } from "../config";
 
 const ISO_LANGUAGES = {
     en: "English",
@@ -39,7 +40,6 @@ const ISO_LANGUAGES = {
 };
 
 export default function AdminPage() {
-    const API_URL = process.env.REACT_APP_API_URL || "/api";
     const {user} = useAuth();
     const {showToast} = useToast();
 

@@ -8,6 +8,7 @@ import Toggle from "../components/controls/Toggle";
 import {FiEdit, FiTrash} from "react-icons/fi";
 import apiFetch from "../utils/apiFetch";
 import {useTranslations} from "../hooks/useTranslations";
+import { API_URL } from "../config";
 
 function normalizeOfferCard(row) {
     const visible =
@@ -25,7 +26,6 @@ function normalizeOfferCard(row) {
 }
 
 export default function OfferCardsPage() {
-    const API_URL = process.env.REACT_APP_API_URL || "/api";
     const {accessToken, user} = useAuth();
     const {showToast} = useToast();
     const {translationMaps, languages, loadAllTranslations} = useTranslations();

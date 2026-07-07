@@ -10,9 +10,9 @@ import LabeledInput from "../components/controls/LabeledInput";
 import LabeledSelect from "../components/controls/LabeledSelect";
 import apiFetch from "../utils/apiFetch";
 import {useTranslations} from "../hooks/useTranslations";
+import { API_URL } from "../config";
 
 export default function Testimonials() {
-    const API_URL = process.env.REACT_APP_API_URL || "/api";
     const [items, setItems] = useState([]);
     const [editing, setEditing] = useState(null);
     const [creating, setCreating] = useState(false);

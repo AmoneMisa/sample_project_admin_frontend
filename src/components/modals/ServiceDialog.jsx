@@ -8,9 +8,9 @@ import Toggle from "../controls/Toggle";
 import {useTranslations} from "../../hooks/useTranslations";
 import apiFetch from "../../utils/apiFetch";
 import LabeledSelect from "../controls/LabeledSelect";
+import { API_URL } from "../../config";
 
 export default function ServiceDialog({initial, mode, onClose}) {
-    const API_URL = process.env.REACT_APP_API_URL || "/api";
     const {showToast} = useToast();
 
     const {

@@ -8,9 +8,9 @@ import {useToast} from "../layout/ToastContext";
 import {v4 as uuid} from "uuid";
 import {FiChevronDown, FiChevronRight, FiPlus, FiTrash} from "react-icons/fi";
 import Toggle from "../controls/Toggle";
+import { API_URL } from "../../config";
 
 export default function TabsWithBackgroundDialog({initial, mode, onClose}) {
-    const API_URL = process.env.REACT_APP_API_URL || "/api";
     const {showToast} = useToast();
 
     const {

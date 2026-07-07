@@ -1,11 +1,10 @@
 import {createContext, useCallback, useContext, useEffect, useState} from "react";
 import apiFetch from "../utils/apiFetch";
+import { API_URL } from "../config";
 
 export const AuthContext = createContext(null);
 
 export function AuthProvider({children}) {
-    const API_URL = process.env.REACT_APP_API_URL || "/api";
-
     const [user, setUser] = useState(null);
     const [accessToken, setAccessToken] = useState(null);
     const [refreshToken, setRefreshToken] = useState(null);
@@ -20,8 +19,10 @@ export function AuthProvider({children}) {
         } catch {
         }
 
-        localStorage.clear();
-        sessionStorage.clear();
+        localStorage.removeItem("access_token");
+        localStorage.removeItem("refresh_token");
+        sessionStorage.removeItem("access_token");
+        sessionStorage.removeItem("refresh_token");
 
         setAccessToken(null);
         setRefreshToken(null);

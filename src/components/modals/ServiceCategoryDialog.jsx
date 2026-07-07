@@ -7,9 +7,9 @@ import Toggle from "../controls/Toggle";
 import LabeledInput from "../controls/LabeledInput";
 import {useTranslations} from "../../hooks/useTranslations";
 import apiFetch from "../../utils/apiFetch";
+import { API_URL } from "../../config";
 
 export default function ServiceCategoryDialog({initial, mode, onClose}) {
-    const API_URL = process.env.REACT_APP_API_URL || "/api";
     const {showToast} = useToast();
 
     const {

@@ -5,9 +5,9 @@ import {useAuth} from "../hooks/authContext";
 import CustomTable from "../components/customElems/CustomTable";
 import apiFetch from "../utils/apiFetch";
 import Checkbox from "../components/controls/Checkbox";
+import { API_URL } from "../config";
 
 export default function UsersPage() {
-    const API_URL = process.env.REACT_APP_API_URL || "/api";
     const {accessToken} = useAuth();
     const [users, setUsers] = useState([]);
     const [roleFilter, setRoleFilter] = useState("all");

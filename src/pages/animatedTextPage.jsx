@@ -9,6 +9,7 @@ import {useAuth} from "../hooks/authContext";
 import {useToast} from "../components/layout/ToastContext";
 import apiFetch from "../utils/apiFetch";
 import {useTranslations} from "../hooks/useTranslations";
+import { API_URL } from "../config";
 
 function normalizeAnimatedText(row) {
     const visible =
@@ -35,7 +36,6 @@ function emptyMapByLangCodes(langCodes) {
 }
 
 export default function AnimatedTextPage() {
-    const API_URL = process.env.REACT_APP_API_URL || "/api";
     const {accessToken, user} = useAuth();
     const {showToast} = useToast();
 

@@ -6,9 +6,9 @@ import LabeledInput from "../controls/LabeledInput";
 import MultilangInput from "../controls/MultilangInput";
 import {useTranslations} from "../../hooks/useTranslations";
 import apiFetch from "../../utils/apiFetch";
+import { API_URL } from "../../config";
 
 export default function FeatureCardDialog({initial, mode, onClose}) {
-    const API_URL = process.env.REACT_APP_API_URL || "/api";
     const {showToast} = useToast();
 
     const {

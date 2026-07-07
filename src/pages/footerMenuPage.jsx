@@ -8,9 +8,9 @@ import CustomTable from "../components/customElems/CustomTable";
 import {FiEdit, FiTrash} from "react-icons/fi";
 import ConfirmDialog from "../components/modals/ConfirmDialog";
 import FooterMenuBlockDialog from "../components/footerMenuCreateComponents/FooterMenuBlockDialog";
+import { API_URL } from "../config";
 
 export default function FooterMenuPage() {
-    const API_URL = process.env.REACT_APP_API_URL || "/api";
     const {accessToken, user} = useAuth();
     const canEdit = !!user && (user.role === "admin" || user.role === "moderator");
     const {showToast} = useToast();

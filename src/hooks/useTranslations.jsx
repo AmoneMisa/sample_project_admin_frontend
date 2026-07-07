@@ -2,9 +2,9 @@ import {useCallback, useState} from "react";
 import {useAuth} from "./authContext";
 import {useToast} from "../components/layout/ToastContext";
 import apiFetch from "../utils/apiFetch";
+import { API_URL } from "../config";
 
 export function useTranslations() {
-    const API_URL = process.env.REACT_APP_API_URL || "/api";
     const {accessToken} = useAuth();
     const {showToast} = useToast();
 

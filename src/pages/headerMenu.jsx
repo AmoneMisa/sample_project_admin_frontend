@@ -8,10 +8,9 @@ import {useTranslations} from "../hooks/useTranslations";
 import apiFetch from "../utils/apiFetch";
 import {v4 as uuid} from "uuid";
 import Toggle from "../components/controls/Toggle";
+import { API_URL } from "../config";
 
 export default function HeaderMenu() {
-    const API_URL = process.env.REACT_APP_API_URL || "/api";
-
     const {accessToken, user} = useAuth();
     const {showToast} = useToast();
     const canEdit = user && (user.role === "moderator" || user.role === "admin");

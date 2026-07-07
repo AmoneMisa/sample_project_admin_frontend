@@ -6,9 +6,9 @@ import MultilangInput from "../controls/MultilangInput";
 import apiFetch from "../../utils/apiFetch";
 import {useTranslations} from "../../hooks/useTranslations";
 import Modal from "../modals/Modal";
+import { API_URL } from "../../config";
 
 export default function TabsUnderbuttonDialog({initial, mode, onClose}) {
-    const API_URL = process.env.REACT_APP_API_URL || "/api";
     const {showToast} = useToast();
 
     const {

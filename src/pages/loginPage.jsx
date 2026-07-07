@@ -5,6 +5,7 @@ import LabeledInput from "../components/controls/LabeledInput";
 import Checkbox from "../components/controls/Checkbox";
 import PasswordInput from "../components/controls/PasswordInput";
 import apiFetch from "../utils/apiFetch";
+import { API_URL } from "../config";
 
 export default function LoginPage() {
     const {
@@ -22,8 +23,6 @@ export default function LoginPage() {
     const [password, setPassword] = useState("");
     const [rememberMe, setRememberMe] = useState(false);
     const [error, setError] = useState("");
-
-    const API_URL = process.env.REACT_APP_API_URL || "/api";
 
     useEffect(() => {
         if (!loading && user && accessToken) {

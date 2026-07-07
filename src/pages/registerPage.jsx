@@ -4,10 +4,9 @@ import {useAuth} from "../hooks/authContext";
 import LabeledInput from "../components/controls/LabeledInput";
 import PasswordInput from "../components/controls/PasswordInput";
 import apiFetch from "../utils/apiFetch";
+import { API_URL } from "../config";
 
 export default function RegisterPage() {
-    const API_URL = process.env.REACT_APP_API_URL || "/api";
-
     const {
         user,
         accessToken,

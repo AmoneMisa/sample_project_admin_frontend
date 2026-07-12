@@ -61,7 +61,11 @@ export default function Index() {
             loadLanguages();
             loadAllTranslations();
         }
-    }, [loading, accessToken, loadAllTranslations]);
+        // Intentionally depend only on auth readiness: the loader callbacks
+        // change identity when their internal state flips (e.g. `loaded`),
+        // which would otherwise re-run this effect and refetch on every load.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [loading, accessToken]);
 
     useEffect(() => {
         const keyFromUrl = searchParams.get("key") || "";

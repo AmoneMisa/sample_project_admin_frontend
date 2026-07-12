@@ -1,10 +1,12 @@
-import {useCallback, useState} from "react";
+import {createContext, useCallback, useContext, useMemo, useRef, useState} from "react";
 import {useAuth} from "./authContext";
 import {useToast} from "../components/layout/ToastContext";
 import apiFetch from "../utils/apiFetch";
 import { API_URL } from "../config";
 
-export function useTranslations() {
+const TranslationsContext = createContext(null);
+
+export function TranslationsProvider({children}) {
     const {accessToken} = useAuth();
     const {showToast} = useToast();
 
@@ -12,34 +14,67 @@ export function useTranslations() {
     const [translationMaps, setTranslationMaps] = useState({});
     const [loaded, setLoaded] = useState(false);
 
+    // Dedupe concurrent load calls: many consumer components fire loadLanguages()
+    // / loadAllTranslations() from their own mount effects, and they can all run
+    // before the `loaded` state flips. The refs collapse those into one request.
+    const langLoadedRef = useRef(false);
+    const langPromiseRef = useRef(null);
+    const translationsPromiseRef = useRef(null);
+
     const updateTranslation = useCallback((key, map) => {
         setTranslationMaps(prev => ({...prev, [key]: map}));
     }, []);
 
     const loadLanguages = useCallback(async () => {
-        const langs = await apiFetch(`${API_URL}/languages`, {
-            headers: { Authorization: `Bearer ${accessToken}` }
-        });
-        setLanguages(langs);
+        if (!accessToken || langLoadedRef.current) return;
+        if (langPromiseRef.current) return langPromiseRef.current;
+
+        const p = (async () => {
+            const langs = await apiFetch(`${API_URL}/languages`, {
+                headers: { Authorization: `Bearer ${accessToken}` }
+            });
+            if (langs) {
+                setLanguages(langs);
+                langLoadedRef.current = true;
+            }
+        })();
+
+        langPromiseRef.current = p;
+        try {
+            await p;
+        } finally {
+            langPromiseRef.current = null;
+        }
     }, [accessToken]);
 
     const loadAllTranslations = useCallback(async () => {
         if (!accessToken || loaded) return;
+        if (translationsPromiseRef.current) return translationsPromiseRef.current;
 
-        const data = await apiFetch(`${API_URL}/translations`, {
-            headers: { Authorization: `Bearer ${accessToken}` }
-        });
+        const p = (async () => {
+            const data = await apiFetch(`${API_URL}/translations`, {
+                headers: { Authorization: `Bearer ${accessToken}` }
+            });
+            if (!data) return;
 
-        const merged = {};
-        for (const [lang, entries] of Object.entries(data)) {
-            for (const [key, value] of Object.entries(entries)) {
-                if (!merged[key]) merged[key] = {};
-                merged[key][lang] = value;
+            const merged = {};
+            for (const [lang, entries] of Object.entries(data)) {
+                for (const [key, value] of Object.entries(entries)) {
+                    if (!merged[key]) merged[key] = {};
+                    merged[key][lang] = value;
+                }
             }
-        }
 
-        setTranslationMaps(merged);
-        setLoaded(true);
+            setTranslationMaps(merged);
+            setLoaded(true);
+        })();
+
+        translationsPromiseRef.current = p;
+        try {
+            await p;
+        } finally {
+            translationsPromiseRef.current = null;
+        }
     }, [accessToken, loaded]);
 
     const createKeysBatch = useCallback(async (items) => {
@@ -61,7 +96,7 @@ export function useTranslations() {
         });
 
         showToast("Ключи созданы");
-    }, [API_URL, accessToken, showToast]);
+    }, [accessToken, showToast]);
 
     const updateKeysBatch = useCallback(async (items) => {
         await apiFetch(`${API_URL}/translations`, {
@@ -83,7 +118,7 @@ export function useTranslations() {
         });
 
         showToast("Переводы обновлены");
-    }, [API_URL, accessToken, showToast]);
+    }, [accessToken, showToast]);
 
     const deleteKeys = useCallback(async (keys) => {
         if (!accessToken) return;
@@ -104,7 +139,7 @@ export function useTranslations() {
         });
 
         showToast("Ключи удалены");
-    }, [accessToken, API_URL, showToast]);
+    }, [accessToken, showToast]);
 
     const updateLanguage = useCallback(async (code, payload) => {
         const updated = await apiFetch(`${API_URL}/languages/${code}`, {
@@ -121,7 +156,7 @@ export function useTranslations() {
         );
 
         showToast("Язык обновлён");
-    }, [API_URL, accessToken, showToast]);
+    }, [accessToken, showToast]);
 
     const createLanguage = useCallback(async ({code, name, enabled}) => {
         const lang = await apiFetch(`${API_URL}/languages`, {
@@ -136,7 +171,7 @@ export function useTranslations() {
         setLanguages(prev => [...prev, lang]);
 
         showToast("Язык создан");
-    }, [API_URL, accessToken, showToast]);
+    }, [accessToken, showToast]);
 
     const exportTranslations = useCallback(async ({ codes = [], enabledOnly = false } = {}) => {
         if (!accessToken) return;
@@ -171,7 +206,7 @@ export function useTranslations() {
         a.click();
         a.remove();
         window.URL.revokeObjectURL(url);
-    }, [API_URL, accessToken, languages]);
+    }, [accessToken, languages]);
 
     const importTranslations = useCallback(async (files) => {
         const formData = new FormData();
@@ -201,9 +236,9 @@ export function useTranslations() {
         });
 
         showToast("Файлы успешно загружены");
-    }, [API_URL, accessToken, showToast]);
+    }, [accessToken, showToast]);
 
-    return {
+    const value = useMemo(() => ({
         languages,
         translationMaps,
         updateTranslation,
@@ -216,5 +251,32 @@ export function useTranslations() {
         createLanguage,
         importTranslations,
         exportTranslations
-    };
+    }), [
+        languages,
+        translationMaps,
+        updateTranslation,
+        loadAllTranslations,
+        loadLanguages,
+        createKeysBatch,
+        updateKeysBatch,
+        deleteKeys,
+        updateLanguage,
+        createLanguage,
+        importTranslations,
+        exportTranslations
+    ]);
+
+    return (
+        <TranslationsContext.Provider value={value}>
+            {children}
+        </TranslationsContext.Provider>
+    );
+}
+
+export function useTranslations() {
+    const ctx = useContext(TranslationsContext);
+    if (!ctx) {
+        throw new Error("useTranslations must be used within a TranslationsProvider");
+    }
+    return ctx;
 }
